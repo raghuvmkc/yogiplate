@@ -1,0 +1,3340 @@
+{
+  "seedVersion": "catering-v13-signature-chefs-special",
+  "categories": [
+    {
+      "id": "cat-appetizers",
+      "name": "Appetizers",
+      "sort_order": 1
+    },
+    {
+      "id": "cat-salads",
+      "name": "Salads",
+      "sort_order": 2
+    },
+    {
+      "id": "cat-vegetable-dishes",
+      "name": "Vegetable Dishes",
+      "sort_order": 3
+    },
+    {
+      "id": "cat-dal-soups",
+      "name": "Dal & Soups",
+      "sort_order": 4
+    },
+    {
+      "id": "cat-rice-noodles",
+      "name": "Rice & Noodles",
+      "sort_order": 5
+    },
+    {
+      "id": "cat-breads-rotis",
+      "name": "Breads / Rotis",
+      "sort_order": 6
+    },
+    {
+      "id": "cat-desserts",
+      "name": "Desserts",
+      "sort_order": 7
+    },
+    {
+      "id": "cat-condiments",
+      "name": "Condiments / Chutneys",
+      "sort_order": 8
+    },
+    {
+      "id": "cat-pastas",
+      "name": "Pastas",
+      "sort_order": 9
+    },
+    {
+      "id": "cat-sides",
+      "name": "Sides",
+      "sort_order": 10
+    },
+    {
+      "id": "cat-pizzas",
+      "name": "Pizzas (Stone Craft)",
+      "sort_order": 11
+    },
+    {
+      "id": "cat-packages",
+      "name": "Catering Packages",
+      "sort_order": 12
+    }
+  ],
+  "items": [
+    {
+      "id": "item-mix-veg-pakoras",
+      "category_id": "cat-appetizers",
+      "name": "Mix Veg Pakoras",
+      "description": "Chef’s special pakoras — shatter-crisp, spice-fragrant, pure.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 122.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/mix-veg-pakoras.jpeg"
+    },
+    {
+      "id": "item-chili-paneer",
+      "category_id": "cat-appetizers",
+      "name": "Chili Paneer",
+      "description": "House signature chili paneer — fire-kissed and boldly glazed.",
+      "price": 135,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 135,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 180,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/chili-paneer.webp"
+    },
+    {
+      "id": "item-pani-pooris",
+      "category_id": "cat-appetizers",
+      "name": "Pani Pooris",
+      "description": "Signature street classic — crisp shells with cool chef-spiced water.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 127,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/pani-pooris.jpeg"
+    },
+    {
+      "id": "item-dahi-vada",
+      "category_id": "cat-appetizers",
+      "name": "Dahi Vada",
+      "description": "Chef’s special — soft lentil rounds in whipped yogurt and spice.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 127,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/dahi-vada.png"
+    },
+    {
+      "id": "item-mumbai-bhaji",
+      "category_id": "cat-appetizers",
+      "name": "Mumbai Bhaji",
+      "description": "House signature bhaji — butter-rich potatoes, street-stall soul.",
+      "price": 110,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 110,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 441,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/mumbai-bhaji.jpeg"
+    },
+    {
+      "id": "item-urad-vadas",
+      "category_id": "cat-appetizers",
+      "name": "Urad Vadas",
+      "description": "Signature crunch — fermented urad batter fried golden.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/urad-vadas.jpeg"
+    },
+    {
+      "id": "item-idlis",
+      "category_id": "cat-appetizers",
+      "name": "Idlis",
+      "description": "Chef’s soft idlis — overnight-fermented, cloud-light steam cakes.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/idlis.jpeg"
+    },
+    {
+      "id": "item-cauliflower-manchurian",
+      "category_id": "cat-appetizers",
+      "name": "Cauliflower Manchurian",
+      "description": "Chef’s special Manchurian — crisp florets in sweet-heat glaze.",
+      "price": 130,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 130,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 175,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/cauliflower-manchurian.png"
+    },
+    {
+      "id": "item-paneer-tikka-skewers",
+      "category_id": "cat-appetizers",
+      "name": "Paneer Tikka Skewers",
+      "description": "House signature tikka — char-finished from a slow yogurt marinade.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 200,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 225,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/paneer-tikka-skewers.png"
+    },
+    {
+      "id": "item-samosa",
+      "category_id": "cat-appetizers",
+      "name": "1 Samosa w Chutney",
+      "description": "Signature hand-sealed samosas — flaky pastry, spiced potato heart.",
+      "price": 60,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 60,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 80,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 100,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/samosa.png"
+    },
+    {
+      "id": "item-italian-green-salad-with-dressing",
+      "category_id": "cat-salads",
+      "name": "Italian Green Salad with dressing",
+      "description": "Chef’s green salad — garden leaves in herb-bright house dressing.",
+      "price": 100,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 100,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/italian-green-salad-with-dressing.jpeg"
+    },
+    {
+      "id": "item-greek-salad",
+      "category_id": "cat-salads",
+      "name": "Greek Salad",
+      "description": "Signature Greek bowl — ripe tomato, olives, feta, cool and pure.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/greek-salad.jpeg"
+    },
+    {
+      "id": "item-mozzarella-caprese",
+      "category_id": "cat-salads",
+      "name": "Mozzarella Caprese",
+      "description": "Chef’s Caprese — milky mozzarella, sun-ripe tomato, fresh basil.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 245,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/mozzarella-caprese.jpeg"
+    },
+    {
+      "id": "item-lemon-orzo-pasta-salad-with-peas-and-mint",
+      "category_id": "cat-salads",
+      "name": "Lemon-orzo-pasta-salad-with-peas-and-mint",
+      "description": "Signature orzo salad — lemon-glossed with sweet peas and mint.",
+      "price": 108,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 108,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 144,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/lemon-orzo-pasta-salad-with-peas-and-mint.jpeg"
+    },
+    {
+      "id": "item-arugula-and-tomatoes-salad",
+      "category_id": "cat-salads",
+      "name": "Arugula-and-tomatoes-salad",
+      "description": "Chef’s arugula toss — peppery greens, juicy tomato, olive oil.",
+      "price": 108,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 108,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 144,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/arugula-and-tomatoes-salad.webp"
+    },
+    {
+      "id": "item-alu-gobi",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Alu Gobi",
+      "description": "House signature alu gobi — dry-roasted in peanut oil and spice.",
+      "price": 115,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 115,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/alu-gobi.png"
+    },
+    {
+      "id": "item-okra-stir-fry",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Okra stir fry",
+      "description": "Chef’s special okra — seared hot until tender-crisp and fragrant.",
+      "price": 149.99,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 149.99,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 199.99,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 249.99,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/okra-stir-fry.jpeg"
+    },
+    {
+      "id": "item-smoky-paneer-makhni",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Smoky Paneer Makhni",
+      "description": "Signature makhni — wood-smoked paneer in silky tomato-cashew gravy.",
+      "price": 135,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 135,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 175,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 125,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/smoky-paneer-makhni.png"
+    },
+    {
+      "id": "item-paneer-tikka-masala-gravy",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Paneer Tikka Masala gravy",
+      "description": "Chef’s special tikka masala — cream tomato curry, pure and lush.",
+      "price": 135,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 135,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 175,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/paneer-tikka-masala-gravy.jpeg"
+    },
+    {
+      "id": "item-chili-paneer-gravy",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Chili Paneer gravy",
+      "description": "House signature gravy — paneer in a glossy chili-bright sauce.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/chili-paneer-gravy.jpeg"
+    },
+    {
+      "id": "item-methi-malai-matar",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Methi Malai Matar",
+      "description": "Chef’s special methi malai — fenugreek and peas in pure cream.",
+      "price": 140,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 140,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 180,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/methi-malai-matar.png"
+    },
+    {
+      "id": "item-alu-methi",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Alu Methi",
+      "description": "Signature alu methi — potatoes sautéed dry with fresh fenugreek.",
+      "price": 110,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 110,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/alu-methi.jpeg"
+    },
+    {
+      "id": "item-navaratna-koorma",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Navaratna Koorma",
+      "description": "House signature koorma — nine jewels in cashew velvet gravy.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/navaratna-koorma.jpeg"
+    },
+    {
+      "id": "item-palak-paneer",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Palak Paneer",
+      "description": "Chef’s palak paneer — spinach purée cradling soft paneer cubes.",
+      "price": 130,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 130,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 175,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 245,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/palak-paneer.jpg"
+    },
+    {
+      "id": "item-eggplants-and-paneer-in-fresh-tomato-sauce",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Eggplants and Paneer in Fresh Tomato sauce",
+      "description": "Chef’s signature — roasted eggplant and soft paneer in a bright fresh tomato sauce so rich and tangy-sweet it tastes unforgettable.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/eggplants-and-paneer-in-fresh-tomato-sauce.webp"
+    },
+    {
+      "id": "item-veg-pahadi",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Veg Pahadi",
+      "description": "Signature pahadi veg — hill spices, high flame, clean finish.",
+      "price": 135,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 135,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 180,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 245,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/veg-pahadi.jpeg"
+    },
+    {
+      "id": "item-thai-green-curry",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Thai Green Curry",
+      "description": "Chef’s special Thai curry — coconut-rich with fragrant herbs.",
+      "price": 162,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 162,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 216,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 294,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/thai-green-curry.png"
+    },
+    {
+      "id": "item-malai-kofta",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Malai Kofta",
+      "description": "House signature kofta — hand-shaped dumplings in lush cream gravy.",
+      "price": 162,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 162,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 216,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/malai-kofta.jpeg"
+    },
+    {
+      "id": "item-amritsari-chole",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Chole Amritsari",
+      "description": "Signature Amritsari chole — chickpeas slow-stewed deep and bold.",
+      "price": 125,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 125,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/amritsari-chole.jpeg"
+    },
+    {
+      "id": "item-chickpeas-with-spinach",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Chickpeas with Spinach",
+      "description": "Chef’s chickpea spinach — hearty, warm-spiced, pure comfort.",
+      "price": 130,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 130,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/chickpeas-with-spinach.png"
+    },
+    {
+      "id": "item-tofu-crumbles-with-veggies",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Tofu Crumbles with veggies",
+      "description": "Signature tofu wok — crumbled tofu and garden veg, tossed clean.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 245,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/tofu-crumbles-with-veggies.jpeg"
+    },
+    {
+      "id": "item-toordal-tadka",
+      "category_id": "cat-dal-soups",
+      "name": "Toordal Tadka",
+      "description": "Chef’s toor tadka — lentils finished with a fragrant pure tempering.",
+      "price": 97.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 97.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 130,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 171.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/toordal-tadka.jpg"
+    },
+    {
+      "id": "item-whole-moongdal-with-moringa",
+      "category_id": "cat-dal-soups",
+      "name": "Whole Moongdal with moringa",
+      "description": "Signature moong with moringa — nourishing, slow-simmered, sattvic.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/whole-moongdal-with-moringa.jpeg"
+    },
+    {
+      "id": "item-roasted-moonddal-with-fried-potatoes",
+      "category_id": "cat-dal-soups",
+      "name": "Roasted Moonddal with fried potatoes",
+      "description": "Chef’s special dal — roasted moong topped with golden potato cubes.",
+      "price": 101.25,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 101.25,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 135,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/roasted-moonddal-with-fried-potatoes.jpeg"
+    },
+    {
+      "id": "item-dal-makhni",
+      "category_id": "cat-dal-soups",
+      "name": "Dal Makhni",
+      "description": "House signature dal makhni — overnight lentils, spoon-silky butter.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 220.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/dal-makhni.jpeg"
+    },
+    {
+      "id": "item-rajma",
+      "category_id": "cat-dal-soups",
+      "name": "Rajma",
+      "description": "Signature rajma — kidney beans braised long in rich tomato masala.",
+      "price": 105,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 105,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/rajma.webp"
+    },
+    {
+      "id": "item-veg-manchow-soup",
+      "category_id": "cat-dal-soups",
+      "name": "Veg Manchow Soup",
+      "description": "Chef’s Manchow — hot broth packed with crisp garden vegetables.",
+      "price": 97.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 97.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 130,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/veg-manchow-soup.jpeg"
+    },
+    {
+      "id": "item-wanton-soup",
+      "category_id": "cat-dal-soups",
+      "name": "Wanton soup",
+      "description": "Signature wonton soup — delicate dumplings in a clear pure broth.",
+      "price": 105,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 105,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/wanton-soup.webp"
+    },
+    {
+      "id": "item-tuardal-khatta-mitha",
+      "category_id": "cat-dal-soups",
+      "name": "Tuardal Khatta Mitha",
+      "description": "Chef’s khatta-mitha dal — sweet-sour balance, Gujarati home way.",
+      "price": 97.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 97.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 130,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 171.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/tuardal-khatta-mitha.jpeg"
+    },
+    {
+      "id": "item-vegetable-biryani",
+      "category_id": "cat-rice-noodles",
+      "name": "Vegetable Biryani",
+      "description": "House signature biryani — dum-sealed basmati, perfume in every layer.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/vegetable-biryani.png"
+    },
+    {
+      "id": "item-vegetable-pulao",
+      "category_id": "cat-rice-noodles",
+      "name": "Vegetable Pulao",
+      "description": "Chef’s special pulao — ghee-kissed basmati with garden vegetables.",
+      "price": 115,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 115,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 171.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/vegetable-pulao.png"
+    },
+    {
+      "id": "item-peas-pulao",
+      "category_id": "cat-rice-noodles",
+      "name": "Peas Pulao",
+      "description": "Signature peas pulao — fragrant rice pearled with sweet green peas.",
+      "price": 112.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 112.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/peas-pulao.jpeg"
+    },
+    {
+      "id": "item-cumin-cilantro-rice",
+      "category_id": "cat-rice-noodles",
+      "name": "Cumin Cilantro Rice",
+      "description": "Chef’s jeera rice — cumin-tempered basmati, fresh cilantro shower.",
+      "price": 90,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 90,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/cumin-cilantro-rice.webp"
+    },
+    {
+      "id": "item-risotto",
+      "category_id": "cat-rice-noodles",
+      "name": "Risotto",
+      "description": "Signature risotto — Arborio stirred slowly until creamy al dente.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/risotto.jpeg"
+    },
+    {
+      "id": "item-chinese-fried-rice",
+      "category_id": "cat-rice-noodles",
+      "name": "Chinese fried rice",
+      "description": "Chef’s wok fried rice — high heat, bright vegetable bite.",
+      "price": 112.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 112.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 171.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/chinese-fried-rice.webp"
+    },
+    {
+      "id": "item-thai-jasmine-rice",
+      "category_id": "cat-rice-noodles",
+      "name": "Thai Jasmine Rice",
+      "description": "Signature jasmine rice — steamed fragrant and snow-white.",
+      "price": 81,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 81,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 108,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/thai-jasmine-rice.jpeg"
+    },
+    {
+      "id": "item-italian-vegetable-rice",
+      "category_id": "cat-rice-noodles",
+      "name": "Italian vegetable rice",
+      "description": "Chef’s Italian rice — herb-scented with Mediterranean vegetables.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 171.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/italian-vegetable-rice.jpeg"
+    },
+    {
+      "id": "item-vegetable-khichri",
+      "category_id": "cat-rice-noodles",
+      "name": "Vegetable Khichri",
+      "description": "Signature khichri — rice and lentils cooked soft and sattvic.",
+      "price": 105,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 105,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/vegetable-khichri.jpeg"
+    },
+    {
+      "id": "item-chowmein-chinese-fried-noodles",
+      "category_id": "cat-rice-noodles",
+      "name": "Chowmein - Chinese fried noodles",
+      "description": "Chef’s special chowmein — wok noodles with crunchy veg and glaze.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 171.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/chowmein-chinese-fried-noodles.jpeg"
+    },
+    {
+      "id": "item-thai-pad-noodles",
+      "category_id": "cat-rice-noodles",
+      "name": "Thai Pad Noodles",
+      "description": "House signature pad noodles — slicked in sweet-savory Thai sauce.",
+      "price": 120,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 120,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 160,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 196,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/thai-pad-noodles.jpeg"
+    },
+    {
+      "id": "item-whole-wheat-rotis-with-ghee",
+      "category_id": "cat-breads-rotis",
+      "name": "Whole wheat rotis with ghee",
+      "description": "Chef’s rotis — soft whole wheat brushed warm with pure ghee.",
+      "price": 60,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 60,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 75,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 85.75,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/whole-wheat-rotis-with-ghee.jpeg"
+    },
+    {
+      "id": "item-pineapple-halwa",
+      "category_id": "cat-desserts",
+      "name": "Pineapple Halwa",
+      "description": "Signature pineapple halwa — slow-stirred, ghee-glossed, fragrant.",
+      "price": 153.75,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 153.75,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 206.25,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 245,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/pineapple-halwa.jpeg"
+    },
+    {
+      "id": "item-brown-rassogullas",
+      "category_id": "cat-desserts",
+      "name": "Brown Rassogullas",
+      "description": "Chef’s brown rasgullas — caramel-kissed chenna in light syrup.",
+      "price": 187.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 187.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 250,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 214.38,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/brown-rassogullas.png"
+    },
+    {
+      "id": "item-malai-chum-chum",
+      "category_id": "cat-desserts",
+      "name": "Malai Chum Chum",
+      "description": "House signature chum chum — pillowy milk sweets under soft malai.",
+      "price": 180,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 180,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 240,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 183.75,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/malai-chum-chum.jpeg"
+    },
+    {
+      "id": "item-ras-malai",
+      "category_id": "cat-desserts",
+      "name": "Ras Malai",
+      "description": "Chef’s special ras malai — soft discs in saffron chilled milk.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 187.5,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 214.38,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/ras-malai.webp"
+    },
+    {
+      "id": "item-chena-rabri",
+      "category_id": "cat-desserts",
+      "name": "Chena Rabri",
+      "description": "Signature chena rabri — reduced milk, fresh chenna, cardamom.",
+      "price": 187.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 187.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 248.75,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 214.38,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/chena-rabri.jpeg"
+    },
+    {
+      "id": "item-srikhand",
+      "category_id": "cat-desserts",
+      "name": "Srikhand",
+      "description": "Chef’s shrikhand — strained yogurt with saffron and cardamom.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 200,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 153.12,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/srikhand.webp"
+    },
+    {
+      "id": "item-kesari-sweet-rice",
+      "category_id": "cat-desserts",
+      "name": "Kesari Sweet Rice",
+      "description": "Signature kesari rice — saffron dessert jeweled with ghee and nuts.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 200,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 153.12,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/kesari-sweet-rice.jpeg"
+    },
+    {
+      "id": "item-gulabjamun",
+      "category_id": "cat-desserts",
+      "name": "Gulab Jamun",
+      "description": "House signature gulab jamun — warm dumplings in rose syrup.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 200,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 183.75,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/gulabjamun.webp"
+    },
+    {
+      "id": "item-kalajamun",
+      "category_id": "cat-desserts",
+      "name": "KalaJamuns",
+      "description": "Chef’s kala jamun — dark caramel with a deep molasses finish.",
+      "price": 180,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 180,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 240,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 214.38,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/kalajamun.jpeg"
+    },
+    {
+      "id": "item-fruit-custard",
+      "category_id": "cat-desserts",
+      "name": "Fruit custard",
+      "description": "Signature fruit custard — chilled cream studded with ripe fruit.",
+      "price": 150,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 150,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 200,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 183.75,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/fruit-custard.jpeg"
+    },
+    {
+      "id": "item-coconut-celey-chutney",
+      "category_id": "cat-condiments",
+      "name": "Coconut Celery Chutney",
+      "description": "Chef’s coconut chutney — fresh-ground, cool, and bright.",
+      "price": 81,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 81,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 109,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 98,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/coconut-celey-chutney.jpeg"
+    },
+    {
+      "id": "item-pineapple-chutney",
+      "category_id": "cat-condiments",
+      "name": "Pineapple Chutney",
+      "description": "Signature pineapple relish — tangy-sweet with a jewel shine.",
+      "price": 30,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 30,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 58,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 98,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/pineapple-chutney.jpeg"
+    },
+    {
+      "id": "item-dates-raisin-chutney",
+      "category_id": "cat-condiments",
+      "name": "Dates Raisin chutney",
+      "description": "Chef’s date-raisin chutney — sticky, rich, slow-simmered.",
+      "price": 37.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 37.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 72.5,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 122.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/dates-raisin-chutney.jpeg"
+    },
+    {
+      "id": "item-vegatable-lasanga",
+      "category_id": "cat-pastas",
+      "name": "Vegetable Lasagna",
+      "description": "House signature lasagna — layered pasta, cheese, slow tomato bake.",
+      "price": 146.25,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 146.25,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 195,
+          "unit": "medium tray",
+          "serves": 30
+        }
+      ],
+      "image": "/images/menu/vegatable-lasanga.png"
+    },
+    {
+      "id": "item-pasta-in-marinara-sauce",
+      "category_id": "cat-pastas",
+      "name": "Pasta in Marinara Sauce",
+      "description": "Chef’s marinara pasta — herb-forward sauce, slow-simmered pure.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        }
+      ],
+      "image": "/images/menu/pasta-in-marinara-sauce.jpeg"
+    },
+    {
+      "id": "item-eggplants-and-tofu-in-fresh-basil-tomato-sauce",
+      "category_id": "cat-pastas",
+      "name": "Eggplants and Tofu in Fresh basil Tomato sauce",
+      "description": "Chef’s special — roasted eggplant and tofu in basil-bright tomato.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 269.5,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/eggplants-and-tofu-in-fresh-basil-tomato-sauce.jpeg"
+    },
+    {
+      "id": "item-minestrone-soup",
+      "category_id": "cat-pastas",
+      "name": "Minestrone Soup",
+      "description": "Signature minestrone — Italian vegetables simmered hearty and clear.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        }
+      ],
+      "image": "/images/menu/minestrone-soup.jpeg"
+    },
+    {
+      "id": "item-yogiplate-special-pumpkin-basil-soup",
+      "category_id": "cat-pastas",
+      "name": "Basil Pumpkin Soup",
+      "description": "Yogiplate chef’s special — silky pumpkin blended with fresh basil.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        }
+      ],
+      "image": "/images/menu/yogiplate-special-pumpkin-basil-soup.jpeg"
+    },
+    {
+      "id": "item-poori",
+      "category_id": "cat-sides",
+      "name": "Poori",
+      "description": "Chef’s pooris — puffed golden discs, fried hot and airy.",
+      "price": 90,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 90,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 98,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/poori.webp"
+    },
+    {
+      "id": "item-bhatura",
+      "category_id": "cat-sides",
+      "name": "Bhatura",
+      "description": "Signature bhatura — yeasty dough fried soft and ballooned.",
+      "price": 90,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 90,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 98,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/bhatura.jpeg"
+    },
+    {
+      "id": "item-focaccia-bread",
+      "category_id": "cat-sides",
+      "name": "Focaccia Bread",
+      "description": "Chef’s focaccia — olive-oil bake with a crisp herb crust.",
+      "price": 112.5,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan",
+        "italian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 112.5,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 98,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/focaccia-bread.png"
+    },
+    {
+      "id": "item-pav",
+      "category_id": "cat-sides",
+      "name": "Pav",
+      "description": "Signature pav — soft square rolls, tender for bhaji nights.",
+      "price": 105,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 105,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 140,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 98,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/pav.jpeg"
+    },
+    {
+      "id": "item-buttered-masala-pav",
+      "category_id": "cat-sides",
+      "name": "Buttered Masala Pav",
+      "description": "Chef’s special masala pav — toasted and slicked with spiced butter.",
+      "price": 144,
+      "unit": "tray",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 144,
+          "unit": "half tray",
+          "serves": 20
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 192,
+          "unit": "medium tray",
+          "serves": 30
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 147,
+          "unit": "full tray",
+          "serves": 40
+        }
+      ],
+      "image": "/images/menu/buttered-masala-pav.webp"
+    },
+    {
+      "id": "pizza-margherita",
+      "category_id": "cat-pizzas",
+      "name": "Classic Margherita",
+      "description": "Chef’s Margherita — stone-baked tomato, basil, mozzarella.",
+      "price": 25.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 25.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 27.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 29.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/margherita.jpg"
+    },
+    {
+      "id": "pizza-cheese",
+      "category_id": "cat-pizzas",
+      "name": "Cheese Pizza",
+      "description": "Signature cheese pizza — blistered crust, long pulls of melt.",
+      "price": 25.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 25.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 27.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 29.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/cheese.jpg"
+    },
+    {
+      "id": "pizza-smoked_veggie",
+      "category_id": "cat-pizzas",
+      "name": "Smoked Veggie Sauté",
+      "description": "Chef’s smoked veggie — hand-stretched with garden vegetables.",
+      "price": 26.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 26.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 28.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 30.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/smoked_veggie.jpg"
+    },
+    {
+      "id": "pizza-artichoke_heart",
+      "category_id": "cat-pizzas",
+      "name": "Artichoke Heart Sauté",
+      "description": "Signature artichoke pie — tender hearts on Tuscan-herb crust.",
+      "price": 25.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 25.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 27.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 29.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/artichoke_heart.jpg"
+    },
+    {
+      "id": "pizza-spinach_ricotta_stuffed",
+      "category_id": "cat-pizzas",
+      "name": "Spinach & Ricotta Stuffed",
+      "description": "Chef’s stuffed pizza — ricotta and spinach sealed, stone-baked.",
+      "price": 27.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 27.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 29.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 31.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/spinach_ricotta_stuffed.jpg"
+    },
+    {
+      "id": "pizza-chilli_paneer",
+      "category_id": "cat-pizzas",
+      "name": "Chilli Paneer Pizza",
+      "description": "House signature chili paneer pizza — Indo-Italian stone bake.",
+      "price": 28.49,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 28.49,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 30.49,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 32.49,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/chilli_paneer.jpg"
+    },
+    {
+      "id": "pizza-butter_corn",
+      "category_id": "cat-pizzas",
+      "name": "Butter Corn Pizza",
+      "description": "Chef’s butter corn — sweet corn, melted butter, blistered dough.",
+      "price": 25.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 25.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 27.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 29.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/butter_corn.jpg"
+    },
+    {
+      "id": "pizza-pineapple_jalapeno",
+      "category_id": "cat-pizzas",
+      "name": "Pineapple & Jalapeños",
+      "description": "Signature sweet-heat pizza — pineapple and jalapeño on stone.",
+      "price": 25.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 25.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 27.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 29.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/pineapple_jalapeno.jpg"
+    },
+    {
+      "id": "pizza-soya_chilli",
+      "category_id": "cat-pizzas",
+      "name": "Soy Chilli — Plant-Powered",
+      "description": "Chef’s soya chili pizza — plant-powered on a clean stone crust.",
+      "price": 26.99,
+      "unit": "pizza",
+      "diet_tags": [
+        "pure_vegetarian",
+        "italian",
+        "vegan",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "10",
+          "label": "10\"",
+          "price": 26.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "12",
+          "label": "12\"",
+          "price": 28.99,
+          "unit": "pizza"
+        },
+        {
+          "id": "14",
+          "label": "14\"",
+          "price": 30.99,
+          "unit": "pizza"
+        }
+      ],
+      "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
+      "image": "/images/menu/pizzas/soya_chilli.jpg"
+    },
+    {
+      "id": "pkg-jain-25",
+      "category_id": "cat-packages",
+      "name": "Jain Celebration Package",
+      "description": "Signature Jain feast — starter through sweet, purity-first.",
+      "price": 22,
+      "unit": "per guest",
+      "diet_tags": [
+        "jain"
+      ],
+      "is_available": true,
+      "min_quantity": 25
+    },
+    {
+      "id": "pkg-swami-25",
+      "category_id": "cat-packages",
+      "name": "Swaminarayan Feast Package",
+      "description": "Chef’s sattvic feast — curated clean from starter to dessert.",
+      "price": 20,
+      "unit": "per guest",
+      "diet_tags": [
+        "swaminarayan"
+      ],
+      "is_available": true,
+      "min_quantity": 25
+    },
+    {
+      "id": "pkg-pushti-25",
+      "category_id": "cat-packages",
+      "name": "Pushtimarg Seva Package",
+      "description": "Signature seva thali — shuddha vegetarian throughout.",
+      "price": 21,
+      "unit": "per guest",
+      "diet_tags": [
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "min_quantity": 25
+    },
+    {
+      "id": "pkg-vegan-25",
+      "category_id": "cat-packages",
+      "name": "Bay Area Vegan Package",
+      "description": "Chef’s plant-only spread — built bold for Bay Area tables.",
+      "price": 23,
+      "unit": "per guest",
+      "diet_tags": [
+        "vegan"
+      ],
+      "is_available": true,
+      "min_quantity": 25
+    },
+    {
+      "id": "pkg-pureveg-25",
+      "category_id": "cat-packages",
+      "name": "Pure Vegetarian Feast Package",
+      "description": "House signature vegetarian feast — curries, breads, and sweet.",
+      "price": 20,
+      "unit": "per guest",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "min_quantity": 25
+    },
+    {
+      "id": "pkg-italian-25",
+      "category_id": "cat-packages",
+      "name": "Italian Vegetarian Package",
+      "description": "Chef’s Italian package — pasta, salad, bread, dessert.",
+      "price": 24,
+      "unit": "per guest",
+      "diet_tags": [
+        "italian"
+      ],
+      "is_available": true,
+      "min_quantity": 25
+    }
+  ]
+}

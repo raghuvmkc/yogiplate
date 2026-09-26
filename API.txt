@@ -1,0 +1,2 @@
+GEMINI_API_KEY is loaded from .env.local (do not commit keys).
+Set OWNER_WHATSAPP_E164 / NEXT_PUBLIC_OWNER_WHATSAPP_E164 for chat handoff.

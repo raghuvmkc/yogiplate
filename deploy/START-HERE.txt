@@ -1,0 +1,7 @@
+Open the folder named:  yogiplate-site
+
+That is the only folder you upload / connect for Netlify.
+
+If yogiplate-site is missing or outdated, run this in the main project:
+
+  npm run pack-deploy
