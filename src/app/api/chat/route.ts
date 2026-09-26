@@ -83,20 +83,78 @@ function ownerWhatsAppE164() {
   return raw.replace(/\D/g, "");
 }
 
-function extractJson(text: string): Record<string, unknown> {
-  const trimmed = text.trim();
+function stripCodeFences(text: string): string {
+  let t = text.trim();
+  // ```json ... ``` or ``` ... ```
+  const fenced = t.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
+  if (fenced) return fenced[1].trim();
+  t = t.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  return t.trim();
+}
+
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const trimmed = stripCodeFences(text);
   try {
     return JSON.parse(trimmed) as Record<string, unknown>;
   } catch {
+    // find outermost { ... } even if model added prose around it
     const start = trimmed.indexOf("{");
     const end = trimmed.lastIndexOf("}");
     if (start >= 0 && end > start) {
-      return JSON.parse(trimmed.slice(start, end + 1)) as Record<
-        string,
-        unknown
-      >;
+      try {
+        return JSON.parse(trimmed.slice(start, end + 1)) as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        // try repairing common truncation: cut to last complete string field
+      }
     }
-    throw new Error("Model did not return JSON");
+  }
+  return null;
+}
+
+/** Prefer JSON; if Gemini returns plain text, still answer the guest. */
+function parseModelResponse(text: string): Record<string, unknown> {
+  const parsed = extractJsonObject(text);
+  if (parsed) {
+    if (typeof parsed.reply === "string" && parsed.reply.trim()) return parsed;
+    // JSON without reply — use string fields if present
+    for (const key of ["message", "answer", "text", "content"]) {
+      if (typeof parsed[key] === "string" && String(parsed[key]).trim()) {
+        return {
+          type: "answer",
+          reply: String(parsed[key]).trim(),
+          offer_whatsapp: Boolean(parsed.offer_whatsapp),
+          lead: parsed.lead || {},
+        };
+      }
+    }
+    if (parsed.type === "load_skill" || parsed.skill_ids || parsed.skillIds) {
+      return parsed;
+    }
+  }
+
+  const plain = stripCodeFences(text).trim();
+  if (plain.length > 0 && !plain.startsWith("{")) {
+    return {
+      type: "answer",
+      reply: plain.slice(0, 2000),
+      offer_whatsapp: false,
+      lead: {},
+    };
+  }
+
+  throw new Error("empty_or_unparseable_response");
+}
+
+function modelText(result: {
+  response: { text: () => string; candidates?: unknown };
+}): string {
+  try {
+    return result.response.text() || "";
+  } catch {
+    return "";
   }
 }
 
@@ -132,7 +190,11 @@ function prefetchSkillIds(userText: string): ChatSkillId[] {
   if (/whatsapp|text me|call me|human|owner|speak to/.test(t)) {
     ids.add("whatsapp");
   }
-  if (/menu|dish|food|tray|price|cost|\$|order|cater/.test(t)) {
+  if (
+    /menu|dish|food|tray|price|cost|\$|order|cater|people|guest|dinner|lunch|sufficient|enough|serves?/.test(
+      t
+    )
+  ) {
     ids.add("menu-index");
   }
   if (/appetizer|samosa|pakora|chaat|poori|pani/.test(t)) {
@@ -165,9 +227,12 @@ function errorCode(detail: string): string {
   if (/API_KEY|api key|403|401|PERMISSION|invalid.*key/i.test(detail)) {
     return "gemini_auth";
   }
-  if (/404|not found|model/i.test(detail)) return "gemini_model";
+  if (/404|not found|is not found/i.test(detail)) return "gemini_model";
   if (/timeout|timed out|Deadline|ETIMEDOUT/i.test(detail)) {
     return "timeout";
+  }
+  if (/unparseable|empty_or_unparseable|JSON/i.test(detail)) {
+    return "bad_response";
   }
   return "gemini_error";
 }
@@ -234,8 +299,9 @@ export async function POST(req: Request) {
     model: GEMINI_MODEL,
     systemInstruction: system,
     generationConfig: {
-      temperature: 0.35,
-      maxOutputTokens: 900,
+      temperature: 0.3,
+      maxOutputTokens: 1200,
+      // Prefer JSON, but we also accept plain text (see parseModelResponse).
       responseMimeType: "application/json",
     },
   });
@@ -272,7 +338,7 @@ export async function POST(req: Request) {
     ].join("\n");
 
     let result = await chat.sendMessage(turn);
-    let parsed = extractJson(result.response.text());
+    let parsed = parseModelResponse(modelText(result));
 
     // At most one optional skill-load round (keeps Netlify under time limits)
     const type = String(parsed.type || "").toLowerCase();
@@ -290,9 +356,9 @@ export async function POST(req: Request) {
         }
       }
       result = await chat.sendMessage(
-        `Skills loaded. Answer the guest now as final JSON only.\n${formatLoadedSkills(loaded)}`
+        `Skills loaded. Answer the guest now as final JSON only (type answer + reply string).\n${formatLoadedSkills(loaded)}`
       );
-      parsed = extractJson(result.response.text());
+      parsed = parseModelResponse(modelText(result));
     }
 
     const replyRaw = parsed.reply;
