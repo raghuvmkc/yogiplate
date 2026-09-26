@@ -115,7 +115,7 @@ export function runTimeContext(input: TimeContextInput = {}) {
       ? `Standard lead time policy: ${leadRequired} hours.`
       : meets_lead_time
         ? `Meets ${leadRequired}h lead-time policy.`
-        : `Does NOT meet ${leadRequired}h lead-time policy — offer later date or escalate.`,
+        : `Does NOT meet ${leadRequired}h lead-time policy — tell the guest you must check with Mr. Radhavallabh (Chef and Founder) before confirming; do not promise the date; offer WhatsApp handoff and/or a later date.`,
   ];
 
   return {

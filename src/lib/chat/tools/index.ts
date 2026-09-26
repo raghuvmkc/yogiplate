@@ -27,6 +27,7 @@ When to call
 - Any date/timing / "can you do Saturday?" → time_context AND catering_calendar check_availability.
 - Headcount / enough food / how many trays → catering_math.
 - Never invent prices, tray counts, lead times, or capacity.
+- If time_context.meets_lead_time is false: tell the guest you must check with Mr. Radhavallabh before confirming; offer WhatsApp handoff; do not promise the date.
 
 Tool call JSON:
 {"type":"tool_call","tool":"time_context","args":{"event_date":"2026-10-12","event_time":"18:30"}}
