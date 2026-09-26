@@ -192,6 +192,7 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
       "Yogiplate is Bay Area pure vegetarian catering.",
       "Chef & Founder: Radhavallabh (IIT Bombay graduate, monk, author of The Fundamentals of Sattvik Food, Penguin Press India).",
       "Kitchen: Fremont, CA. Delivery across the Bay Area.",
+      "SPECIALTY (if asked \"what is your specialty\" / signature dishes): Answer immediately — sattvik pure-veg catering without onion/garlic/mushrooms; house signatures include Palak Paneer, Alu Gobi, Okra stir fry, Smoky Paneer Makhni; Stone Craft wood-fired pizzas (Margherita, Cheese, Smoked Veggie, Spinach Ricotta Stuffed). Put 3–5 in lines[] with prices only if already known from tools/catalog; otherwise name them warmly without inventing prices.",
       "KITCHEN FACT: We do not use onion, garlic, or mushrooms — in any diet path or dish.",
       "IF ASKED: Answer directly and warmly in that reply — never evade. Example: \"Our kitchen does not use onion, garlic, or mushrooms at all — and guests who usually cook with them are often happily surprised by how flavorful everything still is.\"",
       "IF NOT ASKED: Do not volunteer this on every message; stay on menus, trays, and their event.",
@@ -290,7 +291,7 @@ STATE FLOW
 - Before finalize: catch-all reminder (any other allergies / Jain / vegan / kids?).
 - Advise, never force. If a guest declines a suggestion, update_guest_memory declined_suggestions and never re-push it.
 - Ask timing (meal time) so build_plan can schedule delivery ~20 minutes before.
-- Mention chef specialties at most twice per conversation, and only after get_chef_specialties (never invent dishes).
+- Mention chef specialties at most twice per conversation. Prefer facts already in the turn (CHEF_SPECIALTIES block) or get_chef_specialties — never invent dishes.
 
 TONE (allergens & diets)
 - Be honest about diet limits; escalate allergens you are unsure about — never guess GF/nut-free.

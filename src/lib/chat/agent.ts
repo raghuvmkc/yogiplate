@@ -24,6 +24,8 @@ import {
   getOrCreateGuestMemory,
 } from "@/lib/planning/guest-memory-store";
 import { summarizeGuestMemory } from "@/lib/planning/guest-memory";
+import { getChefSpecialties } from "@/lib/planning/chef-specialties";
+import { getDb } from "@/lib/store/local-db";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
 
@@ -534,6 +536,36 @@ export async function runFrontDeskTurn(
     /onion|garlic|mushroom|pyaaz|lahsun|ingredients?/.test(
       last.content.toLowerCase()
     );
+  const asksSpecialty =
+    /specialt|signature|famous (for|dish)|what are you known|chef.?s (best|special)|house special|stone craft/.test(
+      last.content.toLowerCase()
+    );
+
+  // Preload specialties so "what is your specialty?" answers in one shot (avoids Netlify timeouts).
+  let specialtyHint = "";
+  if (asksSpecialty) {
+    try {
+      const db = await getDb();
+      const rows = getChefSpecialties().map((s) => {
+        const item = db.menu_items.find((m) => m.id === s.menu_item_id);
+        const price = item?.price;
+        return {
+          name: item?.name || s.label,
+          why: s.why,
+          price: price != null ? price : null,
+          unit: item?.unit || "tray",
+        };
+      });
+      specialtyHint = [
+        "CHEF_SPECIALTIES (already loaded — answer NOW with type:answer; do not call tools for this):",
+        JSON.stringify(rows.slice(0, 8)),
+        "REQUIRED THIS TURN: Guest asked about specialty/signature. Warm reply about Mr. Radhavallabh / sattvik kitchen + Stone Craft pizzas. Put up to 5 items in lines[] using these names/prices (quantity 1). Never invent other dishes.",
+      ].join("\n");
+    } catch {
+      specialtyHint =
+        "REQUIRED THIS TURN: Guest asked about specialty. Answer from business skill — Palak Paneer, Alu Gobi, Okra, Smoky Paneer Makhni, Stone Craft pizzas. Prefer type:answer with no tools.";
+    }
+  }
 
   const turn = [
     last.content,
@@ -544,11 +576,15 @@ export async function runFrontDeskTurn(
     "",
     "Relevant kitchen knowledge (already loaded):",
     formatLoadedSkills(loaded),
+    specialtyHint,
     "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional lines/highlights/bullets).",
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
     asksOnionGarlic
       ? "REQUIRED THIS TURN: Guest asked about onion/garlic/mushrooms/ingredients. Answer that fact clearly and warmly in reply — do not evade or only talk about menus. Our kitchen does not use onion, garlic, or mushrooms."
+      : "",
+    asksSpecialty
+      ? "Do not call get_chef_specialties this turn — specialties are already in CHEF_SPECIALTIES above."
       : "",
     "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines/prices.",
     "When proposing dishes/packages: put them in lines[] (max 6 items) with name, quantity, unit, price — never Markdown ** in reply. Keep JSON compact so it is not truncated.",

@@ -378,9 +378,19 @@ export function ChatWidget() {
           session_id: sessionId,
         }),
       });
-      const data = await res.json();
+      const rawBody = await res.text();
+      let data: Record<string, unknown> = {};
+      try {
+        data = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Chat returned an unexpected response. Please try again."
+            : `Chat failed (${res.status}). Please try again.`
+        );
+      }
       if (!res.ok) {
-        const bits = [data.error || "Chat failed"];
+        const bits = [String(data.error || "Chat failed")];
         if (data.code) bits.push(`[${data.code}]`);
         if (data.detail) bits.push(String(data.detail).slice(0, 160));
         throw new Error(bits.join(" "));
@@ -439,11 +449,12 @@ export function ChatWidget() {
         },
       ]);
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Something went wrong. Please try again."
-      );
+      const raw = e instanceof Error ? e.message : String(e);
+      const friendly =
+        /failed to fetch|networkerror|load failed|aborted/i.test(raw)
+          ? "Chat timed out or lost connection — please try that question again."
+          : raw || "Something went wrong. Please try again.";
+      setError(friendly);
     } finally {
       setBusy(false);
     }
