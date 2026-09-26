@@ -7,6 +7,7 @@ import { MessageCircle, Send, X } from "lucide-react";
 import {
   ChatRichMessage,
   type ChatHighlight,
+  type ChatMenuLine,
 } from "@/components/ChatRichMessage";
 import { DIET_LABELS } from "@/lib/data/diet-profiles";
 import {
@@ -24,6 +25,9 @@ type ChatMessage = {
   content: string;
   highlights?: ChatHighlight[];
   bullets?: string[];
+  lines?: ChatMenuLine[];
+  linesTotal?: number | null;
+  linesTitle?: string | null;
   offerWhatsApp?: boolean;
   whatsappUrl?: string | null;
   cartProposal?: CartProposal | null;
@@ -390,6 +394,11 @@ export function ChatWidget() {
         data.cart_proposal.items.length > 0
           ? (data.cart_proposal as CartProposal)
           : null;
+      const menuLines = Array.isArray(data.lines)
+        ? (data.lines as ChatMenuLine[])
+            .filter((l) => l && String(l.name || "").trim())
+            .slice(0, 10)
+        : undefined;
       setMessages((prev) => [
         ...prev,
         {
@@ -401,6 +410,13 @@ export function ChatWidget() {
           bullets: Array.isArray(data.bullets)
             ? (data.bullets as string[])
             : undefined,
+          lines: menuLines?.length ? menuLines : undefined,
+          linesTotal:
+            data.lines_total != null && Number.isFinite(Number(data.lines_total))
+              ? Number(data.lines_total)
+              : null,
+          linesTitle:
+            typeof data.lines_title === "string" ? data.lines_title : null,
           offerWhatsApp: Boolean(data.offer_whatsapp),
           whatsappUrl: data.whatsapp_url || null,
           cartProposal: proposal,
@@ -570,6 +586,9 @@ export function ChatWidget() {
                           content={m.content}
                           highlights={m.highlights}
                           bullets={m.bullets}
+                          lines={m.lines}
+                          linesTotal={m.linesTotal}
+                          linesTitle={m.linesTitle}
                         />
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>

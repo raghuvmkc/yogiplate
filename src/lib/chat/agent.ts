@@ -64,10 +64,21 @@ export type AgentTurnInput = {
   channel?: ContactChannel;
 };
 
+export type AgentMenuLine = {
+  name: string;
+  quantity: number;
+  unit?: string;
+  price?: number;
+  line_total?: number;
+};
+
 export type AgentTurnResult = {
   reply: string;
   highlights: { label: string; value: string }[];
   bullets: string[];
+  lines: AgentMenuLine[];
+  lines_total: number | null;
+  lines_title: string | null;
   offer_whatsapp: boolean;
   whatsapp_url: string | null;
   lead: AgentLead;
@@ -78,6 +89,38 @@ export type AgentTurnResult = {
   skills_used: string[];
   tools_used: string[];
 };
+
+function parseMenuLines(raw: unknown): AgentMenuLine[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AgentMenuLine[] = [];
+  for (const item of raw.slice(0, 10)) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const name = String(row.name || row.item || "").trim();
+    if (!name) continue;
+    const quantity = Math.max(1, Number(row.quantity ?? row.qty ?? 1) || 1);
+    const unit = row.unit != null ? String(row.unit).trim() : undefined;
+    const price =
+      row.price != null || row.unit_price != null
+        ? Number(row.price ?? row.unit_price)
+        : undefined;
+    const line_total =
+      row.line_total != null || row.total != null
+        ? Number(row.line_total ?? row.total)
+        : undefined;
+    out.push({
+      name,
+      quantity,
+      unit: unit || undefined,
+      price: price != null && Number.isFinite(price) ? price : undefined,
+      line_total:
+        line_total != null && Number.isFinite(line_total)
+          ? line_total
+          : undefined,
+    });
+  }
+  return out;
+}
 
 function whatsappConfigured() {
   const n =
@@ -390,6 +433,7 @@ export async function runFrontDeskTurn(
     "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional highlights/bullets).",
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
+    "When proposing dishes/packages: put them in lines[] with name, quantity, unit, price — never Markdown ** in reply.",
     "Use time_context + catering_calendar for dates; catering_math for headcount/trays; order_draft for cart; followthrough for email quote/deposit.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
   ].join("\n");
@@ -494,7 +538,10 @@ export async function runFrontDeskTurn(
   const replyRaw = parsed.reply;
   const reply =
     typeof replyRaw === "string" && replyRaw.trim()
-      ? replyRaw.trim()
+      ? replyRaw
+          .trim()
+          .replace(/\*\*([^*]+)\*\*/g, "$1")
+          .replace(/__([^_]+)__/g, "$1")
       : "I can help with Yogiplate catering menus, diets, and orders. What would you like to know?";
 
   const highlights = Array.isArray(parsed.highlights)
@@ -512,6 +559,23 @@ export async function runFrontDeskTurn(
         .filter(Boolean)
         .slice(0, 6)
     : [];
+  const lines = parseMenuLines(parsed.lines ?? parsed.menu_lines);
+  const lines_title =
+    typeof parsed.lines_title === "string" && parsed.lines_title.trim()
+      ? parsed.lines_title.trim()
+      : null;
+  let lines_total: number | null =
+    parsed.lines_total != null && Number.isFinite(Number(parsed.lines_total))
+      ? Number(parsed.lines_total)
+      : null;
+  if (lines_total == null && lines.length) {
+    const sum = lines.reduce((s, l) => {
+      if (l.line_total != null) return s + l.line_total;
+      if (l.price != null) return s + l.price * l.quantity;
+      return s;
+    }, 0);
+    if (sum > 0) lines_total = Math.round(sum * 100) / 100;
+  }
 
   const lead = mergeLead(
     input.lead,
@@ -608,6 +672,9 @@ export async function runFrontDeskTurn(
     reply,
     highlights,
     bullets,
+    lines,
+    lines_total,
+    lines_title,
     offer_whatsapp: offerWhatsApp,
     whatsapp_url: whatsappUrl,
     lead,
