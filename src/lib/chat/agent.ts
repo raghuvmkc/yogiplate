@@ -320,6 +320,7 @@ export async function runFrontDeskTurn(
   const proposalState: { current: CartProposal | null } = { current: null };
   let lastQuoteId: string | null = null;
   let quoteUrl: string | null = null;
+  let lastHoldId: string | null = null;
 
   const leadHint = `\n\n[Known lead: ${JSON.stringify(input.lead)}]`;
   const orderHint = input.order_context
@@ -380,18 +381,22 @@ export async function runFrontDeskTurn(
         },
       });
       toolsUsed.push(toolCall.tool);
-      if (
-        toolCall.tool === "followthrough" &&
-        toolResult &&
-        typeof toolResult === "object" &&
-        "quote_url" in toolResult &&
-        typeof (toolResult as { quote_url?: string }).quote_url === "string"
-      ) {
-        quoteUrl = (toolResult as { quote_url: string }).quote_url;
-        if ("quote_id" in toolResult) {
-          lastQuoteId = String(
-            (toolResult as { quote_id?: string }).quote_id || lastQuoteId
-          );
+      if (toolResult && typeof toolResult === "object") {
+        if (
+          toolCall.tool === "followthrough" &&
+          "quote_url" in toolResult &&
+          typeof (toolResult as { quote_url?: string }).quote_url === "string"
+        ) {
+          quoteUrl = (toolResult as { quote_url: string }).quote_url;
+          if ("quote_id" in toolResult) {
+            lastQuoteId = String(
+              (toolResult as { quote_id?: string }).quote_id || lastQuoteId
+            );
+          }
+        }
+        if (toolCall.tool === "catering_calendar") {
+          const hold = (toolResult as { hold?: { id?: string } }).hold;
+          if (hold?.id) lastHoldId = String(hold.id);
         }
       }
       result = await chat.sendMessage(
@@ -459,33 +464,65 @@ export async function runFrontDeskTurn(
   );
   const offerWhatsApp = Boolean(parsed.offer_whatsapp) && waReady;
 
+  const finalProposal = proposalState.current;
+
   let whatsappUrl: string | null = null;
   if (offerWhatsApp) {
     const digits = ownerWhatsAppE164();
+    const draftGuests =
+      (orderDraft.adults ?? 0) + (orderDraft.kids ?? 0) ||
+      lead.guest_count ||
+      null;
+    const proposedLines = finalProposal?.items?.length
+      ? finalProposal.items
+          .slice(0, 8)
+          .map((i) => `${i.quantity}× ${i.name}`)
+          .join("; ")
+      : null;
+    const cartLines = input.order_context?.items?.length
+      ? input.order_context.items
+          .map((i) => `${i.quantity}× ${i.name}`)
+          .join("; ")
+      : null;
     const summary = [
       "Hi Yogiplate — I'd like help with catering.",
       lead.name ? `Name: ${lead.name}` : null,
       lead.phone ? `Phone: ${lead.phone}` : null,
       lead.email ? `Email: ${lead.email}` : null,
-      lead.event_date ? `Event date: ${lead.event_date}` : null,
-      lead.guest_count ? `Guests: ${lead.guest_count}` : null,
-      lead.diet ? `Diet: ${lead.diet}` : null,
-      lead.city ? `City: ${lead.city}` : null,
-      lead.notes ? `Notes: ${lead.notes}` : null,
-      quoteUrl ? `Quote: ${quoteUrl}` : null,
-      input.order_context?.items?.length
-        ? `Cart: ${input.order_context.items
-            .map((i) => `${i.quantity}× ${i.name}`)
-            .join("; ")}`
+      orderDraft.occasion ? `Occasion: ${orderDraft.occasion}` : null,
+      orderDraft.event_date || lead.event_date
+        ? `Event date: ${orderDraft.event_date || lead.event_date}${
+            orderDraft.event_time ? ` ${orderDraft.event_time}` : ""
+          }`
         : null,
+      orderDraft.meal ? `Meal: ${orderDraft.meal}` : null,
+      draftGuests ? `Guests: ${draftGuests}` : null,
+      orderDraft.diet || lead.diet
+        ? `Diet: ${orderDraft.diet || lead.diet}`
+        : null,
+      orderDraft.delivery_or_pickup
+        ? `Service: ${orderDraft.delivery_or_pickup}`
+        : null,
+      orderDraft.city || lead.city
+        ? `City: ${orderDraft.city || lead.city}`
+        : null,
+      orderDraft.address ? `Address: ${orderDraft.address}` : null,
+      orderDraft.package_tier ? `Package: ${orderDraft.package_tier}` : null,
+      orderDraft.budget ? `Budget: ${orderDraft.budget}` : null,
+      orderDraft.setup_needs ? `Setup: ${orderDraft.setup_needs}` : null,
+      orderDraft.notes || lead.notes
+        ? `Notes: ${orderDraft.notes || lead.notes}`
+        : null,
+      lastHoldId ? `Calendar hold: ${lastHoldId}` : null,
+      quoteUrl ? `Quote: ${quoteUrl}` : null,
+      proposedLines ? `Proposed menu: ${proposedLines}` : null,
+      cartLines && !proposedLines ? `Cart: ${cartLines}` : null,
       toolsUsed.length ? `Tools used: ${toolsUsed.join(", ")}` : null,
     ]
       .filter(Boolean)
       .join("\n");
     whatsappUrl = `https://wa.me/${digits}?text=${encodeURIComponent(summary)}`;
   }
-
-  const finalProposal = proposalState.current;
   const hasCartProposal = !!(
     finalProposal &&
     Array.isArray(finalProposal.items) &&
