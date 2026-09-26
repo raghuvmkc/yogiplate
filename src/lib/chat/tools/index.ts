@@ -2,11 +2,14 @@ import { z } from "zod";
 import { runTimeContext } from "@/lib/chat/tools/time";
 import { runCateringMath } from "@/lib/chat/tools/math";
 import { runCateringCalendar } from "@/lib/chat/tools/calendar";
+import { runOrderTool, type OrderToolContext } from "@/lib/chat/tools/order";
+import type { OrderDraft } from "@/lib/chat/order-draft";
 
 export const TOOL_NAMES = [
   "time_context",
   "catering_math",
   "catering_calendar",
+  "order_draft",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -22,15 +25,27 @@ TOOLS (call these — do not invent their results)
 3) catering_calendar — capacity, blackouts, soft holds.
    Args: action = check_availability | create_hold | release_hold | list_day | get_lead_time_policy;
    date, guest_count, start_time, end_time, hold_id, lead_phone, lead_email, notes.
+4) order_draft — structured catering order capture + cart proposal.
+   Args: action = update_order_draft | get_order_draft | read_back | propose_cart | confirm_order_draft;
+   patch: { occasion, event_date, event_time, adults, kids, diet, delivery_or_pickup, city, address, budget, setup_needs, meal, package_tier, notes };
+   tier: good|better|best for propose_cart; confirmed: true|false for confirm_order_draft.
+
+ORDER FLOW (Phase 2)
+- Collect slots naturally (not an interrogation): occasion → date/time → headcount → diet → meal → delivery/pickup → city.
+- After each useful fact: tool_call order_draft update_order_draft with patch.
+- When mostly complete: order_draft read_back, then ask guest to confirm the summary.
+- On confirm: order_draft propose_cart (tier good/better/best), then confirm_order_draft confirmed:true.
+- Site will offer “Add to Build order” from cart_proposal — guest finishes checkout on /order.
+- Consultative: ask occasion first; use catering_math compare_packages; soft upsells only.
 
 When to call
-- Any date/timing / "can you do Saturday?" → time_context AND catering_calendar check_availability.
-- Headcount / enough food / how many trays → catering_math.
-- Never invent prices, tray counts, lead times, or capacity.
-- If time_context.meets_lead_time is false: tell the guest you must check with Mr. Radhavallabh before confirming; offer WhatsApp handoff; do not promise the date.
+- Any date/timing → time_context AND catering_calendar check_availability.
+- Headcount / trays → catering_math.
+- Order details / cart build → order_draft.
+- If time_context.meets_lead_time is false: must check with Mr. Radhavallabh; offer WhatsApp; do not promise.
 
 Tool call JSON:
-{"type":"tool_call","tool":"time_context","args":{"event_date":"2026-10-12","event_time":"18:30"}}
+{"type":"tool_call","tool":"order_draft","args":{"action":"update_order_draft","patch":{"occasion":"team_lunch","adults":20,"meal":"lunch"}}}
 `.trim();
 }
 
@@ -60,10 +75,19 @@ export function parseToolCall(
   return { tool: checked.data.tool, args: checked.data.args };
 }
 
+export type ChatToolContext = {
+  lead_phone?: string;
+  lead_email?: string;
+  lead_time_hours?: number;
+  orderDraft: OrderDraft;
+  setOrderDraft: (d: OrderDraft) => void;
+  setCartProposal: OrderToolContext["setCartProposal"];
+};
+
 export async function executeChatTool(
   tool: ToolName,
   args: Record<string, unknown>,
-  ctx?: { lead_phone?: string; lead_email?: string; lead_time_hours?: number }
+  ctx: ChatToolContext
 ) {
   if (tool === "time_context") {
     return runTimeContext({
@@ -75,7 +99,7 @@ export async function executeChatTool(
       lead_time_hours:
         args.lead_time_hours != null
           ? Number(args.lead_time_hours)
-          : ctx?.lead_time_hours,
+          : ctx.lead_time_hours,
     });
   }
   if (tool === "catering_math") {
@@ -102,7 +126,24 @@ export async function executeChatTool(
         args.buffer_percent != null ? Number(args.buffer_percent) : undefined,
     });
   }
-  // catering_calendar
+  if (tool === "order_draft") {
+    return runOrderTool(
+      {
+        action: (args.action as "update_order_draft") || "get_order_draft",
+        patch: (args.patch as Partial<OrderDraft>) || undefined,
+        tier: args.tier as "good" | "better" | "best" | undefined,
+        replace_cart:
+          args.replace_cart != null ? Boolean(args.replace_cart) : undefined,
+        confirmed:
+          args.confirmed != null ? Boolean(args.confirmed) : undefined,
+      },
+      {
+        draft: ctx.orderDraft,
+        setDraft: ctx.setOrderDraft,
+        setCartProposal: ctx.setCartProposal,
+      }
+    );
+  }
   return runCateringCalendar({
     action: (args.action as "check_availability") || "check_availability",
     date: args.date ? String(args.date) : undefined,
@@ -112,10 +153,10 @@ export async function executeChatTool(
     hold_id: args.hold_id ? String(args.hold_id) : undefined,
     lead_phone: args.lead_phone
       ? String(args.lead_phone)
-      : ctx?.lead_phone,
+      : ctx.lead_phone,
     lead_email: args.lead_email
       ? String(args.lead_email)
-      : ctx?.lead_email,
+      : ctx.lead_email,
     notes: args.notes ? String(args.notes) : undefined,
     days_ahead: args.days_ahead != null ? Number(args.days_ahead) : undefined,
   });

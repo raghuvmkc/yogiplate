@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { CartProposal } from "@/lib/chat/order-draft";
 import type { CartLine, DietTag, MenuItem, MenuVariant } from "@/lib/types";
 
 function lineIdFor(itemId: string, variantId?: string) {
@@ -11,6 +12,15 @@ function lineIdFor(itemId: string, variantId?: string) {
 function lineName(item: MenuItem, variant?: MenuVariant) {
   return variant ? `${item.name} (${variant.label})` : item.name;
 }
+
+const DIET_TAGS = new Set<DietTag>([
+  "jain",
+  "swaminarayan",
+  "pushtimarg",
+  "pure_vegetarian",
+  "vegan",
+  "italian",
+]);
 
 interface CartStore {
   diet: DietTag | null;
@@ -28,6 +38,8 @@ interface CartStore {
   updateQty: (lineId: string, quantity: number) => void;
   removeItem: (lineId: string) => void;
   clear: () => void;
+  /** Apply AI Yogi cart proposal from chat (Phase 2). */
+  applyProposal: (proposal: CartProposal) => number;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -104,6 +116,57 @@ export const useCartStore = create<CartStore>()(
           couponCode: "",
           notes: "",
         }),
+      applyProposal: (proposal) => {
+        const lines: CartLine[] = (proposal.items || []).map((i) => ({
+          menu_item_id: i.menu_item_id,
+          line_id: lineIdFor(i.menu_item_id, i.variant_id),
+          variant_id: i.variant_id,
+          name: i.name,
+          price: i.price,
+          quantity: Math.max(1, i.quantity),
+          unit: i.unit || "tray",
+        }));
+        if (!lines.length) return 0;
+
+        const diet =
+          proposal.diet && DIET_TAGS.has(proposal.diet as DietTag)
+            ? (proposal.diet as DietTag)
+            : get().diet;
+
+        const next: Partial<CartStore> = {
+          items: proposal.replace
+            ? lines
+            : (() => {
+                const map = new Map(
+                  get().items.map((i) => [i.line_id, { ...i }])
+                );
+                for (const line of lines) {
+                  const existing = map.get(line.line_id);
+                  if (existing) {
+                    map.set(line.line_id, {
+                      ...existing,
+                      quantity: existing.quantity + line.quantity,
+                    });
+                  } else {
+                    map.set(line.line_id, line);
+                  }
+                }
+                return [...map.values()];
+              })(),
+        };
+        if (diet) next.diet = diet;
+        if (proposal.guest_count && proposal.guest_count > 0) {
+          next.guestCount = proposal.guest_count;
+        }
+        if (proposal.event_date) next.eventDate = proposal.event_date;
+        if (proposal.notes) {
+          next.notes = get().notes
+            ? `${get().notes}\n${proposal.notes}`
+            : proposal.notes;
+        }
+        set(next);
+        return lines.length;
+      },
     }),
     {
       name: "yogiplate-cart",

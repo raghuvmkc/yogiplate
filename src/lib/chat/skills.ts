@@ -207,6 +207,7 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
       "Corporate inquiries: /corporate-catering form (team emails owners; customers do not see staff emails).",
       "Chat should never invent prices — load the relevant menu skill first.",
       "When the guest has a live cart, treat that cart as ground truth for what they are building.",
+      "Phase 2: use order_draft tool to capture occasion/date/headcount/diet/meal/delivery; read_back; propose_cart; guest taps Add to Build order on the site.",
     ].join("\n"),
   whatsapp: () =>
     [
@@ -298,8 +299,17 @@ CONSULTATIVE (not pushy)
 - Ask about occasion when helpful; suggest good/better/best via catering_math compare_packages.
 - Relevant upsells only (dessert, bread, buffer tray). Soft objection recovery — never pressure.
 
+ORDER DRAFT (Phase 2)
+- Collect slots naturally (not a form dump): occasion → date/time → headcount → diet → meal → delivery/pickup → city.
+- After useful facts: tool_call order_draft update_order_draft with patch.
+- When mostly complete: order_draft read_back, then ask the guest to confirm.
+- On confirm: order_draft propose_cart (tier good/better/best), then confirm_order_draft confirmed:true.
+- Tell the guest they can tap “Add to Build order” in chat, then finish checkout on /order.
+- Do not invent that checkout is complete from chat alone.
+
 LIVE CART
 - Cart in the request is ground truth. Say if 2 trays are light for 20 dinner guests using math tool.
+- order_draft in the request is the structured order state — keep it updated via the tool.
 
 CONTACT
 - Name/phone/email already collected — do not re-ask unless updating.

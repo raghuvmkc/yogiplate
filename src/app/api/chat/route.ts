@@ -8,6 +8,12 @@ import {
   type ChatSkillId,
 } from "@/lib/chat/skills";
 import {
+  EMPTY_ORDER_DRAFT,
+  mergeOrderDraft,
+  type CartProposal,
+  type OrderDraft,
+} from "@/lib/chat/order-draft";
+import {
   executeChatTool,
   parseToolCall,
   toolCatalogForPrompt,
@@ -56,6 +62,25 @@ const BodySchema = z.object({
         )
         .max(80)
         .optional(),
+    })
+    .optional(),
+  order_draft: z
+    .object({
+      occasion: z.string().optional(),
+      event_date: z.string().optional(),
+      event_time: z.string().optional(),
+      adults: z.number().nullable().optional(),
+      kids: z.number().nullable().optional(),
+      diet: z.string().optional(),
+      delivery_or_pickup: z.string().optional(),
+      city: z.string().optional(),
+      address: z.string().optional(),
+      budget: z.string().optional(),
+      setup_needs: z.string().optional(),
+      meal: z.string().optional(),
+      package_tier: z.string().optional(),
+      confirmed: z.boolean().optional(),
+      notes: z.string().optional(),
     })
     .optional(),
 });
@@ -316,10 +341,33 @@ export async function POST(req: Request) {
     },
   });
 
+  let orderDraft: OrderDraft = mergeOrderDraft(EMPTY_ORDER_DRAFT, {
+    ...(body.order_draft || {}),
+    event_date:
+      body.order_draft?.event_date ||
+      body.lead.event_date ||
+      body.order_context?.event_date ||
+      "",
+    adults:
+      body.order_draft?.adults ??
+      body.lead.guest_count ??
+      body.order_context?.guest_count ??
+      null,
+    diet:
+      body.order_draft?.diet ||
+      body.lead.diet ||
+      body.order_context?.diet ||
+      "",
+    city: body.order_draft?.city || body.lead.city || "",
+    notes: body.order_draft?.notes || body.lead.notes || "",
+  } as Partial<OrderDraft>);
+  let cartProposal: CartProposal | null = null;
+
   const leadHint = `\n\n[Known lead: ${JSON.stringify(body.lead)}]`;
   const orderHint = body.order_context
     ? `\n\n[Cart:\n${JSON.stringify(body.order_context)}]`
     : "";
+  const draftHint = `\n\n[Order draft:\n${JSON.stringify(orderDraft)}]`;
 
   const prefetch = prefetchSkillIds(last.content);
   const { loaded: preloaded } = loadChatSkills(prefetch);
@@ -338,26 +386,34 @@ export async function POST(req: Request) {
       last.content,
       leadHint,
       orderHint,
+      draftHint,
       "",
       "Relevant kitchen knowledge (already loaded):",
       formatLoadedSkills(loaded),
       "",
       "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional highlights/bullets).",
-      "Use time_context + catering_calendar for dates; catering_math for headcount/trays.",
+      "Use time_context + catering_calendar for dates; catering_math for headcount/trays; order_draft for structured order + cart proposal.",
       `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
     ].join("\n");
 
     let result = await chat.sendMessage(turn);
     let parsed = parseModelResponse(modelText(result));
 
-    // Up to 3 rounds: tools and/or skill loads, then answer
-    for (let round = 0; round < 3; round++) {
+    // Up to 4 rounds: tools and/or skill loads, then answer (Phase 2 may need draft + math)
+    for (let round = 0; round < 4; round++) {
       const toolCall = parseToolCall(parsed);
       if (toolCall) {
         const toolResult = await executeChatTool(toolCall.tool, toolCall.args, {
           lead_phone: body.lead.phone,
           lead_email: body.lead.email,
           lead_time_hours: settings?.lead_time_hours,
+          orderDraft,
+          setOrderDraft: (d) => {
+            orderDraft = d;
+          },
+          setCartProposal: (p) => {
+            cartProposal = p;
+          },
         });
         toolsUsed.push(toolCall.tool);
         result = await chat.sendMessage(
@@ -365,6 +421,7 @@ export async function POST(req: Request) {
             `Tool ${toolCall.tool} result (cite these numbers; do not invent):`,
             JSON.stringify(toolResult),
             "Now return answer JSON with reply + highlights for key numbers, or another tool_call if still needed.",
+            "If cart_proposal is present, tell the guest they can tap Add to Build order in this chat.",
           ].join("\n")
         );
         parsed = parseModelResponse(modelText(result));
@@ -455,6 +512,8 @@ export async function POST(req: Request) {
       offer_whatsapp: offerWhatsApp,
       whatsapp_url: whatsappUrl,
       lead,
+      order_draft: orderDraft,
+      cart_proposal: cartProposal,
       skills_used: [...new Set(skillsUsed)],
       tools_used: [...new Set(toolsUsed)],
     });

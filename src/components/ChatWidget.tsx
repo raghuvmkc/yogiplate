@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Send, X } from "lucide-react";
 import {
@@ -8,6 +9,11 @@ import {
   type ChatHighlight,
 } from "@/components/ChatRichMessage";
 import { DIET_LABELS } from "@/lib/data/diet-profiles";
+import {
+  EMPTY_ORDER_DRAFT,
+  type CartProposal,
+  type OrderDraft,
+} from "@/lib/chat/order-draft";
 import { useCartStore } from "@/lib/cart-store";
 import type { DietTag } from "@/lib/types";
 
@@ -20,6 +26,7 @@ type ChatMessage = {
   bullets?: string[];
   offerWhatsApp?: boolean;
   whatsappUrl?: string | null;
+  cartProposal?: CartProposal | null;
 };
 
 type Lead = {
@@ -77,6 +84,7 @@ export function ChatWidget() {
   const eventDate = useCartStore((s) => s.eventDate);
   const notes = useCartStore((s) => s.notes);
   const items = useCartStore((s) => s.items);
+  const applyProposal = useCartStore((s) => s.applyProposal);
 
   const [open, setOpen] = useState(false);
   const [identified, setIdentified] = useState(false);
@@ -88,9 +96,13 @@ export function ChatWidget() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lead, setLead] = useState<Lead>(EMPTY_LEAD);
+  const [orderDraft, setOrderDraft] = useState<OrderDraft>(EMPTY_ORDER_DRAFT);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showOrderNudge, setShowOrderNudge] = useState(false);
   const [pendingOrderWelcome, setPendingOrderWelcome] = useState(false);
+  const [appliedProposalKey, setAppliedProposalKey] = useState<string | null>(
+    null
+  );
   const scrollerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -214,6 +226,14 @@ export function ChatWidget() {
       notes: orderContext.notes || "",
     };
     setLead(nextLead);
+    setOrderDraft({
+      ...EMPTY_ORDER_DRAFT,
+      diet: orderContext.diet || "",
+      event_date: orderContext.event_date || "",
+      adults: orderContext.guest_count ?? null,
+      notes: orderContext.notes || "",
+    });
+    setAppliedProposalKey(null);
     setIdentified(true);
     setMessages([
       {
@@ -331,6 +351,7 @@ export function ChatWidget() {
             notes: lead.notes || orderContext.notes || "",
           },
           order_context: orderContext,
+          order_draft: orderDraft,
         }),
       });
       const data = await res.json();
@@ -350,6 +371,19 @@ export function ChatWidget() {
           email: prev.email || data.lead.email || "",
         }));
       }
+      if (data.order_draft && typeof data.order_draft === "object") {
+        setOrderDraft({
+          ...EMPTY_ORDER_DRAFT,
+          ...data.order_draft,
+        } as OrderDraft);
+      }
+      const proposal =
+        data.cart_proposal &&
+        typeof data.cart_proposal === "object" &&
+        Array.isArray(data.cart_proposal.items) &&
+        data.cart_proposal.items.length > 0
+          ? (data.cart_proposal as CartProposal)
+          : null;
       setMessages((prev) => [
         ...prev,
         {
@@ -363,6 +397,7 @@ export function ChatWidget() {
             : undefined,
           offerWhatsApp: Boolean(data.offer_whatsapp),
           whatsappUrl: data.whatsapp_url || null,
+          cartProposal: proposal,
         },
       ]);
     } catch (e) {
@@ -381,6 +416,15 @@ export function ChatWidget() {
       e.preventDefault();
       void send();
     }
+  }
+
+  function proposalKey(p: CartProposal) {
+    return `${p.items.map((i) => `${i.menu_item_id}:${i.quantity}`).join("|")}|${p.summary}`;
+  }
+
+  function applyCartProposal(proposal: CartProposal) {
+    const n = applyProposal(proposal);
+    if (n > 0) setAppliedProposalKey(proposalKey(proposal));
   }
 
   return (
@@ -522,6 +566,48 @@ export function ChatWidget() {
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
+                      {m.cartProposal ? (
+                        <div className="mt-2 space-y-2 border-t border-line pt-2">
+                          <p className="text-xs font-medium text-muted">
+                            {m.cartProposal.summary}
+                          </p>
+                          <ul className="space-y-0.5 text-xs text-foreground">
+                            {m.cartProposal.items.slice(0, 6).map((line) => (
+                              <li key={`${line.menu_item_id}-${line.variant_id || ""}`}>
+                                {line.quantity}× {line.name}
+                              </li>
+                            ))}
+                            {m.cartProposal.items.length > 6 ? (
+                              <li>
+                                +{m.cartProposal.items.length - 6} more…
+                              </li>
+                            ) : null}
+                          </ul>
+                          {appliedProposalKey === proposalKey(m.cartProposal) ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-xs font-semibold text-accent-deep">
+                                Added to Build order
+                              </p>
+                              <Link
+                                href="/order"
+                                className="inline-flex bg-accent-deep px-3 py-2 text-xs font-semibold text-white transition hover:bg-accent"
+                              >
+                                Open Build order
+                              </Link>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                applyCartProposal(m.cartProposal!)
+                              }
+                              className="inline-flex bg-accent-deep px-3 py-2 text-xs font-semibold text-white transition hover:bg-accent"
+                            >
+                              Add to Build order
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
                       {m.offerWhatsApp && m.whatsappUrl ? (
                         <a
                           href={m.whatsappUrl}
