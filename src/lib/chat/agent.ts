@@ -138,7 +138,21 @@ function parseModelResponse(text: string): Record<string, unknown> {
         };
       }
     }
-    if (parsed.type === "load_skill" || parsed.skill_ids || parsed.skillIds) {
+    const type = String(parsed.type || parsed.action || "").toLowerCase();
+    // tool_call / load_skill have no reply — must still return so the ReAct loop can run
+    if (
+      type === "tool_call" ||
+      type === "call_tool" ||
+      type === "load_skill" ||
+      type === "load_skills" ||
+      parsed.skill_ids ||
+      parsed.skillIds ||
+      parsed.tool ||
+      parsed.name
+    ) {
+      if (!parsed.type && (parsed.tool || parsed.name)) {
+        return { ...parsed, type: "tool_call" };
+      }
       return parsed;
     }
   }
@@ -153,17 +167,42 @@ function parseModelResponse(text: string): Record<string, unknown> {
     };
   }
 
-  throw new Error("empty_or_unparseable_response");
+  // Truncated / empty JSON that starts with { — prefer a soft fallback over hard fail
+  if (!plain) {
+    throw new Error("empty_or_unparseable_response");
+  }
+  throw new Error(`empty_or_unparseable_response: ${plain.slice(0, 120)}`);
 }
 
 function modelText(result: {
-  response: { text: () => string; candidates?: unknown };
+  response: {
+    text: () => string;
+    candidates?: Array<{
+      finishReason?: string;
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
 }): string {
   try {
-    return result.response.text() || "";
-  } catch {
-    return "";
+    const t = result.response.text() || "";
+    if (t.trim()) return t;
+  } catch (err) {
+    console.error("[chat] response.text() failed", err);
   }
+  // Fallback: stitch parts when .text() throws (blocked / empty candidates)
+  try {
+    const parts = result.response.candidates?.[0]?.content?.parts || [];
+    const joined = parts
+      .map((p) => (typeof p.text === "string" ? p.text : ""))
+      .join("")
+      .trim();
+    if (joined) return joined;
+    const reason = result.response.candidates?.[0]?.finishReason;
+    if (reason) console.error("[chat] empty model text, finishReason=", reason);
+  } catch {
+    /* ignore */
+  }
+  return "";
 }
 
 function mergeLead(prev: AgentLead, next: Partial<AgentLead>): AgentLead {
@@ -350,12 +389,28 @@ export async function runFrontDeskTurn(
     formatLoadedSkills(loaded),
     "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional highlights/bullets).",
+    "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
     "Use time_context + catering_calendar for dates; catering_math for headcount/trays; order_draft for cart; followthrough for email quote/deposit.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
   ].join("\n");
 
+  function safeParse(raw: string): Record<string, unknown> {
+    try {
+      return parseModelResponse(raw);
+    } catch (err) {
+      console.error("[chat] parse failed", err, "raw=", raw.slice(0, 200));
+      return {
+        type: "answer",
+        reply:
+          "Namaste — I'm here to help with Yogiplate catering menus, diets, trays, and your event. What would you like to know?",
+        offer_whatsapp: false,
+        lead: {},
+      };
+    }
+  }
+
   let result = await chat.sendMessage(turn);
-  let parsed = parseModelResponse(modelText(result));
+  let parsed = safeParse(modelText(result));
 
   for (let round = 0; round < 4; round++) {
     const toolCall = parseToolCall(parsed);
@@ -408,7 +463,7 @@ export async function runFrontDeskTurn(
           "If quote_url is present, share that link for deposit / viewing the quote.",
         ].join("\n")
       );
-      parsed = parseModelResponse(modelText(result));
+      parsed = safeParse(modelText(result));
       continue;
     }
 
@@ -429,7 +484,7 @@ export async function runFrontDeskTurn(
       result = await chat.sendMessage(
         `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn answer JSON (reply + highlights) or a tool_call.`
       );
-      parsed = parseModelResponse(modelText(result));
+      parsed = safeParse(modelText(result));
       continue;
     }
 
