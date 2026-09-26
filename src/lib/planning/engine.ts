@@ -15,6 +15,11 @@ import {
   type PlanningMenuRow,
 } from "@/lib/planning/menu-tags";
 import { fitPlanToBudget } from "@/lib/planning/budget-trim";
+import {
+  categoryToRole,
+  pickBestCombo,
+  type ComboRole,
+} from "@/lib/planning/famous-combinations";
 
 export type PlanLine = {
   menu_item_id: string;
@@ -486,43 +491,147 @@ export function buildPlan(input: {
         ? { jain_ok: true }
         : {};
 
-  // Prefer chef / requested ids first
-  const prefer = (input.prefer_item_ids || [])
-    .map((id) => catalog.find((i) => i.id === id))
-    .filter((i): i is MenuItem => Boolean(i));
+  // Prefer famous combinations + balanced roles (never appetizer-only spreads)
+  const preferIds = [...(input.prefer_item_ids || [])];
+  const cartSeedIds = (input.cart_items || [])
+    .map((c) => c.menu_item_id)
+    .filter(Boolean);
+  const seedIds = Array.from(new Set([...preferIds, ...cartSeedIds]));
 
-  let generalPool = findPool(catalog, { ...dietFilter, available_only: true }, declined);
-  // Bias toward vegetable / dal / rice categories for variety
-  const veg = generalPool.filter((i) =>
-    /vegetable|dal|rice|bread|appetizer|salad/.test(i.category_id)
-  );
-  if (veg.length >= 3) generalPool = veg;
+  const hints: string[] = [];
+  if (dietFilter.vegan) hints.push("vegan");
+  if (dietFilter.jain_ok) hints.push("jain");
+  if (memory.event.meal) hints.push(memory.event.meal);
+  if (memory.event.occasion) {
+    const o = memory.event.occasion.toLowerCase();
+    hints.push(o);
+    if (/pizza|kid|birthday|office/.test(o)) hints.push("party");
+    if (/italian|pasta/.test(o)) hints.push("italian");
+  }
+  const dietLower = (memory.requirement_groups.find((g) => g.kind === "vegan")
+    ? "vegan"
+    : memory.requirement_groups.find((g) => g.kind === "jain")
+      ? "jain"
+      : "") || "";
+  if (dietLower) hints.push(dietLower);
+
+  const catalogIds = new Set(catalog.map((i) => i.id));
+  const combo = pickBestCombo({
+    catalogIds,
+    item_ids: seedIds,
+    hints: hints.length ? hints : ["indian", "lunch", "dinner", "buffet"],
+    declined,
+  });
 
   const already = new Set(lines.map((l) => l.menu_item_id));
   const picks: MenuItem[] = [];
-  for (const p of prefer) {
-    if (!already.has(p.id) && !declined.has(p.id)) picks.push(p);
+  const comboNotes: string[] = [];
+
+  if (combo) {
+    for (const id of combo.item_ids) {
+      const item = catalog.find((i) => i.id === id);
+      if (!item || already.has(item.id) || declined.has(item.id.toLowerCase())) {
+        continue;
+      }
+      if (dietFilter.vegan && !derivePlanningTags(item).vegan) continue;
+      if (dietFilter.jain_ok && !derivePlanningTags(item).jain_ok) continue;
+      picks.push(item);
+      already.add(item.id);
+    }
+    if (picks.length) {
+      comboNotes.push(`Famous combo: ${combo.name} — ${combo.why}`);
+    }
   }
-  for (const p of rotatePick(
-    generalPool.filter((i) => !already.has(i.id)),
-    PORTION_RULES.max_main_variety - picks.length
-  )) {
-    picks.push(p);
+
+  // Fill missing meal roles so we never ship 4 appetizers as a "best menu"
+  const roleTargets: ComboRole[] = ["main", "starch", "bread", "dal", "appetizer"];
+  const rolesPresent = new Set<ComboRole>();
+  for (const p of picks) {
+    const r = categoryToRole(p.category_id);
+    if (r) rolesPresent.add(r);
+  }
+  // Pizza combos count as main+starch substitute
+  if (rolesPresent.has("pizza")) {
+    rolesPresent.add("main");
+  }
+
+  const pool = findPool(catalog, { ...dietFilter, available_only: true }, declined);
+  const byRole = (role: ComboRole) =>
+    pool.filter((i) => categoryToRole(i.category_id) === role && !already.has(i.id));
+
+  for (const role of roleTargets) {
+    if (rolesPresent.has(role)) continue;
+    // Skip dal if we already have two mains; skip appetizer if chaat-heavy combo already added starters
+    if (role === "dal" && rolesPresent.has("main") && picks.length >= 4) continue;
+    const candidates = byRole(role);
+    if (!candidates.length) continue;
+    // Prefer items that appear in famous combos with what we already picked
+    const extend = pickBestCombo({
+      catalogIds,
+      item_ids: picks.map((p) => p.id),
+      hints,
+      declined,
+    });
+    let chosen: MenuItem | undefined;
+    if (extend) {
+      chosen = extend.item_ids
+        .map((id) => candidates.find((c) => c.id === id))
+        .find(Boolean);
+    }
+    if (!chosen) chosen = candidates[0];
+    picks.push(chosen);
+    already.add(chosen.id);
+    rolesPresent.add(role);
+    if (picks.length >= PORTION_RULES.max_main_variety + 2) break;
+  }
+
+  // Prefer ids from caller last if still thin
+  for (const id of preferIds) {
+    if (picks.length >= PORTION_RULES.max_main_variety + 2) break;
+    const item = catalog.find((i) => i.id === id);
+    if (!item || already.has(item.id)) continue;
+    picks.push(item);
+    already.add(item.id);
   }
 
   if (!picks.length && generalGuests > 0) {
     warnings.push("Could not find general menu items for the plan.");
   }
 
-  const perDish = picks.length
-    ? generalGuests / picks.length
+  // Cap appetizers — at most 2 starter/chaat lines in the general plan
+  const capped: MenuItem[] = [];
+  let apps = 0;
+  for (const p of picks) {
+    const role = categoryToRole(p.category_id);
+    if (role === "appetizer" || role === "chaat") {
+      if (apps >= 2) continue;
+      apps++;
+    }
+    capped.push(p);
+  }
+  const finalPicks = capped.length ? capped : picks;
+
+  const perDish = finalPicks.length
+    ? generalGuests / finalPicks.length
     : generalGuests;
   const coveredGeneral: string[] = [];
-  for (const p of picks) {
+  for (const p of finalPicks) {
+    const role = categoryToRole(p.category_id);
+    // Starters cover fewer people per tray in a full meal context
+    const share =
+      role === "appetizer" || role === "dessert" || role === "salad"
+        ? perDish * 0.7
+        : perDish;
     const v = pickVariantServes(p);
-    const qty = traysForServes(perDish, v.serves);
+    const qty = traysForServes(Math.max(share, total * 0.35), v.serves);
     addLine(lines, p, qty, "general");
     coveredGeneral.push(p.name);
+  }
+  notes.push(...comboNotes);
+  if (!comboNotes.length) {
+    notes.push(
+      "Built a balanced plate (mains + starch/bread) using classic catering pairings — not appetizers alone."
+    );
   }
   coverage.push({
     group: "general",

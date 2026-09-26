@@ -16,6 +16,7 @@ export const TOOL_NAMES = [
   "followthrough",
   "get_menu",
   "get_chef_specialties",
+  "get_famous_combinations",
   "update_guest_memory",
   "get_guest_memory",
   "build_plan",
@@ -27,6 +28,7 @@ export type ToolName = (typeof TOOL_NAMES)[number];
 const PLANNING_TOOLS = new Set<ToolName>([
   "get_menu",
   "get_chef_specialties",
+  "get_famous_combinations",
   "update_guest_memory",
   "get_guest_memory",
   "build_plan",
@@ -62,17 +64,23 @@ TOOLS (call these — do not invent their results)
 8) get_menu — filter catalog by diet/allergy/kid tags. Args: diet, jain_ok, vegan, kid_friendly, spice_max, exclude_allergen, query, limit.
    Empty allergens on an item = unknown → excluded when filtering by allergy.
 9) get_chef_specialties — Mr. Radhavallabh / Stone Craft signatures only (never invent). Args: item_ids? optional filter.
-10) build_plan — deterministic plan from guest memory (qty/prices from code). Args: replace (bool), prefer_item_ids[], mode build|validate.
+10) get_famous_combinations — classic catering pairings from our catalog (chole-bhature, pav bhaji, pani poori+dahi vada, rajma-chawal, paneer+roti+rice, etc.).
+    Args: item_ids? (seed from cart), hints? (vegan|jain|italian|pizza|party|lunch…), limit?
+    Use these when suggesting menus. Never invent combinations. Never recommend appetizer-only as a full meal.
+11) build_plan — deterministic plan from guest memory (qty/prices from code). Uses famous combos + balanced roles.
+    Args: replace (bool), prefer_item_ids[], mode build|validate.
     If cart already has items and replace is false: validates coverage (±30%) and returns notes — does not replace.
-    If event.budget is set, engine fits cost without compromising guest satisfaction (extras/dessert first; keep mains+starch, kids, dedicated trays, variety; prefer over-budget warning to a disappointing meal).
+    If event.budget is set, engine fits cost without compromising guest satisfaction.
     Copy engine lines/lines_total/lines_title into your answer JSON — do not invent prices.
-11) check_capacity — wraps calendar availability using memory date/headcount when args omitted.
+12) check_capacity — wraps calendar availability using memory date/headcount when args omitted.
 
 PLANNING FLOW
 - discovery → profiling → clarifications → plan → revisions → confirm.
 - Extract facts every turn via update_guest_memory (headcount, Jain/vegan, allergies, kids, meal time, budget).
 - Warm profiling; max 2 questions/turn; catch-all reminder before finalize; never pressure.
 - Advise never force: if guest declines a dish, add to declined_suggestions and never re-push.
+- Famous combos: call get_famous_combinations (or rely on build_plan) — e.g. complete poori with chole; chaat as starters only beside mains/rice.
+- Never propose four appetizers as the whole menu for a seated meal.
 - Budget: update_guest_memory event.budget then build_plan — never randomly drop items yourself.
 - Timing: ask meal time; build_plan schedules ~20 min before when no timeline.
 - Chef: mention specialties at most twice per conversation; only names from get_chef_specialties.
@@ -88,7 +96,7 @@ ORDER FLOW
 
 When to call
 - Guest facts (nephew allergic, 3 Jain, 25 vegan…) → update_guest_memory.
-- Menu ideas / “best for vegan” → get_menu and/or build_plan.
+- Menu ideas / “best for vegan” → get_famous_combinations + build_plan (not random appetizer lists).
 - Chef specials → get_chef_specialties (then build_plan prefer_item_ids if guest wants).
 - Any date/timing → time_context AND check_capacity or catering_calendar.
 - Headcount / trays → catering_math or build_plan.
@@ -159,6 +167,7 @@ export async function executeChatTool(
       tool as
         | "get_menu"
         | "get_chef_specialties"
+        | "get_famous_combinations"
         | "update_guest_memory"
         | "get_guest_memory"
         | "build_plan"

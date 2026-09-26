@@ -10,6 +10,7 @@ import {
 } from "@/lib/planning/guest-memory";
 import { filterMenuItems } from "@/lib/planning/menu-tags";
 import { getChefSpecialties } from "@/lib/planning/chef-specialties";
+import { matchFamousCombinations } from "@/lib/planning/famous-combinations";
 import { buildPlan, menuRowsForTool } from "@/lib/planning/engine";
 import { runCateringCalendar } from "@/lib/chat/tools/calendar";
 import type { CartProposal } from "@/lib/chat/order-draft";
@@ -74,6 +75,42 @@ export async function runGetMenu(args: Record<string, unknown>) {
     count: items.length,
     items,
     summary: `Menu filter returned ${items.length} item(s).`,
+  };
+}
+
+export async function runGetFamousCombinations(args: Record<string, unknown>) {
+  const item_ids = Array.isArray(args.item_ids)
+    ? args.item_ids.map((x) => String(x))
+    : undefined;
+  const hints = Array.isArray(args.hints)
+    ? args.hints.map((x) => String(x))
+    : args.diet
+      ? [String(args.diet)]
+      : undefined;
+  const limit = args.limit != null ? Number(args.limit) : 6;
+  const matches = matchFamousCombinations({ item_ids, hints, limit });
+  const db = await getDb();
+  const combinations = matches.map((m) => ({
+    id: m.combo.id,
+    name: m.combo.name,
+    why: m.combo.why,
+    tags: m.combo.tags,
+    items: m.combo.item_ids.map((id) => {
+      const item = db.menu_items.find((x) => x.id === id);
+      return {
+        id,
+        name: item?.name || id,
+        available: Boolean(item?.is_available),
+        price: item?.price ?? null,
+        category_id: item?.category_id || null,
+      };
+    }),
+    score: m.score,
+  }));
+  return {
+    ok: true,
+    combinations,
+    summary: `${combinations.length} famous combination(s). Use these pairings when suggesting menus — never invent combos.`,
   };
 }
 
@@ -254,6 +291,7 @@ export async function runPlanningTool(
   tool:
     | "get_menu"
     | "get_chef_specialties"
+    | "get_famous_combinations"
     | "update_guest_memory"
     | "get_guest_memory"
     | "build_plan"
@@ -266,6 +304,8 @@ export async function runPlanningTool(
       return runGetMenu(args);
     case "get_chef_specialties":
       return runGetChefSpecialties(args);
+    case "get_famous_combinations":
+      return runGetFamousCombinations(args);
     case "update_guest_memory":
       return runUpdateGuestMemory(args, ctx);
     case "get_guest_memory":
