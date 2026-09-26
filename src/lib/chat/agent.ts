@@ -530,6 +530,11 @@ export async function runFrontDeskTurn(
 
   const chat = model.startChat({ history });
 
+  const asksOnionGarlic =
+    /onion|garlic|mushroom|pyaaz|lahsun|ingredients?/.test(
+      last.content.toLowerCase()
+    );
+
   const turn = [
     last.content,
     leadHint,
@@ -542,12 +547,17 @@ export async function runFrontDeskTurn(
     "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional lines/highlights/bullets).",
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
+    asksOnionGarlic
+      ? "REQUIRED THIS TURN: Guest asked about onion/garlic/mushrooms/ingredients. Answer that fact clearly and warmly in reply — do not evade or only talk about menus. Our kitchen does not use onion, garlic, or mushrooms."
+      : "",
     "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines/prices.",
     "When proposing dishes/packages: put them in lines[] (max 6 items) with name, quantity, unit, price — never Markdown ** in reply. Keep JSON compact so it is not truncated.",
     "Prefer one tool then answer. Use get_menu / build_plan for planning; catering_math for packages; order_draft for cart; followthrough for quote/deposit.",
     "Use time_context + check_capacity for dates.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   function safeParse(raw: string): Record<string, unknown> {
     try {
