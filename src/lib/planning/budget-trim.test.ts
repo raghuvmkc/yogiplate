@@ -189,7 +189,7 @@ function testDoesNotUnderfeed() {
       coverage_for: "general",
     }),
   ];
-  // Needed 55 serves; 2*30+30=90. Budget tiny → should warn rather than gut food
+  // Needed 55 serves; 2*30+30=90. Budget tiny → warn; never gut food/satisfaction
   const fit = fitPlanToBudget({
     lines,
     budget: 50,
@@ -197,21 +197,66 @@ function testDoesNotUnderfeed() {
     catalog,
   });
   assert.ok(fit.lines.length >= 1, "must keep edible food");
-  const serves = fit.lines.reduce(
-    (s, l) => s + (l.serves || 20) * l.quantity,
-    0
-  );
   assert.ok(
-    serves >= 55 * 0.9 || fit.warnings.length > 0,
-    "either keep ~90% serves or warn"
+    fit.lines.some((l) => l.menu_item_id === "item-rice"),
+    "must keep starch for satisfaction"
   );
+  assert.ok(fit.satisfaction_preserved, "satisfaction must stay intact");
   if (!fit.within_budget) {
     assert.ok(
-      fit.warnings.some((w) => /underfeeding|Could not reach/i.test(w)),
-      "must warn when budget cannot feed guests"
+      fit.warnings.some((w) => /satisfaction|Could not reach/i.test(w)),
+      "must warn when budget would compromise satisfaction"
     );
   }
-  console.log("ok — does not underfeed for budget");
+  console.log("ok — does not underfeed or compromise satisfaction");
+}
+
+function testNeverRemovesMainOrStarch() {
+  const lines = [
+    line({
+      menu_item_id: "item-veg-main",
+      name: "Veg Main",
+      quantity: 1,
+      unit: "tray",
+      price: 150,
+      serves: 30,
+      coverage_for: "general",
+    }),
+    line({
+      menu_item_id: "item-rice",
+      name: "Rice",
+      quantity: 1,
+      unit: "tray",
+      price: 80,
+      serves: 30,
+      coverage_for: "general",
+    }),
+    line({
+      menu_item_id: "item-dessert",
+      name: "Gulabjamun",
+      quantity: 1,
+      unit: "tray",
+      price: 90,
+      serves: 25,
+      coverage_for: "general",
+    }),
+  ];
+  const fit = fitPlanToBudget({
+    lines,
+    budget: 100,
+    neededServes: 40,
+    catalog,
+  });
+  assert.ok(
+    fit.lines.some((l) => l.menu_item_id === "item-veg-main"),
+    "main stays"
+  );
+  assert.ok(
+    fit.lines.some((l) => l.menu_item_id === "item-rice"),
+    "starch stays"
+  );
+  assert.equal(fit.satisfaction_preserved, true);
+  console.log("ok — never removes main or starch for budget");
 }
 
 function testReducesQtyBeforeDeletingStaple() {
@@ -266,5 +311,6 @@ function testReducesQtyBeforeDeletingStaple() {
 testRemovesDessertBeforeMain();
 testNeverRemovesLastDedicated();
 testDoesNotUnderfeed();
+testNeverRemovesMainOrStarch();
 testReducesQtyBeforeDeletingStaple();
 console.log("\nAll budget-trim tests passed.");

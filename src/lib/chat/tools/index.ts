@@ -64,7 +64,7 @@ TOOLS (call these — do not invent their results)
 9) get_chef_specialties — Mr. Radhavallabh / Stone Craft signatures only (never invent). Args: item_ids? optional filter.
 10) build_plan — deterministic plan from guest memory (qty/prices from code). Args: replace (bool), prefer_item_ids[], mode build|validate.
     If cart already has items and replace is false: validates coverage (±30%) and returns notes — does not replace.
-    If event.budget is set, engine fits cost with guest-happy cuts (extras/dessert first; keep mains/starch/kids/dedicated trays; never underfeed).
+    If event.budget is set, engine fits cost without compromising guest satisfaction (extras/dessert first; keep mains+starch, kids, dedicated trays, variety; prefer over-budget warning to a disappointing meal).
     Copy engine lines/lines_total/lines_title into your answer JSON — do not invent prices.
 11) check_capacity — wraps calendar availability using memory date/headcount when args omitted.
 
