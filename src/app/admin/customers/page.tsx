@@ -29,6 +29,16 @@ export default async function AdminCustomersPage() {
                     .filter(Boolean)
                     .join(", ")}
                 </p>
+                <p className="text-xs text-muted">
+                  {[
+                    c.source_channel && `source: ${c.source_channel}`,
+                    c.last_channel && `last: ${c.last_channel}`,
+                    c.last_contact_at &&
+                      `contacted ${new Date(c.last_contact_at).toLocaleDateString()}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
               <p className="text-muted">{orderCount} orders</p>
             </li>

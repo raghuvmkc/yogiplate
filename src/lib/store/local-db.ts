@@ -10,6 +10,8 @@ import {
 } from "@/lib/data/menu-seed";
 import type {
   CalendarBlock,
+  ChannelThread,
+  ChatSessionLog,
   Coupon,
   Customer,
   Invoice,
@@ -17,6 +19,8 @@ import type {
   MenuItem,
   Order,
   OrderItem,
+  Quote,
+  Reminder,
   SiteSettings,
 } from "@/lib/types";
 
@@ -31,6 +35,10 @@ export interface LocalDatabase {
   invoices: Invoice[];
   settings: SiteSettings;
   calendar_blocks?: CalendarBlock[];
+  quotes?: Quote[];
+  reminders?: Reminder[];
+  chat_sessions?: ChatSessionLog[];
+  channel_threads?: ChannelThread[];
   admin: { email: string; password_hash: string };
 }
 
@@ -76,8 +84,14 @@ async function createSeedDb(): Promise<LocalDatabase> {
       lead_time_hours: 48,
       max_guests_per_day: 200,
       hold_ttl_minutes: 120,
+      deposit_percent: 30,
+      quote_validity_days: 7,
     },
     calendar_blocks: [],
+    quotes: [],
+    reminders: [],
+    chat_sessions: [],
+    channel_threads: [],
     admin: {
       email: process.env.ADMIN_EMAIL || "admin@yogiplate.com",
       password_hash,
@@ -107,6 +121,8 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
       lead_time_hours: 48,
       max_guests_per_day: 200,
       hold_ttl_minutes: 120,
+      deposit_percent: 30,
+      quote_validity_days: 7,
     };
     changed = true;
   } else {
@@ -122,9 +138,33 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
       db.settings.hold_ttl_minutes = 120;
       changed = true;
     }
+    if (db.settings.deposit_percent == null) {
+      db.settings.deposit_percent = 30;
+      changed = true;
+    }
+    if (db.settings.quote_validity_days == null) {
+      db.settings.quote_validity_days = 7;
+      changed = true;
+    }
   }
   if (!db.calendar_blocks) {
     db.calendar_blocks = [];
+    changed = true;
+  }
+  if (!db.quotes) {
+    db.quotes = [];
+    changed = true;
+  }
+  if (!db.reminders) {
+    db.reminders = [];
+    changed = true;
+  }
+  if (!db.chat_sessions) {
+    db.chat_sessions = [];
+    changed = true;
+  }
+  if (!db.channel_threads) {
+    db.channel_threads = [];
     changed = true;
   }
   return changed;
@@ -216,4 +256,8 @@ export function orderNumber() {
 
 export function invoiceNumber() {
   return orderNumber().replace("YP-", "INV-");
+}
+
+export function quoteNumber() {
+  return orderNumber().replace("YP-", "Q-");
 }

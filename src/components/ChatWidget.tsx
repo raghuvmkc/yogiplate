@@ -27,6 +27,7 @@ type ChatMessage = {
   offerWhatsApp?: boolean;
   whatsappUrl?: string | null;
   cartProposal?: CartProposal | null;
+  quoteUrl?: string | null;
 };
 
 type Lead = {
@@ -102,6 +103,10 @@ export function ChatWidget() {
   const [pendingOrderWelcome, setPendingOrderWelcome] = useState(false);
   const [appliedProposalKey, setAppliedProposalKey] = useState<string | null>(
     null
+  );
+  const [sessionId] = useState(
+    () =>
+      `web_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`
   );
   const scrollerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -352,6 +357,7 @@ export function ChatWidget() {
           },
           order_context: orderContext,
           order_draft: orderDraft,
+          session_id: sessionId,
         }),
       });
       const data = await res.json();
@@ -398,6 +404,8 @@ export function ChatWidget() {
           offerWhatsApp: Boolean(data.offer_whatsapp),
           whatsappUrl: data.whatsapp_url || null,
           cartProposal: proposal,
+          quoteUrl:
+            typeof data.quote_url === "string" ? data.quote_url : null,
         },
       ]);
     } catch (e) {
@@ -607,6 +615,16 @@ export function ChatWidget() {
                             </button>
                           )}
                         </div>
+                      ) : null}
+                      {m.quoteUrl ? (
+                        <a
+                          href={m.quoteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex bg-accent-deep px-3 py-2 text-xs font-semibold text-white transition hover:bg-accent"
+                        >
+                          View quote & pay deposit
+                        </a>
                       ) : null}
                       {m.offerWhatsApp && m.whatsappUrl ? (
                         <a

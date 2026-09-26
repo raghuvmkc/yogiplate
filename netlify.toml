@@ -14,3 +14,6 @@
 
 [functions."*"]
   timeout = 26
+
+# Reminders: ping GET /api/cron/reminders with Authorization: Bearer $CRON_SECRET
+# (Netlify scheduled function, cron-job.org, or Admin → Quotes → Process due reminders)

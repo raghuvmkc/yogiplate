@@ -3,13 +3,16 @@ import { runTimeContext } from "@/lib/chat/tools/time";
 import { runCateringMath } from "@/lib/chat/tools/math";
 import { runCateringCalendar } from "@/lib/chat/tools/calendar";
 import { runOrderTool, type OrderToolContext } from "@/lib/chat/tools/order";
-import type { OrderDraft } from "@/lib/chat/order-draft";
+import { runFollowthroughTool } from "@/lib/chat/tools/followthrough";
+import type { CartProposal, OrderDraft } from "@/lib/chat/order-draft";
+import type { ContactChannel } from "@/lib/types";
 
 export const TOOL_NAMES = [
   "time_context",
   "catering_math",
   "catering_calendar",
   "order_draft",
+  "followthrough",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -29,23 +32,28 @@ TOOLS (call these — do not invent their results)
    Args: action = update_order_draft | get_order_draft | read_back | propose_cart | confirm_order_draft;
    patch: { occasion, event_date, event_time, adults, kids, diet, delivery_or_pickup, city, address, budget, setup_needs, meal, package_tier, notes };
    tier: good|better|best for propose_cart; confirmed: true|false for confirm_order_draft.
+5) followthrough — email quote, deposit link, reminder schedule (Phase 3).
+   Args: action = create_quote | send_quote | quote_status;
+   send_email (default true); quote_id for send/status.
+   Requires a cart proposal (order_draft propose_cart) first.
 
-ORDER FLOW (Phase 2)
-- Collect slots naturally (not an interrogation): occasion → date/time → headcount → diet → meal → delivery/pickup → city.
-- After each useful fact: tool_call order_draft update_order_draft with patch.
-- When mostly complete: order_draft read_back, then ask guest to confirm the summary.
-- On confirm: order_draft propose_cart (tier good/better/best), then confirm_order_draft confirmed:true.
-- Site will offer “Add to Build order” from cart_proposal — guest finishes checkout on /order.
-- Consultative: ask occasion first; use catering_math compare_packages; soft upsells only.
+ORDER FLOW
+- Collect slots naturally: occasion → date/time → headcount → diet → meal → delivery/pickup → city.
+- After useful facts: order_draft update_order_draft.
+- When mostly complete: order_draft read_back → guest confirms → propose_cart → confirm_order_draft.
+- For email quote / deposit: followthrough create_quote (after propose_cart).
+- Site can also “Add to Build order”; guest finishes checkout on /order.
+- Consultative: occasion first; catering_math compare_packages; soft upsells only.
 
 When to call
 - Any date/timing → time_context AND catering_calendar check_availability.
 - Headcount / trays → catering_math.
-- Order details / cart build → order_draft.
+- Order details / cart → order_draft.
+- Quote / deposit / email → followthrough.
 - If time_context.meets_lead_time is false: must check with Mr. Radhavallabh; offer WhatsApp; do not promise.
 
 Tool call JSON:
-{"type":"tool_call","tool":"order_draft","args":{"action":"update_order_draft","patch":{"occasion":"team_lunch","adults":20,"meal":"lunch"}}}
+{"type":"tool_call","tool":"followthrough","args":{"action":"create_quote","send_email":true}}
 `.trim();
 }
 
@@ -76,12 +84,18 @@ export function parseToolCall(
 }
 
 export type ChatToolContext = {
+  lead_name?: string;
   lead_phone?: string;
   lead_email?: string;
   lead_time_hours?: number;
   orderDraft: OrderDraft;
   setOrderDraft: (d: OrderDraft) => void;
+  cartProposal: CartProposal | null;
   setCartProposal: OrderToolContext["setCartProposal"];
+  channel?: ContactChannel;
+  chat_session_id?: string;
+  lastQuoteId?: string | null;
+  setLastQuoteId?: (id: string) => void;
 };
 
 export async function executeChatTool(
@@ -141,6 +155,29 @@ export async function executeChatTool(
         draft: ctx.orderDraft,
         setDraft: ctx.setOrderDraft,
         setCartProposal: ctx.setCartProposal,
+      }
+    );
+  }
+  if (tool === "followthrough") {
+    return runFollowthroughTool(
+      {
+        action: (args.action as "create_quote") || "create_quote",
+        quote_id: args.quote_id ? String(args.quote_id) : undefined,
+        send_email:
+          args.send_email != null ? Boolean(args.send_email) : undefined,
+      },
+      {
+        lead: {
+          name: ctx.lead_name || "",
+          email: ctx.lead_email || "",
+          phone: ctx.lead_phone || "",
+        },
+        draft: ctx.orderDraft,
+        cartProposal: ctx.cartProposal,
+        channel: ctx.channel,
+        chat_session_id: ctx.chat_session_id,
+        lastQuoteId: ctx.lastQuoteId,
+        setLastQuoteId: ctx.setLastQuoteId,
       }
     );
   }

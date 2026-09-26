@@ -1,5 +1,6 @@
 import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
 import { calcOrderTotals } from "@/lib/pricing";
+import { scheduleOrderDayBefore } from "@/lib/reminders";
 import {
   getDb,
   invoiceNumber,
@@ -258,6 +259,20 @@ export async function fulfillPaidOrder(input: {
       const inv = d.invoices.find((i) => i.order_id === orderId);
       if (inv) inv.email_sent_at = new Date().toISOString();
     });
+  }
+
+  if (order.event_date) {
+    try {
+      await scheduleOrderDayBefore({
+        orderId: order.id,
+        email: order.customer_email,
+        name: order.customer_name,
+        eventDate: order.event_date,
+        orderNumber: order.order_number,
+      });
+    } catch (err) {
+      console.error("[reminders] schedule failed", err);
+    }
   }
 
   return { order, invoice_number: invNum, email_sent: emailResult.sent };

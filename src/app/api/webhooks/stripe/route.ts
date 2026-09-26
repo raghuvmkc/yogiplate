@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fulfillPaidOrder } from "@/lib/orders";
+import { markQuoteDepositPaid } from "@/lib/quotes";
 import { getDb } from "@/lib/store/local-db";
 import { takePending } from "@/lib/store/pending";
 import { getStripe } from "@/lib/stripe";
@@ -29,6 +30,15 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     const db = await getDb();
+
+    if (session.metadata?.kind === "quote_deposit" && session.metadata?.quote_id) {
+      await markQuoteDepositPaid({
+        quoteId: String(session.metadata.quote_id),
+        stripeSessionId: session.id,
+      });
+      return NextResponse.json({ received: true, quote_deposit: true });
+    }
+
     const existing = db.orders.find((o) => o.stripe_session_id === session.id);
     if (existing) {
       return NextResponse.json({ received: true, duplicate: true });

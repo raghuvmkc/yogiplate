@@ -5,6 +5,9 @@ import { isAdminAuthenticated } from "@/lib/auth";
 const nav = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/quotes", label: "Quotes" },
+  { href: "/admin/metrics", label: "Metrics" },
+  { href: "/admin/inbox", label: "Inbox" },
   { href: "/admin/calendar", label: "Calendar" },
   { href: "/admin/customers", label: "Customers" },
   { href: "/admin/menus", label: "Menus" },

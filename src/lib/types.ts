@@ -47,6 +47,15 @@ export interface MenuItem {
   variants?: MenuVariant[];
 }
 
+export type ContactChannel =
+  | "web_chat"
+  | "whatsapp"
+  | "sms"
+  | "email"
+  | "phone"
+  | "ezcater"
+  | "other";
+
 export interface Customer {
   id: string;
   name: string;
@@ -57,6 +66,133 @@ export interface Customer {
   city?: string;
   state?: string;
   zip?: string;
+  /** How they first reached Yogiplate. */
+  source_channel?: ContactChannel | null;
+  last_channel?: ContactChannel | null;
+  last_contact_at?: string | null;
+  tags?: string[];
+  crm_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type QuoteStatus =
+  | "draft"
+  | "sent"
+  | "deposit_paid"
+  | "accepted"
+  | "expired"
+  | "cancelled";
+
+export interface QuoteLine {
+  menu_item_id: string;
+  variant_id?: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  unit: string;
+}
+
+export interface Quote {
+  id: string;
+  quote_number: string;
+  status: QuoteStatus;
+  customer_id?: string | null;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  diet_profile: string;
+  event_date: string;
+  event_time?: string | null;
+  guest_count: number;
+  occasion?: string | null;
+  meal?: string | null;
+  delivery_or_pickup?: string | null;
+  city?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  items: QuoteLine[];
+  food_subtotal: number;
+  estimated_total: number;
+  deposit_percent: number;
+  deposit_amount: number;
+  deposit_paid_at?: string | null;
+  stripe_deposit_session_id?: string | null;
+  public_token: string;
+  chat_session_id?: string | null;
+  channel?: ContactChannel | null;
+  email_sent_at?: string | null;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ReminderKind =
+  | "day_before_event"
+  | "quote_followup"
+  | "post_event_review";
+
+export type ReminderStatus = "pending" | "sent" | "cancelled" | "failed";
+
+export interface Reminder {
+  id: string;
+  kind: ReminderKind;
+  status: ReminderStatus;
+  due_at: string;
+  to_email: string;
+  to_name: string;
+  subject: string;
+  body_html: string;
+  quote_id?: string | null;
+  order_id?: string | null;
+  event_date?: string | null;
+  sent_at?: string | null;
+  error?: string | null;
+  created_at: string;
+}
+
+export interface ChatSessionLog {
+  id: string;
+  started_at: string;
+  updated_at: string;
+  channel: ContactChannel;
+  lead_name?: string | null;
+  lead_email?: string | null;
+  lead_phone?: string | null;
+  turn_count: number;
+  tools_used: string[];
+  skills_used: string[];
+  offered_whatsapp: boolean;
+  cart_proposals: number;
+  quotes_created: number;
+  converted: boolean;
+  outcome?:
+    | "browsing"
+    | "quote"
+    | "cart"
+    | "escalated"
+    | "ordered"
+    | null;
+}
+
+export interface ChannelMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  created_at: string;
+  meta?: Record<string, unknown> | null;
+}
+
+export interface ChannelThread {
+  id: string;
+  channel: ContactChannel;
+  external_id: string;
+  customer_id?: string | null;
+  lead_name: string;
+  lead_email: string;
+  lead_phone: string;
+  messages: ChannelMessage[];
+  status: "open" | "closed";
   created_at: string;
   updated_at: string;
 }
@@ -149,6 +285,10 @@ export interface SiteSettings {
   max_guests_per_day?: number;
   /** Soft hold TTL in minutes (default 120). */
   hold_ttl_minutes?: number;
+  /** Deposit percent for catering quotes (default 30). */
+  deposit_percent?: number;
+  /** Quote validity in days (default 7). */
+  quote_validity_days?: number;
 }
 
 export type CalendarBlockKind = "order" | "hold" | "blocked" | "blackout";

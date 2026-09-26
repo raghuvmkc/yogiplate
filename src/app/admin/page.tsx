@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { computeAgentMetrics } from "@/lib/chat/metrics";
 import { formatMoney } from "@/lib/pricing";
 import { getDb } from "@/lib/store/local-db";
 
 export default async function AdminDashboard() {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
   const db = await getDb();
+  const metrics = await computeAgentMetrics();
   const revenue = db.orders
     .filter((o) => o.status === "paid")
     .reduce((s, o) => s + o.total, 0);
@@ -23,6 +25,23 @@ export default async function AdminDashboard() {
         <Stat label="Orders" value={String(db.orders.length)} />
         <Stat label="Customers" value={String(db.customers.length)} />
         <Stat label="Revenue" value={formatMoney(revenue)} />
+        <Stat label="Chat sessions" value={String(metrics.sessions)} />
+        <Stat
+          label="Agent conversion"
+          value={`${Math.round(metrics.conversion_rate * 100)}%`}
+        />
+        <Stat label="Quotes / deposits" value={`${metrics.quotes_total} / ${metrics.deposits_paid}`} />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-4 text-sm">
+        <Link href="/admin/metrics" className="text-accent-deep underline">
+          Agent metrics
+        </Link>
+        <Link href="/admin/quotes" className="text-accent-deep underline">
+          Quotes & reminders
+        </Link>
+        <Link href="/admin/inbox" className="text-accent-deep underline">
+          Omnichannel inbox
+        </Link>
       </div>
       <div className="mt-10">
         <h2 className="text-lg font-semibold">Recent orders</h2>
