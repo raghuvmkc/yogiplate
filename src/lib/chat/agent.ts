@@ -167,6 +167,63 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
   return null;
 }
 
+/** Recover reply/lines from truncated JSON (common when max tokens cuts mid-array). */
+function extractPartialAnswer(text: string): Record<string, unknown> | null {
+  const trimmed = stripCodeFences(text);
+  if (!trimmed.includes("{")) return null;
+
+  const replyMatch = trimmed.match(/"reply"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const reply = replyMatch
+    ? replyMatch[1]
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\")
+        .trim()
+    : "";
+
+  const lines: AgentMenuLine[] = [];
+  const linesBlock = trimmed.match(/"lines"\s*:\s*\[([\s\S]*)/);
+  if (linesBlock) {
+    const objRe =
+      /\{\s*"name"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\s*"quantity"\s*:\s*(\d+)\s*(?:,\s*"unit"\s*:\s*"((?:\\.|[^"\\])*)")?(?:,\s*"price"\s*:\s*([\d.]+))?(?:,\s*"line_total"\s*:\s*([\d.]+))?/g;
+    let m: RegExpExecArray | null;
+    while ((m = objRe.exec(linesBlock[1])) && lines.length < 10) {
+      const name = m[1].replace(/\\"/g, '"').trim();
+      if (!name) continue;
+      const quantity = Math.max(1, Number(m[2]) || 1);
+      const unit = m[3] ? m[3].replace(/\\"/g, '"') : undefined;
+      const price = m[4] != null ? Number(m[4]) : undefined;
+      const line_total = m[5] != null ? Number(m[5]) : undefined;
+      lines.push({
+        name,
+        quantity,
+        unit,
+        price: price != null && Number.isFinite(price) ? price : undefined,
+        line_total:
+          line_total != null && Number.isFinite(line_total)
+            ? line_total
+            : undefined,
+      });
+    }
+  }
+
+  const titleMatch = trimmed.match(/"lines_title"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const totalMatch = trimmed.match(/"lines_total"\s*:\s*([\d.]+)/);
+
+  if (!reply && !lines.length) return null;
+  return {
+    type: "answer",
+    reply:
+      reply ||
+      "Here is a menu suggestion based on what we discussed — tell me if you want to adjust trays or add rice/dessert.",
+    lines,
+    lines_title: titleMatch ? titleMatch[1].replace(/\\"/g, '"') : undefined,
+    lines_total: totalMatch ? Number(totalMatch[1]) : undefined,
+    offer_whatsapp: false,
+    lead: {},
+  };
+}
+
 function parseModelResponse(text: string): Record<string, unknown> {
   const parsed = extractJsonObject(text);
   if (parsed) {
@@ -178,11 +235,15 @@ function parseModelResponse(text: string): Record<string, unknown> {
           reply: String(parsed[key]).trim(),
           offer_whatsapp: Boolean(parsed.offer_whatsapp),
           lead: parsed.lead || {},
+          lines: parsed.lines,
+          lines_total: parsed.lines_total,
+          lines_title: parsed.lines_title,
         };
       }
     }
     const type = String(parsed.type || parsed.action || "").toLowerCase();
     // tool_call / load_skill have no reply — must still return so the ReAct loop can run
+    // Do NOT treat top-level "name" alone as a tool (lead.name confusion).
     if (
       type === "tool_call" ||
       type === "call_tool" ||
@@ -190,14 +251,19 @@ function parseModelResponse(text: string): Record<string, unknown> {
       type === "load_skills" ||
       parsed.skill_ids ||
       parsed.skillIds ||
-      parsed.tool ||
-      parsed.name
+      (parsed.tool &&
+        (type === "tool_call" ||
+          type === "call_tool" ||
+          !parsed.type))
     ) {
-      if (!parsed.type && (parsed.tool || parsed.name)) {
+      if (!parsed.type && parsed.tool) {
         return { ...parsed, type: "tool_call" };
       }
       return parsed;
     }
+    // Truncated answer object with lines but missing reply string close
+    const partialFromParsed = extractPartialAnswer(text);
+    if (partialFromParsed) return partialFromParsed;
   }
 
   const plain = stripCodeFences(text).trim();
@@ -210,11 +276,23 @@ function parseModelResponse(text: string): Record<string, unknown> {
     };
   }
 
-  // Truncated / empty JSON that starts with { — prefer a soft fallback over hard fail
+  const partial = extractPartialAnswer(text);
+  if (partial) return partial;
+
   if (!plain) {
     throw new Error("empty_or_unparseable_response");
   }
   throw new Error(`empty_or_unparseable_response: ${plain.slice(0, 120)}`);
+}
+
+const FALLBACK_REPLY =
+  "Namaste — I'm here to help with Yogiplate catering menus, diets, trays, and your event. What would you like to know?";
+
+function isFallbackReply(parsed: Record<string, unknown>): boolean {
+  return (
+    String(parsed.reply || "").trim() === FALLBACK_REPLY ||
+    String(parsed._parse_failed || "") === "1"
+  );
 }
 
 function modelText(result: {
@@ -374,7 +452,7 @@ export async function runFrontDeskTurn(
     systemInstruction: system,
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 1400,
+      maxOutputTokens: 2200,
       responseMimeType: "application/json",
     },
   });
@@ -431,9 +509,10 @@ export async function runFrontDeskTurn(
     "Relevant kitchen knowledge (already loaded):",
     formatLoadedSkills(loaded),
     "",
-    "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional highlights/bullets).",
+    "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional lines/highlights/bullets).",
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
-    "When proposing dishes/packages: put them in lines[] with name, quantity, unit, price — never Markdown ** in reply.",
+    "When proposing dishes/packages: put them in lines[] (max 6 items) with name, quantity, unit, price — never Markdown ** in reply. Keep JSON compact so it is not truncated.",
+    "Prefer one tool then answer. For menu suggestions: load menu skills or catering_math compare_packages, then answer with lines[].",
     "Use time_context + catering_calendar for dates; catering_math for headcount/trays; order_draft for cart; followthrough for email quote/deposit.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
   ].join("\n");
@@ -442,21 +521,84 @@ export async function runFrontDeskTurn(
     try {
       return parseModelResponse(raw);
     } catch (err) {
-      console.error("[chat] parse failed", err, "raw=", raw.slice(0, 200));
+      console.error("[chat] parse failed", err, "raw=", raw.slice(0, 280));
       return {
         type: "answer",
-        reply:
-          "Namaste — I'm here to help with Yogiplate catering menus, diets, trays, and your event. What would you like to know?",
+        reply: FALLBACK_REPLY,
         offer_whatsapp: false,
         lead: {},
+        _parse_failed: "1",
       };
     }
   }
 
+  function contextualFallback(): Record<string, unknown> {
+    const cartBits = input.order_context?.items?.length
+      ? input.order_context.items
+          .slice(0, 4)
+          .map((i) => `${i.quantity}× ${i.name}`)
+          .join(", ")
+      : "";
+    const guests =
+      orderDraft.adults ??
+      input.lead.guest_count ??
+      input.order_context?.guest_count;
+    const diet =
+      orderDraft.diet || input.lead.diet || input.order_context?.diet || "";
+    const reply = [
+      guests || diet || cartBits
+        ? `I can build a ${diet || "catering"} menu${
+            guests ? ` for about ${guests} guests` : ""
+          }${cartBits ? ` that complements what you already have (${cartBits})` : ""}.`
+        : "I can suggest a clear tray-by-tray menu for your event.",
+      "Share your event date if you have it, or say “propose a Better package” and I will list dishes with quantities and prices.",
+    ].join(" ");
+    return {
+      type: "answer",
+      reply,
+      offer_whatsapp: false,
+      lead: {},
+      bullets: [
+        "Ask for a Good / Better / Best package",
+        "Or name a few favorites (paneer, rice, dessert)",
+      ],
+    };
+  }
+
   let result = await chat.sendMessage(turn);
   let parsed = safeParse(modelText(result));
+  let lastToolSummary = "";
+
+  let didCompactRetry = false;
 
   for (let round = 0; round < 4; round++) {
+    // Empty / failed parse — one compact retry, then contextual fallback
+    if (
+      !didCompactRetry &&
+      (isFallbackReply(parsed) ||
+        !String(parsed.reply || parsed.type || parsed.tool || "").trim())
+    ) {
+      didCompactRetry = true;
+      result = await chat.sendMessage(
+        [
+          "Your previous JSON was empty or truncated. Return ONE compact answer JSON now.",
+          "Fields: type:answer, reply (2 short sentences), lines (0–6 menu items with name,quantity,unit,price), lines_total, highlights (optional).",
+          "No tool_call. No Markdown. Use the cart and skills already in context.",
+          lastToolSummary
+            ? `Last tool summary to cite: ${lastToolSummary.slice(0, 600)}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+      parsed = safeParse(modelText(result));
+      if (isFallbackReply(parsed)) {
+        parsed = contextualFallback();
+        break;
+      }
+      // Successful recovery — process as answer/tool in this same round
+    }
+
     const toolCall = parseToolCall(parsed);
     if (toolCall) {
       const toolResult = await executeChatTool(toolCall.tool, toolCall.args, {
@@ -480,6 +622,10 @@ export async function runFrontDeskTurn(
         },
       });
       toolsUsed.push(toolCall.tool);
+      lastToolSummary =
+        toolResult && typeof toolResult === "object" && "summary" in toolResult
+          ? String((toolResult as { summary?: string }).summary || "")
+          : JSON.stringify(toolResult).slice(0, 400);
       if (toolResult && typeof toolResult === "object") {
         if (
           toolCall.tool === "followthrough" &&
@@ -502,9 +648,10 @@ export async function runFrontDeskTurn(
         [
           `Tool ${toolCall.tool} result (cite these numbers; do not invent):`,
           JSON.stringify(toolResult),
-          "Now return answer JSON with reply + highlights for key numbers, or another tool_call if still needed.",
-          "If cart_proposal is present, tell the guest they can tap Add to Build order in this chat.",
-          "If quote_url is present, share that link for deposit / viewing the quote.",
+          "Now return compact answer JSON: reply + lines (max 6) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
+          "Keep the JSON short so it is not truncated. Never use Markdown **.",
+          "If cart_proposal is present, tell the guest they can tap Add to Build order.",
+          "If quote_url is present, share that link.",
         ].join("\n")
       );
       parsed = safeParse(modelText(result));
@@ -526,13 +673,17 @@ export async function runFrontDeskTurn(
         }
       }
       result = await chat.sendMessage(
-        `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn answer JSON (reply + highlights) or a tool_call.`
+        `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn compact answer JSON (reply + lines max 6) or one tool_call.`
       );
       parsed = safeParse(modelText(result));
       continue;
     }
 
     break;
+  }
+
+  if (isFallbackReply(parsed)) {
+    parsed = contextualFallback();
   }
 
   const replyRaw = parsed.reply;

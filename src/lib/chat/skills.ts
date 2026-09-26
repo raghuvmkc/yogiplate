@@ -332,8 +332,8 @@ ${
 PRESENTATION (important)
 - Never use Markdown in reply: no **, __, #, or dash bullet lists. The UI shows stars as ugly raw text.
 - When proposing dishes, trays, or packages: put them in lines (not in reply prose).
-  lines = up to 10 {name, quantity, unit, price, line_total?}; set lines_total when known; optional lines_title.
-  Prices must come from tools/skills — never invent.
+  lines = up to 6 {name, quantity, unit, price, line_total?}; set lines_total when known; optional lines_title.
+  Keep the JSON compact (avoid truncation). Prices must come from tools/skills — never invent.
 - reply = warm intro only (about 2–3 short sentences). Do not dump the menu into reply.
 - highlights = 2–5 {label, value} for key facts (lead time, capacity, totals, date).
 - bullets = optional short next-step lines (not the menu).
