@@ -379,9 +379,26 @@ export function ChatWidget() {
         }),
       });
       const rawBody = await res.text();
-      let data: Record<string, unknown> = {};
+      type ChatApiPayload = {
+        error?: string;
+        code?: string;
+        detail?: string;
+        reply?: string;
+        lead?: Partial<Lead>;
+        order_draft?: Partial<OrderDraft>;
+        cart_proposal?: CartProposal | null;
+        lines?: ChatMenuLine[];
+        lines_total?: number | null;
+        lines_title?: string | null;
+        highlights?: ChatHighlight[];
+        bullets?: string[];
+        offer_whatsapp?: boolean;
+        whatsapp_url?: string | null;
+        quote_url?: string | null;
+      };
+      let data: ChatApiPayload = {};
       try {
-        data = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+        data = rawBody ? (JSON.parse(rawBody) as ChatApiPayload) : {};
       } catch {
         throw new Error(
           res.ok
@@ -395,14 +412,15 @@ export function ChatWidget() {
         if (data.detail) bits.push(String(data.detail).slice(0, 160));
         throw new Error(bits.join(" "));
       }
-      if (data.lead) {
+      if (data.lead && typeof data.lead === "object") {
+        const nextLead = data.lead;
         setLead((prev) => ({
           ...EMPTY_LEAD,
-          ...data.lead,
+          ...nextLead,
           // Never let the model wipe the gated contact fields.
-          name: prev.name || data.lead.name || "",
-          phone: prev.phone || data.lead.phone || "",
-          email: prev.email || data.lead.email || "",
+          name: prev.name || nextLead.name || "",
+          phone: prev.phone || nextLead.phone || "",
+          email: prev.email || nextLead.email || "",
         }));
       }
       if (data.order_draft && typeof data.order_draft === "object") {
@@ -416,24 +434,22 @@ export function ChatWidget() {
         typeof data.cart_proposal === "object" &&
         Array.isArray(data.cart_proposal.items) &&
         data.cart_proposal.items.length > 0
-          ? (data.cart_proposal as CartProposal)
+          ? data.cart_proposal
           : null;
       const menuLines = Array.isArray(data.lines)
-        ? (data.lines as ChatMenuLine[])
+        ? data.lines
             .filter((l) => l && String(l.name || "").trim())
             .slice(0, 10)
         : undefined;
       setMessages((prev) => [
         ...prev,
         {
-          role: "assistant",
-          content: data.reply as string,
+          role: "assistant" as const,
+          content: String(data.reply || ""),
           highlights: Array.isArray(data.highlights)
-            ? (data.highlights as ChatHighlight[])
+            ? data.highlights
             : undefined,
-          bullets: Array.isArray(data.bullets)
-            ? (data.bullets as string[])
-            : undefined,
+          bullets: Array.isArray(data.bullets) ? data.bullets : undefined,
           lines: menuLines?.length ? menuLines : undefined,
           linesTotal:
             data.lines_total != null && Number.isFinite(Number(data.lines_total))
@@ -442,7 +458,8 @@ export function ChatWidget() {
           linesTitle:
             typeof data.lines_title === "string" ? data.lines_title : null,
           offerWhatsApp: Boolean(data.offer_whatsapp),
-          whatsappUrl: data.whatsapp_url || null,
+          whatsappUrl:
+            typeof data.whatsapp_url === "string" ? data.whatsapp_url : null,
           cartProposal: proposal,
           quoteUrl:
             typeof data.quote_url === "string" ? data.quote_url : null,
