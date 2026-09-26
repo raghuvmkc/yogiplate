@@ -143,6 +143,30 @@ export interface SiteSettings {
   business_name: string;
   business_email: string;
   business_phone: string;
+  /** Minimum hours before event for catering (default 48). */
+  lead_time_hours?: number;
+  /** Soft daily guest capacity for calendar checks (default 200). */
+  max_guests_per_day?: number;
+  /** Soft hold TTL in minutes (default 120). */
+  hold_ttl_minutes?: number;
+}
+
+export type CalendarBlockKind = "order" | "hold" | "blocked" | "blackout";
+
+export interface CalendarBlock {
+  id: string;
+  date: string; // YYYY-MM-DD
+  start_time: string; // HH:mm
+  end_time: string; // HH:mm
+  kind: CalendarBlockKind;
+  guest_count: number;
+  order_id?: string | null;
+  lead_phone?: string | null;
+  lead_email?: string | null;
+  notes?: string | null;
+  status: "active" | "released" | "expired";
+  expires_at?: string | null;
+  created_at: string;
 }
 
 export interface CartState {

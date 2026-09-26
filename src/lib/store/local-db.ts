@@ -9,6 +9,7 @@ import {
   menuItems,
 } from "@/lib/data/menu-seed";
 import type {
+  CalendarBlock,
   Coupon,
   Customer,
   Invoice,
@@ -29,6 +30,7 @@ export interface LocalDatabase {
   order_items: OrderItem[];
   invoices: Invoice[];
   settings: SiteSettings;
+  calendar_blocks?: CalendarBlock[];
   admin: { email: string; password_hash: string };
 }
 
@@ -69,7 +71,13 @@ async function createSeedDb(): Promise<LocalDatabase> {
     orders: [],
     order_items: [],
     invoices: [],
-    settings: defaultSettings,
+    settings: {
+      ...defaultSettings,
+      lead_time_hours: 48,
+      max_guests_per_day: 200,
+      hold_ttl_minutes: 120,
+    },
+    calendar_blocks: [],
     admin: {
       email: process.env.ADMIN_EMAIL || "admin@yogiplate.com",
       password_hash,
@@ -94,7 +102,29 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
     changed = true;
   }
   if (!db.settings) {
-    db.settings = defaultSettings;
+    db.settings = {
+      ...defaultSettings,
+      lead_time_hours: 48,
+      max_guests_per_day: 200,
+      hold_ttl_minutes: 120,
+    };
+    changed = true;
+  } else {
+    if (db.settings.lead_time_hours == null) {
+      db.settings.lead_time_hours = 48;
+      changed = true;
+    }
+    if (db.settings.max_guests_per_day == null) {
+      db.settings.max_guests_per_day = 200;
+      changed = true;
+    }
+    if (db.settings.hold_ttl_minutes == null) {
+      db.settings.hold_ttl_minutes = 120;
+      changed = true;
+    }
+  }
+  if (!db.calendar_blocks) {
+    db.calendar_blocks = [];
     changed = true;
   }
   return changed;

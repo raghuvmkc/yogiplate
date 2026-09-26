@@ -7,6 +7,12 @@ import {
   loadChatSkills,
   type ChatSkillId,
 } from "@/lib/chat/skills";
+import {
+  executeChatTool,
+  parseToolCall,
+  toolCatalogForPrompt,
+} from "@/lib/chat/tools";
+import { getSettings } from "@/lib/repo";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
@@ -284,7 +290,12 @@ export async function POST(req: Request) {
   }
 
   const waReady = whatsappConfigured();
-  const system = buildLeanFrontDeskSystemPrompt(waReady);
+  const settings = await getSettings().catch(() => null);
+  const system = [
+    buildLeanFrontDeskSystemPrompt(waReady),
+    "",
+    toolCatalogForPrompt(),
+  ].join("\n");
 
   const history = body.messages.slice(0, -1).map((m) => ({
     role: (m.role === "assistant" ? "model" : "user") as "user" | "model",
@@ -300,8 +311,7 @@ export async function POST(req: Request) {
     systemInstruction: system,
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 1200,
-      // Prefer JSON, but we also accept plain text (see parseModelResponse).
+      maxOutputTokens: 1400,
       responseMimeType: "application/json",
     },
   });
@@ -315,6 +325,7 @@ export async function POST(req: Request) {
   const { loaded: preloaded } = loadChatSkills(prefetch);
   const loaded: Record<string, string> = {};
   const skillsUsed: string[] = [];
+  const toolsUsed: string[] = [];
   for (const item of preloaded) {
     loaded[item.id] = item.content;
     skillsUsed.push(item.id);
@@ -328,37 +339,60 @@ export async function POST(req: Request) {
       leadHint,
       orderHint,
       "",
-      "Relevant kitchen knowledge (already loaded — answer now):",
+      "Relevant kitchen knowledge (already loaded):",
       formatLoadedSkills(loaded),
       "",
-      "Return ONLY JSON:",
-      `{"type":"answer","reply":"...","offer_whatsapp":false,"lead":{"name":"","phone":"","email":"","event_date":"","guest_count":null,"diet":"","city":"","notes":""}}`,
-      "Keep reply warm and concise. Do not invent prices not in the knowledge above.",
-      `If you truly need another skill, you may instead return {"type":"load_skill","skill_ids":["..."]} once. Available: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
+      "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional highlights/bullets).",
+      "Use time_context + catering_calendar for dates; catering_math for headcount/trays.",
+      `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
     ].join("\n");
 
     let result = await chat.sendMessage(turn);
     let parsed = parseModelResponse(modelText(result));
 
-    // At most one optional skill-load round (keeps Netlify under time limits)
-    const type = String(parsed.type || "").toLowerCase();
-    const ids = parsed.skill_ids ?? parsed.skillIds;
-    if (
-      (type === "load_skill" || type === "load_skills") &&
-      Array.isArray(ids) &&
-      ids.length
-    ) {
-      const { loaded: newly } = loadChatSkills(ids.map(String).slice(0, 2));
-      for (const item of newly) {
-        if (!loaded[item.id]) {
-          loaded[item.id] = item.content;
-          skillsUsed.push(item.id);
-        }
+    // Up to 3 rounds: tools and/or skill loads, then answer
+    for (let round = 0; round < 3; round++) {
+      const toolCall = parseToolCall(parsed);
+      if (toolCall) {
+        const toolResult = await executeChatTool(toolCall.tool, toolCall.args, {
+          lead_phone: body.lead.phone,
+          lead_email: body.lead.email,
+          lead_time_hours: settings?.lead_time_hours,
+        });
+        toolsUsed.push(toolCall.tool);
+        result = await chat.sendMessage(
+          [
+            `Tool ${toolCall.tool} result (cite these numbers; do not invent):`,
+            JSON.stringify(toolResult),
+            "Now return answer JSON with reply + highlights for key numbers, or another tool_call if still needed.",
+          ].join("\n")
+        );
+        parsed = parseModelResponse(modelText(result));
+        continue;
       }
-      result = await chat.sendMessage(
-        `Skills loaded. Answer the guest now as final JSON only (type answer + reply string).\n${formatLoadedSkills(loaded)}`
-      );
-      parsed = parseModelResponse(modelText(result));
+
+      const type = String(parsed.type || "").toLowerCase();
+      const ids = parsed.skill_ids ?? parsed.skillIds;
+      if (
+        (type === "load_skill" || type === "load_skills") &&
+        Array.isArray(ids) &&
+        ids.length
+      ) {
+        const { loaded: newly } = loadChatSkills(ids.map(String).slice(0, 2));
+        for (const item of newly) {
+          if (!loaded[item.id]) {
+            loaded[item.id] = item.content;
+            skillsUsed.push(item.id);
+          }
+        }
+        result = await chat.sendMessage(
+          `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn answer JSON (reply + highlights) or a tool_call.`
+        );
+        parsed = parseModelResponse(modelText(result));
+        continue;
+      }
+
+      break;
     }
 
     const replyRaw = parsed.reply;
@@ -366,6 +400,22 @@ export async function POST(req: Request) {
       typeof replyRaw === "string" && replyRaw.trim()
         ? replyRaw.trim()
         : "I can help with Yogiplate catering menus, diets, and orders. What would you like to know?";
+
+    const highlights = Array.isArray(parsed.highlights)
+      ? (parsed.highlights as { label?: string; value?: string }[])
+          .filter((h) => h && (h.label || h.value))
+          .slice(0, 6)
+          .map((h) => ({
+            label: String(h.label || "Note"),
+            value: String(h.value || ""),
+          }))
+      : [];
+    const bullets = Array.isArray(parsed.bullets)
+      ? (parsed.bullets as unknown[])
+          .map((b) => String(b).trim())
+          .filter(Boolean)
+          .slice(0, 6)
+      : [];
 
     const lead = mergeLead(
       body.lead as ChatLead | undefined,
@@ -391,6 +441,7 @@ export async function POST(req: Request) {
               .map((i) => `${i.quantity}× ${i.name}`)
               .join("; ")}`
           : null,
+        toolsUsed.length ? `Tools used: ${toolsUsed.join(", ")}` : null,
       ]
         .filter(Boolean)
         .join("\n");
@@ -399,10 +450,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       reply,
+      highlights,
+      bullets,
       offer_whatsapp: offerWhatsApp,
       whatsapp_url: whatsappUrl,
       lead,
       skills_used: [...new Set(skillsUsed)],
+      tools_used: [...new Set(toolsUsed)],
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);

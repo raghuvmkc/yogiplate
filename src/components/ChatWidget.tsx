@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Send, X } from "lucide-react";
+import {
+  ChatRichMessage,
+  type ChatHighlight,
+} from "@/components/ChatRichMessage";
 import { DIET_LABELS } from "@/lib/data/diet-profiles";
 import { useCartStore } from "@/lib/cart-store";
 import type { DietTag } from "@/lib/types";
@@ -12,6 +16,8 @@ type ChatRole = "user" | "assistant";
 type ChatMessage = {
   role: ChatRole;
   content: string;
+  highlights?: ChatHighlight[];
+  bullets?: string[];
   offerWhatsApp?: boolean;
   whatsappUrl?: string | null;
 };
@@ -349,6 +355,12 @@ export function ChatWidget() {
         {
           role: "assistant",
           content: data.reply as string,
+          highlights: Array.isArray(data.highlights)
+            ? (data.highlights as ChatHighlight[])
+            : undefined,
+          bullets: Array.isArray(data.bullets)
+            ? (data.bullets as string[])
+            : undefined,
           offerWhatsApp: Boolean(data.offer_whatsapp),
           whatsappUrl: data.whatsapp_url || null,
         },
@@ -501,7 +513,15 @@ export function ChatWidget() {
                           : "border border-line bg-white text-foreground"
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      {m.role === "assistant" ? (
+                        <ChatRichMessage
+                          content={m.content}
+                          highlights={m.highlights}
+                          bullets={m.bullets}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                      )}
                       {m.offerWhatsApp && m.whatsappUrl ? (
                         <a
                           href={m.whatsappUrl}
