@@ -5,11 +5,12 @@ import {
   CHAT_SKILL_CATALOG,
   buildLeanFrontDeskSystemPrompt,
   loadChatSkills,
+  type ChatSkillId,
 } from "@/lib/chat/skills";
 
 export const runtime = "nodejs";
+export const maxDuration = 26;
 
-const MAX_REACT_ROUNDS = 4;
 const GEMINI_MODEL = "gemini-3.8-flash";
 
 const MessageSchema = z.object({
@@ -119,33 +120,63 @@ function mergeLead(
 
 function formatLoadedSkills(loaded: Record<string, string>): string {
   const ids = Object.keys(loaded);
-  if (!ids.length) return "(none loaded yet)";
-  return ids
-    .map((id) => `### SKILL \`${id}\`\n${loaded[id]}`)
-    .join("\n\n");
+  if (!ids.length) return "(none)";
+  return ids.map((id) => `### SKILL \`${id}\`\n${loaded[id]}`).join("\n\n");
 }
 
-function isLoadAction(parsed: Record<string, unknown>): string[] | null {
-  const type = String(parsed.type || parsed.action || "").toLowerCase();
-  const ids = parsed.skill_ids ?? parsed.skillIds;
-  if (
-    (type === "load_skill" || type === "load_skills" || type === "tool") &&
-    Array.isArray(ids)
-  ) {
-    return ids.map(String).slice(0, 3);
+/** Prefetch a small skill set so we usually need only ONE Gemini call (Netlify time limits). */
+function prefetchSkillIds(userText: string): ChatSkillId[] {
+  const t = userText.toLowerCase();
+  const ids = new Set<ChatSkillId>(["business", "ordering", "diets"]);
+
+  if (/whatsapp|text me|call me|human|owner|speak to/.test(t)) {
+    ids.add("whatsapp");
   }
-  // Also accept bare skill_ids without type if no reply yet
-  if (!parsed.reply && Array.isArray(ids)) {
-    return ids.map(String).slice(0, 3);
+  if (/menu|dish|food|tray|price|cost|\$|order|cater/.test(t)) {
+    ids.add("menu-index");
   }
-  return null;
+  if (/appetizer|samosa|pakora|chaat|poori|pani/.test(t)) {
+    ids.add("menu-appetizers");
+  }
+  if (/salad/.test(t)) ids.add("menu-salads");
+  if (/paneer|curry|sabzi|vegetable|gobi|bhindi|kofta|makhni/.test(t)) {
+    ids.add("menu-vegetable-dishes");
+  }
+  if (/dal|soup|rasam|sambar/.test(t)) ids.add("menu-dal-soups");
+  if (/rice|biryani|pulao|noodle|khichri/.test(t)) {
+    ids.add("menu-rice-noodles");
+  }
+  if (/roti|naan|bread|poori|paratha|bhatura|pav/.test(t)) {
+    ids.add("menu-breads-rotis");
+  }
+  if (/dessert|sweet|gulab|rasmalai|halwa|kheer/.test(t)) {
+    ids.add("menu-desserts");
+  }
+  if (/chutney|raita|pickle|condiment/.test(t)) ids.add("menu-condiments");
+  if (/pasta|lasagna|risotto|orzo/.test(t)) ids.add("menu-pastas");
+  if (/pizza|margherita/.test(t)) ids.add("menu-pizzas");
+  if (/package|thali|combo/.test(t)) ids.add("menu-packages");
+  if (/side|focaccia/.test(t)) ids.add("menu-sides");
+
+  return [...ids].slice(0, 8);
+}
+
+function errorCode(detail: string): string {
+  if (/API_KEY|api key|403|401|PERMISSION|invalid.*key/i.test(detail)) {
+    return "gemini_auth";
+  }
+  if (/404|not found|model/i.test(detail)) return "gemini_model";
+  if (/timeout|timed out|Deadline|ETIMEDOUT/i.test(detail)) {
+    return "timeout";
+  }
+  return "gemini_error";
 }
 
 export async function POST(req: Request) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!apiKey) {
     return NextResponse.json(
-      { error: "Chat is not configured (missing GEMINI_API_KEY)." },
+      { error: "Chat is not configured (missing GEMINI_API_KEY).", code: "no_key" },
       { status: 503 }
     );
   }
@@ -158,6 +189,7 @@ export async function POST(req: Request) {
       {
         error:
           "Name, phone, and email are required before chat can start. Please share all three to continue.",
+        code: "bad_request",
       },
       { status: 400 }
     );
@@ -165,7 +197,7 @@ export async function POST(req: Request) {
 
   if (body.lead.name.trim().length < 2) {
     return NextResponse.json(
-      { error: "Please enter your name to start chat." },
+      { error: "Please enter your name to start chat.", code: "bad_name" },
       { status: 400 }
     );
   }
@@ -173,7 +205,7 @@ export async function POST(req: Request) {
   const phoneDigits = body.lead.phone.replace(/\D/g, "");
   if (phoneDigits.length < 10 || phoneDigits.length > 15) {
     return NextResponse.json(
-      { error: "Please enter a valid phone number to start chat." },
+      { error: "Please enter a valid phone number to start chat.", code: "bad_phone" },
       { status: 400 }
     );
   }
@@ -181,7 +213,7 @@ export async function POST(req: Request) {
   const last = body.messages[body.messages.length - 1];
   if (last.role !== "user") {
     return NextResponse.json(
-      { error: "Last message must be from the user." },
+      { error: "Last message must be from the user.", code: "bad_role" },
       { status: 400 }
     );
   }
@@ -203,85 +235,64 @@ export async function POST(req: Request) {
     systemInstruction: system,
     generationConfig: {
       temperature: 0.35,
-      maxOutputTokens: 1400,
+      maxOutputTokens: 900,
       responseMimeType: "application/json",
     },
   });
 
-  const leadHint = body.lead
-    ? `\n\n[Known lead so far: ${JSON.stringify(body.lead)}]`
-    : "";
+  const leadHint = `\n\n[Known lead: ${JSON.stringify(body.lead)}]`;
   const orderHint = body.order_context
-    ? `\n\n[Guest's current Build-order cart — treat as live context:\n${JSON.stringify(body.order_context, null, 2)}]`
+    ? `\n\n[Cart:\n${JSON.stringify(body.order_context)}]`
     : "";
 
+  const prefetch = prefetchSkillIds(last.content);
+  const { loaded: preloaded } = loadChatSkills(prefetch);
   const loaded: Record<string, string> = {};
   const skillsUsed: string[] = [];
+  for (const item of preloaded) {
+    loaded[item.id] = item.content;
+    skillsUsed.push(item.id);
+  }
 
   try {
     const chat = model.startChat({ history });
 
-    let parsed: Record<string, unknown> | null = null;
+    const turn = [
+      last.content,
+      leadHint,
+      orderHint,
+      "",
+      "Relevant kitchen knowledge (already loaded — answer now):",
+      formatLoadedSkills(loaded),
+      "",
+      "Return ONLY JSON:",
+      `{"type":"answer","reply":"...","offer_whatsapp":false,"lead":{"name":"","phone":"","email":"","event_date":"","guest_count":null,"diet":"","city":"","notes":""}}`,
+      "Keep reply warm and concise. Do not invent prices not in the knowledge above.",
+      `If you truly need another skill, you may instead return {"type":"load_skill","skill_ids":["..."]} once. Available: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
+    ].join("\n");
 
-    for (let round = 0; round < MAX_REACT_ROUNDS; round++) {
-      const turn = [
-        last.content,
-        leadHint,
-        orderHint,
-        "",
-        "--- ReAct ---",
-        `Round ${round + 1} of ${MAX_REACT_ROUNDS}.`,
-        "Loaded skills:",
-        formatLoadedSkills(loaded),
-        "",
-        "Return ONLY JSON in one of these shapes:",
-        `1) Load more knowledge (1–3 ids from catalog): {"type":"load_skill","skill_ids":["business"]}`,
-        `2) Final guest answer: {"type":"answer","reply":"...","offer_whatsapp":false,"lead":{"name":"","phone":"","email":"","event_date":"","guest_count":null,"diet":"","city":"","notes":""}}`,
-        "For 'Who is the chef?' load `business` then answer.",
-        `Available skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
-      ].join("\n");
+    let result = await chat.sendMessage(turn);
+    let parsed = extractJson(result.response.text());
 
-      const result = await chat.sendMessage(turn);
-      const text = result.response.text();
-      parsed = extractJson(text);
-
-      const toLoad = isLoadAction(parsed);
-      if (toLoad?.length) {
-        const { loaded: newly, skipped } = loadChatSkills(toLoad);
-        for (const item of newly) {
-          if (!loaded[item.id]) {
-            loaded[item.id] = item.content;
-            skillsUsed.push(item.id);
-          }
+    // At most one optional skill-load round (keeps Netlify under time limits)
+    const type = String(parsed.type || "").toLowerCase();
+    const ids = parsed.skill_ids ?? parsed.skillIds;
+    if (
+      (type === "load_skill" || type === "load_skills") &&
+      Array.isArray(ids) &&
+      ids.length
+    ) {
+      const { loaded: newly } = loadChatSkills(ids.map(String).slice(0, 2));
+      for (const item of newly) {
+        if (!loaded[item.id]) {
+          loaded[item.id] = item.content;
+          skillsUsed.push(item.id);
         }
-        if (skipped.length) {
-          // Tell model next round via loaded blob; continue loop.
-        }
-        // If nothing new loaded, force answer next.
-        if (!newly.length) {
-          const force = await chat.sendMessage(
-            `Those skill ids were invalid (${skipped.join(", ") || "none"}). Return the final answer JSON now using whatever you know, preferring not to invent menu prices.`
-          );
-          parsed = extractJson(force.response.text());
-          break;
-        }
-        continue;
       }
-
-      // Treat as final answer
-      break;
-    }
-
-    if (!parsed) {
-      throw new Error("Empty model response");
-    }
-
-    // If still a load action after max rounds, force answer with what we have.
-    if (isLoadAction(parsed)) {
-      const force = await chat.sendMessage(
-        `Stop loading skills. Using only loaded skills below, return final answer JSON now.\n${formatLoadedSkills(loaded)}`
+      result = await chat.sendMessage(
+        `Skills loaded. Answer the guest now as final JSON only.\n${formatLoadedSkills(loaded)}`
       );
-      parsed = extractJson(force.response.text());
+      parsed = extractJson(result.response.text());
     }
 
     const replyRaw = parsed.reply;
@@ -330,17 +341,13 @@ export async function POST(req: Request) {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[chat]", detail);
+    const safeDetail = detail.replace(/key=[^&\s]+/gi, "key=***").slice(0, 240);
     return NextResponse.json(
       {
         error:
           "Sorry — the front desk chat is briefly unavailable. Please try again, or use Build order.",
-        detail: process.env.NODE_ENV === "development" ? detail : undefined,
-        // Safe short code so Netlify logs / support can tell Gemini vs other failures
-        code: /API_KEY|api key|403|401/i.test(detail)
-          ? "gemini_auth"
-          : /404|not found|model/i.test(detail)
-            ? "gemini_model"
-            : "gemini_error",
+        code: errorCode(detail),
+        detail: safeDetail,
       },
       { status: 502 }
     );

@@ -7,3 +7,10 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Allow longer serverless time for Gemini chat (capped by plan).
+[functions]
+  node_bundler = "esbuild"
+
+[functions."*"]
+  timeout = 26

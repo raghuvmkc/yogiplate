@@ -329,7 +329,10 @@ export function ChatWidget() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Chat failed");
+        const bits = [data.error || "Chat failed"];
+        if (data.code) bits.push(`[${data.code}]`);
+        if (data.detail) bits.push(String(data.detail).slice(0, 160));
+        throw new Error(bits.join(" "));
       }
       if (data.lead) {
         setLead((prev) => ({
