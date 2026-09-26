@@ -20,6 +20,10 @@ import {
 import { upsertCustomerFromLead } from "@/lib/crm";
 import { getSettings } from "@/lib/repo";
 import type { ContactChannel } from "@/lib/types";
+import {
+  getOrCreateGuestMemory,
+} from "@/lib/planning/guest-memory-store";
+import { summarizeGuestMemory } from "@/lib/planning/guest-memory";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
 
@@ -52,6 +56,8 @@ export type AgentOrderContext = {
     quantity: number;
     unit?: string;
     price?: number;
+    menu_item_id?: string;
+    variant_id?: string;
   }[];
 };
 
@@ -482,11 +488,35 @@ export async function runFrontDeskTurn(
   let quoteUrl: string | null = null;
   let lastHoldId: string | null = null;
 
+  const guestMemory = await getOrCreateGuestMemory({
+    session_id: sessionId,
+    customer_email: input.lead.email || "unknown@guest.local",
+  }).catch(() => null);
+  const memorySummary = guestMemory
+    ? summarizeGuestMemory(guestMemory)
+    : "(none)";
+
+  let engineLines: AgentMenuLine[] | null = null;
+  let engineLinesTitle: string | null = null;
+  let engineLinesTotal: number | null = null;
+
+  const liveCartItems =
+    input.order_context?.items
+      ?.filter((i) => i.menu_item_id)
+      .map((i) => ({
+        menu_item_id: String(i.menu_item_id),
+        variant_id: i.variant_id,
+        name: i.name,
+        quantity: i.quantity,
+        unit_price: i.price,
+      })) || [];
+
   const leadHint = `\n\n[Known lead: ${JSON.stringify(input.lead)}]`;
   const orderHint = input.order_context
     ? `\n\n[Cart:\n${JSON.stringify(input.order_context)}]`
     : "";
   const draftHint = `\n\n[Order draft:\n${JSON.stringify(orderDraft)}]`;
+  const memoryHint = `\n\n[GUEST_MEMORY: ${memorySummary}]`;
 
   const prefetch = prefetchSkillIds(last.content);
   const { loaded: preloaded } = loadChatSkills(prefetch);
@@ -505,15 +535,17 @@ export async function runFrontDeskTurn(
     leadHint,
     orderHint,
     draftHint,
+    memoryHint,
     "",
     "Relevant kitchen knowledge (already loaded):",
     formatLoadedSkills(loaded),
     "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional lines/highlights/bullets).",
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
+    "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines/prices.",
     "When proposing dishes/packages: put them in lines[] (max 6 items) with name, quantity, unit, price — never Markdown ** in reply. Keep JSON compact so it is not truncated.",
-    "Prefer one tool then answer. For menu suggestions: load menu skills or catering_math compare_packages, then answer with lines[].",
-    "Use time_context + catering_calendar for dates; catering_math for headcount/trays; order_draft for cart; followthrough for email quote/deposit.",
+    "Prefer one tool then answer. Use get_menu / build_plan for planning; catering_math for packages; order_draft for cart; followthrough for quote/deposit.",
+    "Use time_context + check_capacity for dates.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
   ].join("\n");
 
@@ -620,6 +652,7 @@ export async function runFrontDeskTurn(
         setLastQuoteId: (id) => {
           lastQuoteId = id;
         },
+        live_cart_items: liveCartItems,
       });
       toolsUsed.push(toolCall.tool);
       lastToolSummary =
@@ -639,16 +672,42 @@ export async function runFrontDeskTurn(
             );
           }
         }
-        if (toolCall.tool === "catering_calendar") {
+        if (
+          toolCall.tool === "catering_calendar" ||
+          toolCall.tool === "check_capacity"
+        ) {
           const hold = (toolResult as { hold?: { id?: string } }).hold;
           if (hold?.id) lastHoldId = String(hold.id);
+        }
+        if (
+          toolCall.tool === "build_plan" &&
+          Array.isArray((toolResult as { lines?: unknown }).lines)
+        ) {
+          const planLines = parseMenuLines(
+            (toolResult as { lines: unknown }).lines
+          );
+          if (planLines.length) {
+            engineLines = planLines;
+            engineLinesTitle =
+              typeof (toolResult as { lines_title?: string }).lines_title ===
+              "string"
+                ? String((toolResult as { lines_title: string }).lines_title)
+                : null;
+            const tot = (toolResult as { lines_total?: number }).lines_total;
+            engineLinesTotal =
+              tot != null && Number.isFinite(Number(tot))
+                ? Number(tot)
+                : null;
+          }
         }
       }
       result = await chat.sendMessage(
         [
           `Tool ${toolCall.tool} result (cite these numbers; do not invent):`,
           JSON.stringify(toolResult),
-          "Now return compact answer JSON: reply + lines (max 6) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
+          toolCall.tool === "build_plan"
+            ? "Copy lines, lines_total, and lines_title from this build_plan result into your answer JSON."
+            : "Now return compact answer JSON: reply + lines (max 6) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
           "Keep the JSON short so it is not truncated. Never use Markdown **.",
           "If cart_proposal is present, tell the guest they can tap Add to Build order.",
           "If quote_url is present, share that link.",
@@ -710,8 +769,8 @@ export async function runFrontDeskTurn(
         .filter(Boolean)
         .slice(0, 6)
     : [];
-  const lines = parseMenuLines(parsed.lines ?? parsed.menu_lines);
-  const lines_title =
+  let lines = parseMenuLines(parsed.lines ?? parsed.menu_lines);
+  let lines_title =
     typeof parsed.lines_title === "string" && parsed.lines_title.trim()
       ? parsed.lines_title.trim()
       : null;
@@ -719,6 +778,12 @@ export async function runFrontDeskTurn(
     parsed.lines_total != null && Number.isFinite(Number(parsed.lines_total))
       ? Number(parsed.lines_total)
       : null;
+  // Prefer deterministic engine output when build_plan ran this turn
+  if (engineLines?.length) {
+    lines = engineLines;
+    if (engineLinesTitle) lines_title = engineLinesTitle;
+    if (engineLinesTotal != null) lines_total = engineLinesTotal;
+  }
   if (lines_total == null && lines.length) {
     const sum = lines.reduce((s, l) => {
       if (l.line_total != null) return s + l.line_total;

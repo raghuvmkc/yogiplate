@@ -23,6 +23,7 @@ import type {
   Reminder,
   SiteSettings,
 } from "@/lib/types";
+import type { GuestEventMemory } from "@/lib/planning/guest-memory";
 
 export interface LocalDatabase {
   seed_version?: string;
@@ -39,6 +40,7 @@ export interface LocalDatabase {
   reminders?: Reminder[];
   chat_sessions?: ChatSessionLog[];
   channel_threads?: ChannelThread[];
+  guest_events?: GuestEventMemory[];
   admin: { email: string; password_hash: string };
 }
 
@@ -92,6 +94,7 @@ async function createSeedDb(): Promise<LocalDatabase> {
     reminders: [],
     chat_sessions: [],
     channel_threads: [],
+    guest_events: [],
     admin: {
       email: process.env.ADMIN_EMAIL || "admin@yogiplate.com",
       password_hash,
@@ -165,6 +168,10 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
   }
   if (!db.channel_threads) {
     db.channel_threads = [];
+    changed = true;
+  }
+  if (!db.guest_events) {
+    db.guest_events = [];
     changed = true;
   }
   return changed;

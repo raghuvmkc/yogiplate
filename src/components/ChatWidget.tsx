@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Send, X } from "lucide-react";
+import { Maximize2, MessageCircle, Minimize2, Send, X } from "lucide-react";
 import {
   ChatRichMessage,
   type ChatHighlight,
@@ -58,6 +58,7 @@ const EMPTY_LEAD: Lead = {
 
 const NUDGE_STORAGE_KEY = "yogiplate-chat-order-nudge-dismissed";
 const CONTACT_STORAGE_KEY = "yogiplate-chat-contact";
+const EXPANDED_STORAGE_KEY = "yogiplate-chat-expanded";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -92,6 +93,7 @@ export function ChatWidget() {
   const applyProposal = useCartStore((s) => s.applyProposal);
 
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [identified, setIdentified] = useState(false);
   const [gateName, setGateName] = useState("");
   const [gatePhone, setGatePhone] = useState("");
@@ -140,9 +142,21 @@ export function ChatWidget() {
         quantity: i.quantity,
         unit: i.unit,
         price: i.price,
+        menu_item_id: i.menu_item_id,
+        variant_id: i.variant_id,
       })),
     };
   }, [pathname, diet, guestCount, eventDate, notes, items]);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(EXPANDED_STORAGE_KEY) === "1") {
+        setExpanded(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Restore contact from this browser session.
   useEffect(() => {
@@ -479,7 +493,13 @@ export function ChatWidget() {
       ) : null}
 
       {open ? (
-        <div className="flex h-[min(34rem,calc(100svh-6rem))] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden border-2 border-line bg-white shadow-[0_18px_50px_rgba(42,74,54,0.18)]">
+        <div
+          className={`flex flex-col overflow-hidden border-2 border-line bg-white shadow-[0_18px_50px_rgba(42,74,54,0.18)] transition-[width,height] duration-200 ${
+            expanded
+              ? "h-[min(90svh,calc(100svh-3rem))] w-[min(42rem,calc(100vw-1.5rem))]"
+              : "h-[min(34rem,calc(100svh-6rem))] w-[min(24rem,calc(100vw-1.5rem))]"
+          }`}
+        >
           <div className="flex items-start justify-between gap-3 bg-accent-deep px-4 py-3 text-white">
             <div>
               <p className="text-sm font-semibold tracking-wide">
@@ -493,14 +513,41 @@ export function ChatWidget() {
                     : "Front desk · menus & catering only"}
               </p>
             </div>
-            <button
-              type="button"
-              aria-label="Close chat"
-              className="rounded p-1 text-white/90 transition hover:bg-white/10"
-              onClick={() => setOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                aria-label={expanded ? "Shrink chat" : "Expand chat"}
+                className="rounded p-1 text-white/90 transition hover:bg-white/10"
+                onClick={() => {
+                  setExpanded((prev) => {
+                    const next = !prev;
+                    try {
+                      sessionStorage.setItem(
+                        EXPANDED_STORAGE_KEY,
+                        next ? "1" : "0"
+                      );
+                    } catch {
+                      /* ignore */
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {expanded ? (
+                  <Minimize2 className="h-5 w-5" />
+                ) : (
+                  <Maximize2 className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                type="button"
+                aria-label="Close chat"
+                className="rounded p-1 text-white/90 transition hover:bg-white/10"
+                onClick={() => setOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {!identified ? (

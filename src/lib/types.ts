@@ -45,6 +45,21 @@ export interface MenuItem {
   min_quantity?: number;
   /** Tray or pizza size options; when present, cart lines use a selected variant. */
   variants?: MenuVariant[];
+  /** Planning tags (optional overrides; otherwise derived from diet_tags / copy). */
+  allergens?: string[];
+  jain_ok?: boolean;
+  vegan_ok?: boolean;
+  no_onion_garlic_ok?: boolean;
+  gluten_status?:
+    | "unknown"
+    | "contains_gluten"
+    | "may_contain"
+    | "gluten_free_option";
+  spice_level?: "mild" | "medium" | "hot" | "unknown";
+  kid_friendly?: boolean;
+  max_hold_minutes?: number | null;
+  holds_well?: boolean;
+  best_served?: "hot" | "room" | "cold" | "either";
 }
 
 export type ContactChannel =

@@ -38,6 +38,8 @@ const BodySchema = z.object({
             quantity: z.number(),
             unit: z.string().optional(),
             price: z.number().optional(),
+            menu_item_id: z.string().optional(),
+            variant_id: z.string().optional(),
           })
         )
         .max(80)
