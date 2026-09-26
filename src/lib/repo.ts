@@ -37,8 +37,15 @@ export async function getCatalog(): Promise<{
       };
     }
   }
-  const db = await getDb();
-  return { categories: db.categories, items: db.menu_items };
+  try {
+    const db = await getDb();
+    if (db.menu_items?.length) {
+      return { categories: db.categories, items: db.menu_items };
+    }
+  } catch (err) {
+    console.error("[getCatalog] local db failed, using seed", err);
+  }
+  return { categories: seedCategories, items: seedMenuItems };
 }
 
 export async function getSettings(): Promise<SiteSettings> {

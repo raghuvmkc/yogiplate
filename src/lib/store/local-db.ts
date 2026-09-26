@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import os from "os";
 import path from "path";
 import {
   MENU_SEED_VERSION,
@@ -18,9 +19,6 @@ import type {
   SiteSettings,
 } from "@/lib/types";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const DB_FILE = path.join(DATA_DIR, "db.json");
-
 export interface LocalDatabase {
   seed_version?: string;
   categories: MenuCategory[];
@@ -34,47 +32,132 @@ export interface LocalDatabase {
   admin: { email: string; password_hash: string };
 }
 
-async function ensureDb(): Promise<LocalDatabase> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+/** In-memory fallback when the host FS is read-only (Netlify / serverless). */
+let memoryDb: LocalDatabase | null = null;
+let persistEnabled: boolean | null = null;
+let resolvedDbFile: string | null = null;
+
+function candidateDbPaths(): string[] {
+  return [
+    path.join(process.cwd(), ".data", "db.json"),
+    path.join(os.tmpdir(), "yogiplate-data", "db.json"),
+  ];
+}
+
+async function tryPersist(db: LocalDatabase, filePath: string): Promise<boolean> {
   try {
-    const raw = await fs.readFile(DB_FILE, "utf8");
-    const db = JSON.parse(raw) as LocalDatabase;
-    if (db.seed_version !== MENU_SEED_VERSION) {
-      db.seed_version = MENU_SEED_VERSION;
-      db.categories = categories;
-      db.menu_items = menuItems;
-      await saveDb(db);
-    }
-    return db;
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(db, null, 2));
+    return true;
   } catch {
-    const bcrypt = await import("bcryptjs");
-    const password_hash = await bcrypt.hash(
-      process.env.ADMIN_PASSWORD || "yogiplate-admin",
-      10
-    );
-    const db: LocalDatabase = {
-      seed_version: MENU_SEED_VERSION,
-      categories,
-      menu_items: menuItems,
-      customers: [],
-      coupons: defaultCoupons,
-      orders: [],
-      order_items: [],
-      invoices: [],
-      settings: defaultSettings,
-      admin: {
-        email: process.env.ADMIN_EMAIL || "admin@yogiplate.com",
-        password_hash,
-      },
-    };
-    await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2));
-    return db;
+    return false;
   }
 }
 
+async function createSeedDb(): Promise<LocalDatabase> {
+  const bcrypt = await import("bcryptjs");
+  const password_hash = await bcrypt.hash(
+    process.env.ADMIN_PASSWORD || "yogiplate-admin",
+    10
+  );
+  return {
+    seed_version: MENU_SEED_VERSION,
+    categories,
+    menu_items: menuItems,
+    customers: [],
+    coupons: defaultCoupons,
+    orders: [],
+    order_items: [],
+    invoices: [],
+    settings: defaultSettings,
+    admin: {
+      email: process.env.ADMIN_EMAIL || "admin@yogiplate.com",
+      password_hash,
+    },
+  };
+}
+
+function applySeedIfNeeded(db: LocalDatabase): boolean {
+  let changed = false;
+  if (db.seed_version !== MENU_SEED_VERSION || !db.categories?.length) {
+    db.seed_version = MENU_SEED_VERSION;
+    db.categories = categories;
+    db.menu_items = menuItems;
+    changed = true;
+  }
+  if (!db.menu_items?.length) {
+    db.menu_items = menuItems;
+    changed = true;
+  }
+  if (!db.coupons?.length) {
+    db.coupons = defaultCoupons;
+    changed = true;
+  }
+  if (!db.settings) {
+    db.settings = defaultSettings;
+    changed = true;
+  }
+  return changed;
+}
+
+async function ensureDb(): Promise<LocalDatabase> {
+  if (memoryDb) {
+    applySeedIfNeeded(memoryDb);
+    return memoryDb;
+  }
+
+  // Prefer an existing on-disk DB when readable.
+  for (const filePath of candidateDbPaths()) {
+    try {
+      const raw = await fs.readFile(filePath, "utf8");
+      const db = JSON.parse(raw) as LocalDatabase;
+      const changed = applySeedIfNeeded(db);
+      memoryDb = db;
+      resolvedDbFile = filePath;
+      if (changed) {
+        persistEnabled = await tryPersist(db, filePath);
+      } else {
+        persistEnabled = true;
+      }
+      return db;
+    } catch {
+      // try next path / create fresh
+    }
+  }
+
+  const db = await createSeedDb();
+  memoryDb = db;
+
+  for (const filePath of candidateDbPaths()) {
+    if (await tryPersist(db, filePath)) {
+      resolvedDbFile = filePath;
+      persistEnabled = true;
+      return db;
+    }
+  }
+
+  // Serverless read-only FS — keep seeded catalog in memory for this instance.
+  persistEnabled = false;
+  resolvedDbFile = null;
+  return db;
+}
+
 async function saveDb(db: LocalDatabase) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2));
+  memoryDb = db;
+  if (persistEnabled === false) return;
+
+  const targets = resolvedDbFile
+    ? [resolvedDbFile, ...candidateDbPaths()]
+    : candidateDbPaths();
+
+  for (const filePath of targets) {
+    if (await tryPersist(db, filePath)) {
+      resolvedDbFile = filePath;
+      persistEnabled = true;
+      return;
+    }
+  }
+  persistEnabled = false;
 }
 
 export async function getDb() {

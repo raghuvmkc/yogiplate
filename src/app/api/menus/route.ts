@@ -10,9 +10,21 @@ import {
 import type { DietTag, MenuItem } from "@/lib/types";
 
 export async function GET() {
-  await ensureSeededLocal();
-  const catalog = await getCatalog();
-  return NextResponse.json(catalog);
+  try {
+    await ensureSeededLocal();
+  } catch (err) {
+    console.error("[menus] seed failed", err);
+  }
+  try {
+    const catalog = await getCatalog();
+    return NextResponse.json(catalog);
+  } catch (err) {
+    console.error("[menus] catalog failed", err);
+    return NextResponse.json(
+      { error: "Could not load menus", categories: [], items: [] },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: Request) {
