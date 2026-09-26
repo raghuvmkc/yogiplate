@@ -14,6 +14,7 @@ import {
   pickDefaultVariant,
   type PlanningMenuRow,
 } from "@/lib/planning/menu-tags";
+import { fitPlanToBudget } from "@/lib/planning/budget-trim";
 
 export type PlanLine = {
   menu_item_id: string;
@@ -531,7 +532,28 @@ export function buildPlan(input: {
   });
 
   // Collapse duplicate menu lines for display (sum qty)
-  const collapsed = collapseLines(lines);
+  let collapsed = collapseLines(lines);
+
+  // 4) Budget fit — guest-happy cuts only (never random); keep sufficient food
+  const budget =
+    memory.event.budget != null && memory.event.budget > 0
+      ? Number(memory.event.budget)
+      : null;
+  if (budget != null) {
+    const fit = fitPlanToBudget({
+      lines: collapsed,
+      budget,
+      neededServes: need,
+      catalog,
+    });
+    collapsed = fit.lines as PlanLine[];
+    warnings.push(...fit.warnings);
+    notes.push(...fit.notes);
+    if (fit.actions.length) {
+      notes.push(...fit.actions.slice(0, 4));
+    }
+  }
+
   const money = collapsed.reduce((s, l) => s + l.line_total, 0);
   const perHead =
     total > 0 ? Math.round((money / total) * 100) / 100 : null;
@@ -591,7 +613,8 @@ export function buildPlan(input: {
         : `Suggested for ${total} guests`,
     lines_total: Math.round(money * 100) / 100,
     summary: `Built plan: ${collapsed.length} line(s), $${Math.round(money)} total` +
-      (perHead != null ? ` (~$${perHead}/guest).` : "."),
+      (perHead != null ? ` (~$${perHead}/guest).` : ".") +
+      (budget != null ? ` Budget $${budget}.` : ""),
   };
 }
 
