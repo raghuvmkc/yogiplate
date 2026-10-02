@@ -1,6 +1,7 @@
 import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
 import { calcOrderTotals } from "@/lib/pricing";
 import { scheduleOrderDayBefore } from "@/lib/reminders";
+import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import {
   getDb,
   invoiceNumber,
@@ -236,6 +237,39 @@ export async function fulfillPaidOrder(input: {
     }
     d.invoices.push(invoice);
   });
+
+  if (order.event_date) {
+    await upsertCateringBooking({
+      event_date: order.event_date,
+      customer_name: order.customer_name,
+      customer_email: order.customer_email,
+      customer_phone: order.customer_phone,
+      order_id: order.id,
+      draft: {
+        event_date: order.event_date,
+        event_time: "",
+        diet: order.diet_profile,
+        adults: order.guest_count,
+        kids: null,
+        city: order.delivery_city,
+        address: order.delivery_address,
+        notes: order.notes || "",
+        delivery_or_pickup: "delivery",
+        occasion: "",
+        meal: "",
+        budget: "",
+        setup_needs: "",
+        special_requirements: "",
+        package_tier: "",
+        confirmed: true,
+      },
+      items_summary: orderItems
+        .map((i) => `${i.quantity}× ${i.name}`)
+        .join("; "),
+      food_subtotal: order.subtotal,
+      status: "confirmed",
+    }).catch(() => null);
+  }
 
   try {
     await syncFulfilledToSupabase({

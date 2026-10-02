@@ -70,6 +70,29 @@ export type BuildPlanResult = {
   summary: string;
 };
 
+const MAX_PLAN_LINES = 12;
+
+/** Guest asked for a specific number of dishes ("7", "7 items"). */
+export function requestedDishCount(
+  memory: GuestEventMemory,
+  explicit?: number
+): number | null {
+  if (explicit != null && Number.isFinite(explicit)) {
+    const n = Math.round(explicit);
+    if (n >= 1 && n <= MAX_PLAN_LINES) return n;
+  }
+  for (const raw of memory.preferences || []) {
+    const t = String(raw).trim().toLowerCase();
+    const m =
+      t.match(/^(\d{1,2})$/) ||
+      t.match(/(\d{1,2})\s*(?:items?|dishes?|trays?|variet(?:y|ies))/);
+    if (!m) continue;
+    const n = Number(m[1]);
+    if (n >= 3 && n <= MAX_PLAN_LINES) return n;
+  }
+  return null;
+}
+
 export type CartHintLine = {
   menu_item_id: string;
   variant_id?: string;
@@ -290,7 +313,7 @@ function validateCart(
     timeline: [],
     warnings,
     notes,
-    lines: items.slice(0, 6).map((i) => ({
+    lines: items.slice(0, MAX_PLAN_LINES).map((i) => ({
       name: i.name,
       quantity: i.quantity,
       unit: i.unit,
@@ -316,6 +339,8 @@ export function buildPlan(input: {
   cart_items?: CartHintLine[];
   replace?: boolean;
   prefer_item_ids?: string[];
+  /** How many distinct dishes the guest asked for. */
+  dish_count?: number;
 }): BuildPlanResult {
   const { memory, catalog } = input;
   const declined = new Set(
@@ -526,6 +551,11 @@ export function buildPlan(input: {
   const already = new Set(lines.map((l) => l.menu_item_id));
   const picks: MenuItem[] = [];
   const comboNotes: string[] = [];
+  const requestedLines = requestedDishCount(memory, input.dish_count);
+  const generalCap =
+    requestedLines != null
+      ? Math.max(0, requestedLines - lines.length)
+      : PORTION_RULES.max_main_variety + 2;
 
   if (combo) {
     for (const id of combo.item_ids) {
@@ -582,19 +612,34 @@ export function buildPlan(input: {
     picks.push(chosen);
     already.add(chosen.id);
     rolesPresent.add(role);
-    if (picks.length >= PORTION_RULES.max_main_variety + 2) break;
+    if (picks.length >= generalCap) break;
   }
 
   // Prefer ids from caller last if still thin
   for (const id of preferIds) {
-    if (picks.length >= PORTION_RULES.max_main_variety + 2) break;
+    if (picks.length >= generalCap) break;
     const item = catalog.find((i) => i.id === id);
     if (!item || already.has(item.id)) continue;
     picks.push(item);
     already.add(item.id);
   }
 
-  if (!picks.length && generalGuests > 0) {
+  if (picks.length < generalCap) {
+    for (const item of pool) {
+      if (picks.length >= generalCap) break;
+      if (already.has(item.id)) continue;
+      const role = categoryToRole(item.category_id);
+      if (role === "appetizer" || role === "chaat") continue;
+      picks.push(item);
+      already.add(item.id);
+    }
+  }
+
+  if (requestedLines != null && picks.length > generalCap) {
+    picks.splice(generalCap);
+  }
+
+  if (!picks.length && generalGuests > 0 && generalCap > 0) {
     warnings.push("Could not find general menu items for the plan.");
   }
 
@@ -610,6 +655,17 @@ export function buildPlan(input: {
     capped.push(p);
   }
   const finalPicks = capped.length ? capped : picks;
+  if (requestedLines != null && finalPicks.length < generalCap) {
+    const have = new Set(finalPicks.map((p) => p.id));
+    for (const item of pool) {
+      if (finalPicks.length >= generalCap) break;
+      if (have.has(item.id)) continue;
+      const role = categoryToRole(item.category_id);
+      if (role === "appetizer" || role === "chaat") continue;
+      finalPicks.push(item);
+      have.add(item.id);
+    }
+  }
 
   const perDish = finalPicks.length
     ? generalGuests / finalPicks.length
@@ -663,7 +719,18 @@ export function buildPlan(input: {
     }
   }
 
-  const money = collapsed.reduce((s, l) => s + l.line_total, 0);
+  const displayCap = Math.min(
+    MAX_PLAN_LINES,
+    requestedLines != null ? requestedLines : collapsed.length
+  );
+  const shown = collapsed.slice(0, displayCap);
+  if (requestedLines != null && shown.length < requestedLines) {
+    notes.push(
+      `Guest asked for ${requestedLines} dishes; the catalog could support ${shown.length}.`
+    );
+  }
+
+  const money = shown.reduce((s, l) => s + l.line_total, 0);
   const perHead =
     total > 0 ? Math.round((money / total) * 100) / 100 : null;
 
@@ -674,7 +741,7 @@ export function buildPlan(input: {
       timeline.push({
         label: slot.label,
         time: slot.time,
-        items: collapsed.slice(0, 4).map((l) => l.name),
+        items: shown.slice(0, 4).map((l) => l.name),
       });
     }
   } else {
@@ -685,7 +752,7 @@ export function buildPlan(input: {
     timeline.push({
       label: "Single delivery",
       time: delivery,
-      items: collapsed.map((l) => l.name),
+      items: shown.map((l) => l.name),
     });
     if (mealTime) {
       notes.push(
@@ -698,18 +765,17 @@ export function buildPlan(input: {
 
   notes.push("Catch-all: any other allergies, Jain/vegan counts, or kids we should cover?");
 
-  const display = collapsed.slice(0, 6);
   return {
     ok: warnings.filter((w) => w.includes("Cannot") || w.includes("Missing")).length === 0,
     mode: "build",
-    items: collapsed,
+    items: shown,
     per_head: perHead,
     total: Math.round(money * 100) / 100,
     coverage,
     timeline,
     warnings,
     notes,
-    lines: display.map((i) => ({
+    lines: shown.map((i) => ({
       name: i.name,
       quantity: i.quantity,
       unit: i.unit,
@@ -721,7 +787,7 @@ export function buildPlan(input: {
         ? `Suggested for ${total} vegan guests`
         : `Suggested for ${total} guests`,
     lines_total: Math.round(money * 100) / 100,
-    summary: `Built plan: ${collapsed.length} line(s), $${Math.round(money)} total` +
+    summary: `Built plan: ${shown.length} line(s), $${Math.round(money)} total` +
       (perHead != null ? ` (~$${perHead}/guest).` : ".") +
       (budget != null ? ` Budget $${budget}.` : ""),
   };

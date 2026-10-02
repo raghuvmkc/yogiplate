@@ -7,6 +7,12 @@ import { runFollowthroughTool } from "@/lib/chat/tools/followthrough";
 import { runPlanningTool } from "@/lib/chat/tools/planning";
 import type { CartProposal, OrderDraft } from "@/lib/chat/order-draft";
 import type { ContactChannel } from "@/lib/types";
+import {
+  chefFormalName,
+  chefWithTitle,
+  getYogiPeople,
+  handoffTeamPhrase,
+} from "@/lib/people";
 
 export const TOOL_NAMES = [
   "time_context",
@@ -36,6 +42,10 @@ const PLANNING_TOOLS = new Set<ToolName>([
 ]);
 
 export function toolCatalogForPrompt(): string {
+  const people = getYogiPeople();
+  const chef = chefFormalName(people);
+  const chefTitled = chefWithTitle(people);
+  const team = handoffTeamPhrase(people);
   return `
 TOOLS (call these — do not invent their results)
 1) time_context — kitchen clock, lead time, lunch/dinner window.
@@ -48,12 +58,15 @@ TOOLS (call these — do not invent their results)
    date, guest_count, start_time, end_time, hold_id, lead_phone, lead_email, notes.
 4) order_draft — structured catering order capture + cart proposal.
    Args: action = update_order_draft | get_order_draft | read_back | propose_cart | confirm_order_draft;
-   patch: { occasion, event_date, event_time, adults, kids, diet, delivery_or_pickup, city, address, budget, setup_needs, meal, package_tier, notes };
+   patch: { occasion, event_date, event_time, adults, kids, diet, delivery_or_pickup, city, address, budget, setup_needs, special_requirements, meal, package_tier, notes };
    tier: good|better|best for propose_cart; confirmed: true|false for confirm_order_draft.
-5) followthrough — email quote, deposit link, reminder schedule.
-   Args: action = create_quote | send_quote | quote_status;
-   send_email (default true); quote_id for send/status.
-   Requires a cart proposal (order_draft propose_cart) first.
+5) followthrough — quote delivery + human handoff.
+   Args: action = create_quote | send_quote | quote_status | request_human;
+   send_email (default true), send_sms (default true); quote_id for send/status;
+   reason optional for request_human.
+   create_quote / send_quote emails AND texts the guest the quote link.
+   request_human emails + texts ${team} — then tell the guest you forwarded the summary and they will be contacted.
+   Requires a cart proposal (order_draft propose_cart) before create_quote.
 6) update_guest_memory — structured guest/event facts (source of truth for planning).
    Args: ops: [{op: add|update|remove|flag_conflict|ask_clarification, path, key?, value?, message?}].
    Paths: event, headcount, headcount.segments, requirement_groups, timeline, declined_suggestions, preferences, notes.
@@ -63,15 +76,16 @@ TOOLS (call these — do not invent their results)
 7) get_guest_memory — read canonical guest memory.
 8) get_menu — filter catalog by diet/allergy/kid tags. Args: diet, jain_ok, vegan, kid_friendly, spice_max, exclude_allergen, query, limit.
    Empty allergens on an item = unknown → excluded when filtering by allergy.
-9) get_chef_specialties — Mr. Radhavallabh / Stone Craft signatures only (never invent). Args: item_ids? optional filter.
+9) get_chef_specialties — ${chefTitled} / Stone Craft signatures only (never invent). Args: item_ids? optional filter.
 10) get_famous_combinations — classic catering pairings from our catalog (chole-bhature, pav bhaji, pani poori+dahi vada, rajma-chawal, paneer+roti+rice, etc.).
     Args: item_ids? (seed from cart), hints? (vegan|jain|italian|pizza|party|lunch…), limit?
     Use these when suggesting menus. Never invent combinations. Never recommend appetizer-only as a full meal.
 11) build_plan — deterministic plan from guest memory (qty/prices from code). Uses famous combos + balanced roles.
-    Args: replace (bool), prefer_item_ids[], mode build|validate.
+    Args: replace (bool), prefer_item_ids[], dish_count (number), mode build|validate.
+    If the guest asks for a number of dishes (for example 7), pass dish_count and store that number in preferences. Return every dish — never drop one to fit a shorter list.
     If cart already has items and replace is false: validates coverage (±30%) and returns notes — does not replace.
     If event.budget is set, engine fits cost without compromising guest satisfaction.
-    Copy engine lines/lines_total/lines_title into your answer JSON — do not invent prices.
+    Copy engine lines/lines_total/lines_title into your answer JSON — do not invent prices. The quotation uses this full menu.
 12) check_capacity — wraps calendar availability using memory date/headcount when args omitted.
 
 PLANNING FLOW
@@ -84,25 +98,29 @@ PLANNING FLOW
 - Budget: update_guest_memory event.budget then build_plan — never randomly drop items yourself.
 - Timing: ask meal time; build_plan schedules ~20 min before when no timeline.
 - Chef: mention specialties at most twice per conversation; only names from get_chef_specialties.
-- Severe allergy / unknown kitchen separation → WhatsApp escalate; never invent allergen safety.
+- Severe allergy / unknown kitchen separation → request_human escalate; never invent allergen safety.
 - After enough facts: build_plan, then present numbered lines from the tool.
 
 ORDER FLOW
-- Collect slots naturally: occasion → date/time → headcount → diet → delivery/pickup → city.
+- Collect slots naturally: occasion → date/time → headcount → diet → delivery/pickup → full delivery address → special_requirements.
+- Delivery address must be the street address: house or building number, street, city, and ZIP. Store that in patch.address. Store the city separately in patch.city. Never put only a city name in address. If the guest gives only a city, ask for the street address before create_quote. Pickup may use city only.
+- REQUIRED: ask special requirements before propose_cart / create_quote — allergies, utensils/plates, buffet vs plated, warming trays, religious notes, kid-meal notes, access/parking — or store “none”. Patch order_draft.special_requirements (setup_needs for serving/setup).
 - After useful facts: order_draft update_order_draft AND update_guest_memory.
 - When mostly complete: order_draft read_back → guest confirms → propose_cart → confirm_order_draft.
-- For email quote / deposit: followthrough create_quote (after propose_cart).
+- For quote / deposit: followthrough create_quote after build_plan. The quotation includes every planned dish, plus time, address, and special requests. When guest asks to send the quote → create_quote or send_quote (email + SMS). Do not replace the planned menu with a shorter package.
+- Guest wants a person / manager / owner call → followthrough request_human, then confirm you forwarded the summary to ${team}.
 - Site can also “Add to Build order”; guest finishes checkout on /order.
 
 When to call
-- Guest facts (nephew allergic, 3 Jain, 25 vegan…) → update_guest_memory.
+- Guest facts (allergies, Jain/vegan counts, headcount…) → update_guest_memory. Never invent headcount/diet/date.
 - Menu ideas / “best for vegan” → get_famous_combinations + build_plan (not random appetizer lists).
 - Chef specials → get_chef_specialties (then build_plan prefer_item_ids if guest wants).
 - Any date/timing → time_context AND check_capacity or catering_calendar.
 - Headcount / trays → catering_math or build_plan.
 - Order details / cart → order_draft.
-- Quote / deposit / email → followthrough.
-- If time_context.meets_lead_time is false: must check with Mr. Radhavallabh; offer WhatsApp; do not promise.
+- Quote / deposit / “send me the quote” / “text me the quote” → followthrough create_quote or send_quote.
+- Speak with a person / manager / ${people.chefName} / ${people.managerName} / call me → followthrough request_human.
+- If time_context.meets_lead_time is false: must check with ${chef}; use request_human; do not promise.
 
 Tool call JSON:
 {"type":"tool_call","tool":"build_plan","args":{"replace":true}}
@@ -148,6 +166,8 @@ export type ChatToolContext = {
   chat_session_id?: string;
   lastQuoteId?: string | null;
   setLastQuoteId?: (id: string) => void;
+  messages?: { role: string; content: string }[];
+  quoteUrl?: string | null;
   live_cart_items?: {
     menu_item_id: string;
     variant_id?: string;
@@ -177,6 +197,7 @@ export async function executeChatTool(
         session_id: ctx.chat_session_id || "anon",
         customer_email: ctx.lead_email || "unknown@guest.local",
         cartProposal: ctx.cartProposal,
+        setCartProposal: ctx.setCartProposal,
         live_cart_items: ctx.live_cart_items,
         lead_phone: ctx.lead_phone,
         lead_email: ctx.lead_email,
@@ -230,11 +251,15 @@ export async function executeChatTool(
           args.replace_cart != null ? Boolean(args.replace_cart) : undefined,
         confirmed:
           args.confirmed != null ? Boolean(args.confirmed) : undefined,
+        force_package:
+          args.force_package != null ? Boolean(args.force_package) : undefined,
       },
       {
         draft: ctx.orderDraft,
         setDraft: ctx.setOrderDraft,
         setCartProposal: ctx.setCartProposal,
+        sessionId: ctx.chat_session_id,
+        customerEmail: ctx.lead_email,
       }
     );
   }
@@ -245,6 +270,8 @@ export async function executeChatTool(
         quote_id: args.quote_id ? String(args.quote_id) : undefined,
         send_email:
           args.send_email != null ? Boolean(args.send_email) : undefined,
+        send_sms: args.send_sms != null ? Boolean(args.send_sms) : undefined,
+        reason: args.reason ? String(args.reason) : undefined,
       },
       {
         lead: {
@@ -258,6 +285,8 @@ export async function executeChatTool(
         chat_session_id: ctx.chat_session_id,
         lastQuoteId: ctx.lastQuoteId,
         setLastQuoteId: ctx.setLastQuoteId,
+        messages: ctx.messages,
+        quoteUrl: ctx.quoteUrl,
       }
     );
   }

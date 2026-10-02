@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getQuoteByToken } from "@/lib/quotes";
+import { getQuoteByToken, prepareQuotePresentation } from "@/lib/quotes";
 
 export async function GET(
   req: Request,
@@ -7,9 +7,10 @@ export async function GET(
 ) {
   const { id } = await ctx.params;
   const token = new URL(req.url).searchParams.get("t") || "";
-  const quote = await getQuoteByToken(id, token);
-  if (!quote) {
+  const found = await getQuoteByToken(id, token);
+  if (!found) {
     return NextResponse.json({ error: "Quote not found" }, { status: 404 });
   }
+  const quote = await prepareQuotePresentation(found);
   return NextResponse.json({ quote });
 }

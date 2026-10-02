@@ -126,6 +126,10 @@ export interface Quote {
   city?: string | null;
   address?: string | null;
   notes?: string | null;
+  setup_needs?: string | null;
+  special_requirements?: string | null;
+  /** Closing wish printed at the end of the quotation. */
+  closing_message?: string | null;
   items: QuoteLine[];
   food_subtotal: number;
   estimated_total: number;
@@ -322,6 +326,40 @@ export interface CalendarBlock {
   status: "active" | "released" | "expired";
   expires_at?: string | null;
   created_at: string;
+}
+
+/** Admin catering calendar entry from chat / quotes / orders. */
+export type CateringBookingStatus =
+  | "unconfirmed"
+  | "confirmed"
+  | "cancelled";
+
+export interface CateringBooking {
+  id: string;
+  event_date: string; // YYYY-MM-DD
+  event_time?: string | null;
+  status: CateringBookingStatus;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  occasion?: string | null;
+  guest_count?: number | null;
+  diet?: string | null;
+  meal?: string | null;
+  delivery_or_pickup?: string | null;
+  city?: string | null;
+  address?: string | null;
+  setup_needs?: string | null;
+  special_requirements?: string | null;
+  notes?: string | null;
+  items_summary?: string | null;
+  food_subtotal?: number | null;
+  quote_id?: string | null;
+  order_id?: string | null;
+  chat_session_id?: string | null;
+  admin_notes?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CartState {

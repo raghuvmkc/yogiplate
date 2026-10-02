@@ -1,3 +1,4 @@
+import { proposalFromLatestPlan } from "@/lib/chat/planned-menu";
 import { runCateringMath } from "@/lib/chat/tools/math";
 import {
   EMPTY_ORDER_DRAFT,
@@ -23,12 +24,16 @@ export type OrderToolInput = {
   tier?: "good" | "better" | "best";
   replace_cart?: boolean;
   confirmed?: boolean;
+  /** Use the short good/better/best package instead of the planned menu. */
+  force_package?: boolean;
 };
 
 export type OrderToolContext = {
   draft: OrderDraft;
   setDraft: (d: OrderDraft) => void;
   setCartProposal: (p: CartProposal | null) => void;
+  sessionId?: string;
+  customerEmail?: string;
 };
 
 export async function runOrderTool(
@@ -44,6 +49,9 @@ export async function runOrderTool(
     });
     ctx.setDraft(next);
     const missing = missingOrderSlots(next);
+    const addressNote = missing.includes("full_delivery_address")
+      ? " Ask for the full delivery address: house or building number, street, city, and ZIP. A city name alone is not enough — store the street address in address, and the city in city."
+      : "";
     return {
       ok: true,
       tool: "order_draft",
@@ -54,7 +62,7 @@ export async function runOrderTool(
       summary:
         missing.length === 0
           ? "Draft looks complete — call read_back next, then ask the guest to confirm."
-          : `Updated draft. Still helpful to learn: ${missing.join(", ")}.`,
+          : `Updated draft. Still helpful to learn: ${missing.join(", ")}.${addressNote}`,
     };
   }
 
@@ -85,6 +93,29 @@ export async function runOrderTool(
   }
 
   if (action === "propose_cart") {
+    if (input.force_package !== true && ctx.sessionId) {
+      const planned = await proposalFromLatestPlan({
+        session_id: ctx.sessionId,
+        customer_email: ctx.customerEmail,
+      });
+      if (planned?.items.length) {
+        ctx.setCartProposal(planned);
+        return {
+          ok: true,
+          tool: "order_draft",
+          action,
+          draft: ctx.draft,
+          food_subtotal: planned.items.reduce(
+            (s, i) => s + i.price * i.quantity,
+            0
+          ),
+          cart_proposal: planned,
+          readback: formatOrderReadback(ctx.draft),
+          summary: `Using all ${planned.items.length} dishes from the planned menu. create_quote must include every one of these lines.`,
+        };
+      }
+    }
+
     const tier = input.tier || ctx.draft.package_tier || "better";
     const headcount = headcountFromDraft(ctx.draft) || 20;
     const meal =

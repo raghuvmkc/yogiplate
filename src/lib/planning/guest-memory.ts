@@ -104,6 +104,15 @@ export interface GuestEventMemory {
   declined_suggestions: string[];
   preferences: string[];
   notes: string[];
+  /** Last build_plan menu. Quotes use this so dishes are not replaced by a short package. */
+  planned_menu?: {
+    menu_item_id: string;
+    variant_id?: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    price: number;
+  }[];
   change_log: MemoryChangeLogEntry[];
   conflicts: string[];
   chef_mentions: number;

@@ -46,13 +46,14 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       diet: null,
-      guestCount: 25,
+      guestCount: 0,
       eventDate: "",
       notes: "",
       items: [],
       couponCode: "",
       setDiet: (diet) => set({ diet }),
-      setGuestCount: (guestCount) => set({ guestCount }),
+      setGuestCount: (guestCount) =>
+        set({ guestCount: Math.max(0, Math.floor(guestCount) || 0) }),
       setEventDate: (eventDate) => set({ eventDate }),
       setNotes: (notes) => set({ notes }),
       setCouponCode: (couponCode) => set({ couponCode }),
@@ -115,6 +116,9 @@ export const useCartStore = create<CartStore>()(
           items: [],
           couponCode: "",
           notes: "",
+          guestCount: 0,
+          eventDate: "",
+          diet: null,
         }),
       applyProposal: (proposal) => {
         const lines: CartLine[] = (proposal.items || []).map((i) => ({
@@ -169,15 +173,23 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: "yogiplate-cart",
-      version: 2,
+      // New key forces a clean cart (old yogiplate-cart had sticky 25 / vegan / date).
+      name: "yogiplate-cart-v4",
+      version: 4,
       migrate: (persisted) => {
         const state = persisted as Partial<CartStore> & { items?: CartLine[] };
         const items = (state.items || []).map((i) => ({
           ...i,
           line_id: i.line_id || i.menu_item_id,
         }));
-        return { ...state, items } as CartStore;
+        return {
+          diet: null,
+          guestCount: 0,
+          eventDate: "",
+          notes: "",
+          couponCode: "",
+          items,
+        } as CartStore;
       },
     }
   )

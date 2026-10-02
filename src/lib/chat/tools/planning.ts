@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/store/local-db";
 import {
   getOrCreateGuestMemory,
+  persistGuestMemory,
   updateGuestMemoryOps,
 } from "@/lib/planning/guest-memory-store";
 import {
@@ -19,6 +20,7 @@ export type PlanningToolContext = {
   session_id: string;
   customer_email: string;
   cartProposal?: CartProposal | null;
+  setCartProposal?: (p: CartProposal | null) => void;
   /** Live cart from the page when available */
   live_cart_items?: {
     menu_item_id: string;
@@ -231,6 +233,10 @@ export async function runBuildPlan(
   const prefer_item_ids = Array.isArray(args.prefer_item_ids)
     ? args.prefer_item_ids.map((x) => String(x))
     : undefined;
+  const dish_count =
+    args.dish_count != null && Number.isFinite(Number(args.dish_count))
+      ? Number(args.dish_count)
+      : undefined;
 
   const plan = buildPlan({
     memory,
@@ -238,7 +244,39 @@ export async function runBuildPlan(
     cart_items,
     replace,
     prefer_item_ids,
+    dish_count,
   });
+
+  if (plan.mode === "build" && plan.items.length) {
+    memory.planned_menu = plan.items.map((i) => ({
+      menu_item_id: i.menu_item_id,
+      variant_id: i.variant_id,
+      name: i.name,
+      quantity: i.quantity,
+      unit: i.unit,
+      price: i.price,
+    }));
+    memory.updated_at = new Date().toISOString();
+    await persistGuestMemory(memory);
+    ctx.setCartProposal?.({
+      source: "plan",
+      guest_count: memory.headcount.total ?? undefined,
+      event_date: memory.event.date,
+      notes: memory.event.occasion
+        ? `Occasion: ${memory.event.occasion}`
+        : undefined,
+      replace: true,
+      items: memory.planned_menu.map((l) => ({
+        menu_item_id: l.menu_item_id,
+        variant_id: l.variant_id,
+        quantity: l.quantity,
+        name: l.name,
+        price: l.price,
+        unit: l.unit || "tray",
+      })),
+      summary: `Planned menu · ${plan.items.length} dishes.`,
+    });
+  }
 
   return {
     ...plan,

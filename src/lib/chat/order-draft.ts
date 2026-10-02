@@ -1,4 +1,5 @@
 import { menuItems } from "@/lib/data/menu-seed";
+import { isFullDeliveryAddress } from "@/lib/geocode";
 import type { DietTag } from "@/lib/types";
 
 export type OrderOccasion =
@@ -25,6 +26,8 @@ export type OrderDraft = {
   address: string;
   budget: string;
   setup_needs: string;
+  /** Allergies, utensils, serving style, religious needs, etc. */
+  special_requirements: string;
   meal: "lunch" | "dinner" | "brunch" | "";
   package_tier: "good" | "better" | "best" | "";
   confirmed: boolean;
@@ -48,6 +51,8 @@ export type CartProposal = {
   replace: boolean;
   items: CartProposalLine[];
   summary: string;
+  /** plan = dishes from build_plan; package = generic good/better/best set */
+  source?: "plan" | "package";
 };
 
 export const EMPTY_ORDER_DRAFT: OrderDraft = {
@@ -62,6 +67,7 @@ export const EMPTY_ORDER_DRAFT: OrderDraft = {
   address: "",
   budget: "",
   setup_needs: "",
+  special_requirements: "",
   meal: "",
   package_tier: "",
   confirmed: false,
@@ -100,6 +106,13 @@ export function mergeOrderDraft(
     (next as Record<string, unknown>)[k] = v;
   }
   if (patch.diet != null) next.diet = normalizeDiet(String(patch.diet)) || next.diet;
+  if (patch.address != null) {
+    const raw = String(patch.address).trim();
+    if (raw && !isFullDeliveryAddress(raw)) {
+      if (!next.city) next.city = raw;
+      next.address = isFullDeliveryAddress(prev.address) ? prev.address : "";
+    }
+  }
   if (patch.confirmed === true) next.confirmed = true;
   if (patch.confirmed === false) next.confirmed = false;
   return next;
@@ -114,8 +127,14 @@ export function missingOrderSlots(draft: OrderDraft): string[] {
   if (!draft.diet) missing.push("diet");
   if (!draft.meal) missing.push("meal");
   if (!draft.delivery_or_pickup) missing.push("delivery_or_pickup");
-  if (draft.delivery_or_pickup === "delivery" && !draft.city && !draft.address) {
-    missing.push("city_or_address");
+  if (
+    draft.delivery_or_pickup === "delivery" &&
+    !isFullDeliveryAddress(draft.address)
+  ) {
+    missing.push("full_delivery_address");
+  }
+  if (!draft.special_requirements && !draft.setup_needs) {
+    missing.push("special_requirements");
   }
   return missing;
 }
@@ -137,10 +156,19 @@ export function formatOrderReadback(draft: OrderDraft): string {
     `When: ${draft.event_date || "—"}${draft.event_time ? ` ${draft.event_time}` : ""} (${draft.meal || "meal TBD"})`,
     `Guests: ${guests}`,
     `Diet: ${draft.diet || "—"}`,
-    `Service: ${draft.delivery_or_pickup || "—"}${draft.city ? ` · ${draft.city}` : ""}`,
-    draft.address ? `Address: ${draft.address}` : null,
+    `Service: ${draft.delivery_or_pickup || "—"}`,
+    draft.delivery_or_pickup === "pickup"
+      ? draft.city
+        ? `City: ${draft.city}`
+        : null
+      : isFullDeliveryAddress(draft.address)
+        ? `Deliver to: ${draft.address}`
+        : "Deliver to: need house number, street, city, and ZIP",
     draft.budget ? `Budget: ${draft.budget}` : null,
     draft.setup_needs ? `Setup: ${draft.setup_needs}` : null,
+    draft.special_requirements
+      ? `Special requirements: ${draft.special_requirements}`
+      : null,
     draft.package_tier ? `Package: ${draft.package_tier}` : null,
     draft.notes ? `Notes: ${draft.notes}` : null,
   ].filter(Boolean);
@@ -220,5 +248,6 @@ export function buildCartProposalFromPackage(
     replace: true,
     items,
     summary,
+    source: "package",
   };
 }

@@ -2,7 +2,21 @@ import { sendInvoiceEmail } from "@/lib/invoice";
 import { formatMoney, round2 } from "@/lib/pricing";
 import { scheduleQuoteReminders } from "@/lib/reminders";
 import { upsertCustomerFromLead } from "@/lib/crm";
+import { composeQuoteClosing } from "@/lib/quote-closing";
+import {
+  buildQuoteEmailHtml,
+  buildQuoteEmailText,
+} from "@/lib/quote-email";
+import { isFullDeliveryAddress } from "@/lib/geocode";
+import { occasionFromNotes } from "@/lib/quote-format";
 import { publicQuoteUrl } from "@/lib/site";
+import {
+  managerNotifyEmails,
+  sendGuestQuoteSmtp,
+  smtpConfigured,
+} from "@/lib/smtp";
+import { sendSms, smsConfigured } from "@/lib/sms";
+import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import {
   getDb,
   quoteNumber,
@@ -93,7 +107,11 @@ export async function createQuote(input: {
     meal: input.draft.meal || null,
     delivery_or_pickup: input.draft.delivery_or_pickup || null,
     city: input.draft.city || null,
-    address: input.draft.address || null,
+    address: isFullDeliveryAddress(input.draft.address || "")
+      ? input.draft.address
+      : null,
+    setup_needs: input.draft.setup_needs || null,
+    special_requirements: input.draft.special_requirements || null,
     notes: [input.draft.notes, input.proposal.notes].filter(Boolean).join(" · ") || null,
     items,
     food_subtotal,
@@ -123,6 +141,21 @@ export async function createQuote(input: {
 
   if (quote.event_date) {
     await scheduleQuoteReminders(quote.id);
+    await upsertCateringBooking({
+      event_date: quote.event_date,
+      event_time: quote.event_time,
+      customer_name: quote.customer_name,
+      customer_email: quote.customer_email,
+      customer_phone: quote.customer_phone,
+      chat_session_id: quote.chat_session_id,
+      quote_id: quote.id,
+      draft: input.draft,
+      items_summary: quote.items
+        .map((i) => `${i.quantity}× ${i.name}`)
+        .join("; "),
+      food_subtotal: quote.food_subtotal,
+      status: "unconfirmed",
+    }).catch(() => null);
   }
 
   return { quote: (await getQuote(quote.id))!, url: publicQuoteUrl(quote), email: emailResult };
@@ -149,62 +182,119 @@ export async function listQuotes(): Promise<Quote[]> {
   );
 }
 
-export function buildQuoteEmailHtml(quote: Quote) {
-  const url = publicQuoteUrl(quote);
-  const rows = quote.items
-    .map(
-      (i) =>
-        `<tr>
-          <td style="padding:8px 0;border-bottom:1px solid #eee;">${i.name}</td>
-          <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">${i.quantity}</td>
-          <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatMoney(i.unit_price * i.quantity)}</td>
-        </tr>`
-    )
-    .join("");
+function quoteCc(guestEmail: string) {
+  const guest = guestEmail.trim().toLowerCase();
+  return managerNotifyEmails().filter((e) => e !== guest);
+}
 
-  return `<!DOCTYPE html>
-<html><body style="margin:0;padding:0;background:#fff;color:#1c1c1c;font-family:Georgia,serif;">
-<div style="max-width:640px;margin:0 auto;padding:40px 24px;">
-  <h1 style="font-size:28px;margin:0 0 4px;">Yogiplate</h1>
-  <p style="margin:0 0 24px;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Catering quote ${quote.quote_number}</p>
-  <p style="font-family:Arial,sans-serif;font-size:14px;color:#555;">
-    Hi ${quote.customer_name},<br/><br/>
-    Here is your proposed catering menu for
-    <strong>${quote.event_date || "your event"}</strong>
-    (${quote.guest_count || "TBD"} guests${quote.diet_profile ? ` · ${quote.diet_profile}` : ""}).
-  </p>
-  <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;margin-top:20px;">
-    <thead><tr>
-      <th style="text-align:left;">Item</th>
-      <th style="text-align:center;">Qty</th>
-      <th style="text-align:right;">Line</th>
-    </tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <p style="font-family:Arial,sans-serif;font-size:16px;margin-top:20px;text-align:right;">
-    Food estimate: <strong>${formatMoney(quote.food_subtotal)}</strong><br/>
-    Deposit (${quote.deposit_percent}%): <strong>${formatMoney(quote.deposit_amount)}</strong>
-  </p>
-  <p style="font-family:Arial,sans-serif;margin-top:28px;">
-    <a href="${url}" style="display:inline-block;background:#2a4a36;color:#fff;padding:12px 18px;text-decoration:none;font-weight:600;">
-      View quote &amp; pay deposit
-    </a>
-  </p>
-  <p style="font-family:Arial,sans-serif;font-size:13px;color:#777;margin-top:28px;">
-    Delivery and tax are confirmed at checkout. This quote expires ${new Date(quote.expires_at).toLocaleDateString()}.
-  </p>
-</div></body></html>`;
+/** Fill special requests, occasion, and the closing wish before the quotation is shown or sent. */
+export async function prepareQuotePresentation(quote: Quote): Promise<Quote> {
+  const db = await getDb();
+  const booking = (db.catering_bookings || []).find(
+    (b) => b.quote_id === quote.id
+  );
+  const special =
+    quote.special_requirements || booking?.special_requirements || null;
+  const setup = quote.setup_needs || booking?.setup_needs || null;
+  const occasion =
+    quote.occasion ||
+    occasionFromNotes(quote.notes) ||
+    booking?.occasion ||
+    null;
+  const address =
+    [quote.address, booking?.address].find((value) =>
+      isFullDeliveryAddress(String(value || ""))
+    ) || null;
+  const eventTime = quote.event_time || booking?.event_time || null;
+  let closing = String(quote.closing_message || "").trim();
+  if (!closing) {
+    closing = await composeQuoteClosing({
+      customerName: quote.customer_name,
+      occasion,
+      meal: quote.meal,
+      guestCount: quote.guest_count,
+      eventDate: quote.event_date,
+      city: quote.city,
+      diet: quote.diet_profile,
+    });
+  }
+  const next: Quote = {
+    ...quote,
+    special_requirements: special,
+    setup_needs: setup,
+    occasion,
+    address,
+    event_time: eventTime,
+    closing_message: closing,
+  };
+  const changed =
+    next.special_requirements !== quote.special_requirements ||
+    next.setup_needs !== quote.setup_needs ||
+    next.occasion !== quote.occasion ||
+    next.address !== quote.address ||
+    next.event_time !== quote.event_time ||
+    next.closing_message !== quote.closing_message;
+  if (changed) {
+    await updateDb((d) => {
+      const q = (d.quotes || []).find((x) => x.id === quote.id);
+      if (!q) return;
+      q.special_requirements = next.special_requirements;
+      q.setup_needs = next.setup_needs;
+      q.occasion = next.occasion;
+      q.address = next.address;
+      q.event_time = next.event_time;
+      q.closing_message = next.closing_message;
+      q.updated_at = new Date().toISOString();
+    });
+  }
+  return next;
 }
 
 export async function emailQuote(quoteId: string) {
-  const quote = await getQuote(quoteId);
-  if (!quote) return { sent: false as const, reason: "not_found" };
+  const existing = await getQuote(quoteId);
+  if (!existing) return { sent: false as const, reason: "not_found" };
+  if (!existing.customer_email) {
+    return { sent: false as const, reason: "missing_email" };
+  }
+  const quote = await prepareQuotePresentation(existing);
+  const db = await getDb();
 
-  const result = await sendInvoiceEmail({
+  const subject = `Yogiplate catering quotation ${quote.quote_number}`;
+  const emailCtx = {
+    closing: quote.closing_message || "",
+    businessPhone: db.settings.business_phone,
+    businessEmail: db.settings.business_email,
+  };
+  const html = buildQuoteEmailHtml(quote, emailCtx);
+  const text = buildQuoteEmailText(quote, emailCtx);
+  const cc = quoteCc(quote.customer_email);
+
+  let result: { sent: boolean; reason?: string } = await sendInvoiceEmail({
     to: quote.customer_email,
-    subject: `Yogiplate catering quote ${quote.quote_number}`,
-    html: buildQuoteEmailHtml(quote),
+    cc,
+    subject,
+    html,
   });
+
+  // Prefer Stone Craft SMTP when Resend is not configured
+  if (!result.sent && smtpConfigured()) {
+    try {
+      await sendGuestQuoteSmtp({
+        to: quote.customer_email,
+        cc,
+        name: quote.customer_name,
+        subject,
+        text,
+        html,
+      });
+      result = { sent: true };
+    } catch (e) {
+      result = {
+        sent: false,
+        reason: e instanceof Error ? e.message : "smtp_failed",
+      };
+    }
+  }
 
   await updateDb((d) => {
     const q = (d.quotes || []).find((x) => x.id === quoteId);
@@ -221,6 +311,61 @@ export async function emailQuote(quoteId: string) {
     : { sent: false as const, reason: result.reason || "send_failed" };
 }
 
+export async function smsQuote(quoteId: string) {
+  const quote = await getQuote(quoteId);
+  if (!quote) return { sent: false as const, reason: "not_found" };
+  if (!smsConfigured()) {
+    return { sent: false as const, reason: "twilio_not_configured" };
+  }
+  if (!quote.customer_phone) {
+    return { sent: false as const, reason: "missing_phone" };
+  }
+
+  const url = publicQuoteUrl(quote);
+  const body = [
+    `Yogiplate catering quote ${quote.quote_number}`,
+    `Hi ${quote.customer_name.split(" ")[0] || "there"},`,
+    `Food estimate ${formatMoney(quote.food_subtotal)} · deposit ${formatMoney(quote.deposit_amount)}.`,
+    `View & pay: ${url}`,
+  ].join("\n");
+
+  const result = await sendSms(quote.customer_phone, body);
+  if (!result.ok) {
+    return { sent: false as const, reason: result.error };
+  }
+
+  await updateDb((d) => {
+    const q = (d.quotes || []).find((x) => x.id === quoteId);
+    if (!q) return;
+    q.updated_at = new Date().toISOString();
+    if (q.status === "draft") q.status = "sent";
+  });
+
+  return { sent: true as const, to: result.to };
+}
+
+/** Email + SMS the quote to the guest. */
+export async function deliverQuoteToGuest(
+  quoteId: string,
+  opts?: { email?: boolean; sms?: boolean }
+) {
+  const wantEmail = opts?.email !== false;
+  const wantSms = opts?.sms !== false;
+  const email = wantEmail
+    ? await emailQuote(quoteId)
+    : { sent: false as const, reason: "skipped" };
+  const sms = wantSms
+    ? await smsQuote(quoteId)
+    : { sent: false as const, reason: "skipped" };
+  return {
+    ok: email.sent || sms.sent,
+    email_sent: email.sent,
+    email_reason: "reason" in email ? email.reason : undefined,
+    sms_sent: sms.sent,
+    sms_reason: "reason" in sms ? sms.reason : undefined,
+  };
+}
+
 export async function markQuoteDepositPaid(input: {
   quoteId: string;
   stripeSessionId?: string | null;
@@ -233,5 +378,40 @@ export async function markQuoteDepositPaid(input: {
     q.stripe_deposit_session_id = input.stripeSessionId || null;
     q.updated_at = q.deposit_paid_at;
   });
-  return getQuote(input.quoteId);
+  const quote = await getQuote(input.quoteId);
+  if (quote?.event_date) {
+    await upsertCateringBooking({
+      event_date: quote.event_date,
+      event_time: quote.event_time,
+      customer_name: quote.customer_name,
+      customer_email: quote.customer_email,
+      customer_phone: quote.customer_phone,
+      chat_session_id: quote.chat_session_id,
+      quote_id: quote.id,
+      draft: {
+        event_date: quote.event_date,
+        event_time: quote.event_time || "",
+        diet: quote.diet_profile,
+        occasion: quote.occasion || "",
+        meal: (quote.meal as "lunch") || "",
+        delivery_or_pickup: (quote.delivery_or_pickup as "delivery") || "",
+        city: quote.city || "",
+        address: quote.address || "",
+        notes: quote.notes || "",
+        adults: quote.guest_count || null,
+        kids: null,
+        budget: "",
+        setup_needs: quote.setup_needs || "",
+        special_requirements: quote.special_requirements || "",
+        package_tier: "",
+        confirmed: true,
+      },
+      items_summary: quote.items
+        .map((i) => `${i.quantity}× ${i.name}`)
+        .join("; "),
+      food_subtotal: quote.food_subtotal,
+      status: "confirmed",
+    }).catch(() => null);
+  }
+  return quote;
 }

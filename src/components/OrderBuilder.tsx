@@ -339,9 +339,13 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
             <span className="font-medium text-foreground">Guest count</span>
             <input
               type="number"
-              min={10}
-              value={guestCount}
-              onChange={(e) => setGuestCount(Number(e.target.value) || 10)}
+              min={1}
+              placeholder="e.g. 25"
+              value={guestCount > 0 ? guestCount : ""}
+              onChange={(e) => {
+                const raw = e.target.value.trim();
+                setGuestCount(raw === "" ? 0 : Number(raw) || 0);
+              }}
               className="mt-1.5 w-full border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
           </label>

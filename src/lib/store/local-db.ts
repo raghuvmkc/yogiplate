@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/menu-seed";
 import type {
   CalendarBlock,
+  CateringBooking,
   ChannelThread,
   ChatSessionLog,
   Coupon,
@@ -36,6 +37,7 @@ export interface LocalDatabase {
   invoices: Invoice[];
   settings: SiteSettings;
   calendar_blocks?: CalendarBlock[];
+  catering_bookings?: CateringBooking[];
   quotes?: Quote[];
   reminders?: Reminder[];
   chat_sessions?: ChatSessionLog[];
@@ -90,6 +92,7 @@ async function createSeedDb(): Promise<LocalDatabase> {
       quote_validity_days: 7,
     },
     calendar_blocks: [],
+    catering_bookings: [],
     quotes: [],
     reminders: [],
     chat_sessions: [],
@@ -152,6 +155,10 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
   }
   if (!db.calendar_blocks) {
     db.calendar_blocks = [];
+    changed = true;
+  }
+  if (!db.catering_bookings) {
+    db.catering_bookings = [];
     changed = true;
   }
   if (!db.quotes) {

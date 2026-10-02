@@ -1,9 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatMoney } from "@/lib/pricing";
+import {
+  prettyDate,
+  prettyLabel,
+  prettyTime,
+  deliveryAddressLine,
+  resolveOccasion,
+  serviceLine,
+} from "@/lib/quote-format";
 import type { Quote } from "@/lib/types";
 
 export default function PublicQuotePage() {
@@ -83,12 +92,6 @@ export default function PublicQuotePage() {
         <Link href="/" className="text-sm font-semibold text-accent-deep">
           ← Yogiplate
         </Link>
-        <h1
-          className="mt-6 text-4xl tracking-tight"
-          style={{ fontFamily: "var(--font-display), Georgia, serif" }}
-        >
-          Catering quote
-        </h1>
 
         {error ? (
           <p className="mt-8 border border-line bg-white px-4 py-3 text-sm text-accent-deep">
@@ -101,73 +104,155 @@ export default function PublicQuotePage() {
         ) : null}
 
         {quote ? (
-          <div className="mt-8 border border-line bg-white p-6">
-            <p className="text-sm text-muted">
-              {quote.quote_number} · {quote.status.replace(/_/g, " ")}
-            </p>
-            <p className="mt-2 text-lg font-medium">{quote.customer_name}</p>
-            <p className="text-sm text-muted">
-              Event {quote.event_date || "TBD"}
-              {quote.event_time ? ` · ${quote.event_time}` : ""} ·{" "}
-              {quote.guest_count || "TBD"} guests · {quote.diet_profile}
-            </p>
-            {quote.city ? (
-              <p className="mt-1 text-sm text-muted">
-                {quote.delivery_or_pickup || "service"} · {quote.city}
+          <div className="mt-8 border border-line bg-white">
+            <div className="border-b border-[#1e3d2f] bg-[#1e3d2f] px-6 py-1" />
+            <div className="px-6 py-8 sm:px-8">
+              <Image
+                src="/images/Yogiplate_Logo_transparent.png"
+                alt="Yogiplate"
+                width={220}
+                height={220}
+                className="mx-auto h-auto w-40"
+                priority
+              />
+              <p className="mt-4 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-logo-gold-deep">
+                Catering quotation
               </p>
-            ) : null}
+              <h1
+                className="mt-2 text-center text-3xl text-accent-deep"
+                style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+              >
+                Prepared for {quote.customer_name}
+              </h1>
+              <p className="mt-1 text-center text-sm text-muted">
+                {quote.quote_number} · {quote.status.replace(/_/g, " ")}
+              </p>
 
-            <ul className="mt-6 divide-y divide-line border-t border-line">
-              {quote.items.map((i) => (
-                <li
-                  key={`${i.menu_item_id}-${i.variant_id || ""}-${i.name}`}
-                  className="flex justify-between gap-4 py-3 text-sm"
+              <dl className="mt-8 space-y-2 border-t border-line pt-5 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">When</dt>
+                  <dd className="text-right">
+                    {[prettyDate(quote.event_date), prettyTime(quote.event_time)]
+                      .filter(Boolean)
+                      .join(" · ") || "To be confirmed"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Guests</dt>
+                  <dd>{quote.guest_count || "To be confirmed"}</dd>
+                </div>
+                {resolveOccasion(quote) ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">Occasion</dt>
+                    <dd className="text-right">{resolveOccasion(quote)}</dd>
+                  </div>
+                ) : null}
+                {quote.meal ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">Meal</dt>
+                    <dd>{prettyLabel(quote.meal)}</dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Diet</dt>
+                  <dd>{prettyLabel(quote.diet_profile)}</dd>
+                </div>
+                {serviceLine(quote) ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">Service</dt>
+                    <dd className="max-w-[16rem] text-right">{serviceLine(quote)}</dd>
+                  </div>
+                ) : null}
+                {deliveryAddressLine(quote) ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">Deliver to</dt>
+                    <dd className="max-w-[16rem] text-right">{deliveryAddressLine(quote)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+
+              {quote.special_requirements || quote.setup_needs ? (
+                <div className="mt-5 border-l-[3px] border-accent-deep bg-[#f4f7f4] px-4 py-3 text-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-deep">
+                    Special requests
+                  </p>
+                  <p className="mt-1 text-foreground">
+                    {quote.special_requirements}
+                    {quote.setup_needs &&
+                    quote.setup_needs !== quote.special_requirements
+                      ? ` Setup: ${quote.setup_needs}`
+                      : ""}
+                  </p>
+                </div>
+              ) : null}
+
+              <h2
+                className="mt-8 text-xl text-accent-deep"
+                style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+              >
+                Proposed menu
+              </h2>
+              <ul className="mt-3 divide-y divide-line border-t border-line">
+                {quote.items.map((i) => (
+                  <li
+                    key={`${i.menu_item_id}-${i.variant_id || ""}-${i.name}`}
+                    className="flex justify-between gap-4 py-3 text-sm"
+                  >
+                    <span>
+                      {i.quantity}× {i.name}
+                    </span>
+                    <span>{formatMoney(i.unit_price * i.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6 space-y-1 text-right text-sm">
+                <p>Food estimate: {formatMoney(quote.food_subtotal)}</p>
+                <p className="text-base font-semibold text-accent-deep">
+                  Deposit ({quote.deposit_percent}%):{" "}
+                  {formatMoney(quote.deposit_amount)}
+                </p>
+                <p className="text-xs text-muted">
+                  Delivery and tax confirmed when the order is finalized. Valid through{" "}
+                  {new Date(quote.expires_at).toLocaleDateString()}.
+                </p>
+              </div>
+
+              {quote.closing_message ? (
+                <p
+                  className="mt-8 border-t border-line pt-6 text-base italic leading-relaxed text-accent-deep"
+                  style={{ fontFamily: "var(--font-display), Georgia, serif" }}
                 >
-                  <span>
-                    {i.quantity}× {i.name}
-                  </span>
-                  <span>{formatMoney(i.unit_price * i.quantity)}</span>
-                </li>
-              ))}
-            </ul>
+                  {quote.closing_message}
+                </p>
+              ) : null}
 
-            <div className="mt-6 space-y-1 text-right text-sm">
-              <p>Food estimate: {formatMoney(quote.food_subtotal)}</p>
-              <p className="text-base font-semibold">
-                Deposit ({quote.deposit_percent}%):{" "}
-                {formatMoney(quote.deposit_amount)}
-              </p>
-              <p className="text-xs text-muted">
-                Delivery and tax confirmed at full checkout. Expires{" "}
-                {new Date(quote.expires_at).toLocaleDateString()}.
+              {note ? (
+                <p className="mt-4 text-sm font-medium text-accent-deep">{note}</p>
+              ) : null}
+
+              {quote.status === "deposit_paid" || quote.status === "accepted" ? (
+                <p className="mt-6 text-sm font-semibold text-accent-deep">
+                  Deposit received — our kitchen will follow up to finalize your order.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void payDeposit()}
+                  className="mt-6 w-full bg-accent-deep px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent disabled:opacity-50"
+                >
+                  {busy ? "Starting checkout…" : "Pay deposit"}
+                </button>
+              )}
+
+              <p className="mt-4 text-center text-xs text-muted">
+                Prefer to build the full menu yourself?{" "}
+                <Link href="/order" className="text-accent-deep underline">
+                  Open Build order
+                </Link>
               </p>
             </div>
-
-            {note ? (
-              <p className="mt-4 text-sm font-medium text-accent-deep">{note}</p>
-            ) : null}
-
-            {quote.status === "deposit_paid" || quote.status === "accepted" ? (
-              <p className="mt-6 text-sm font-semibold text-accent-deep">
-                Deposit received — our kitchen will follow up to finalize your order.
-              </p>
-            ) : (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void payDeposit()}
-                className="mt-6 w-full bg-accent-deep px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent disabled:opacity-50"
-              >
-                {busy ? "Starting checkout…" : "Pay deposit"}
-              </button>
-            )}
-
-            <p className="mt-4 text-center text-xs text-muted">
-              Prefer to build the full menu yourself?{" "}
-              <Link href="/order" className="text-accent-deep underline">
-                Open Build order
-              </Link>
-            </p>
           </div>
         ) : null}
       </div>

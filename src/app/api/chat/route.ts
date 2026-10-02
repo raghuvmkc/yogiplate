@@ -26,7 +26,7 @@ const BodySchema = z.object({
     .object({
       page: z.string().optional(),
       diet: z.string().nullable().optional(),
-      guest_count: z.number().optional(),
+      guest_count: z.number().nullable().optional(),
       event_date: z.string().optional(),
       notes: z.string().optional(),
       item_count: z.number().optional(),
@@ -66,6 +66,7 @@ const BodySchema = z.object({
     })
     .optional(),
   session_id: z.string().min(4).max(80).optional(),
+  voice_mode: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -123,6 +124,7 @@ export async function POST(req: Request) {
         | undefined,
       session_id: body.session_id,
       channel: "web_chat",
+      voice_mode: Boolean(body.voice_mode),
     });
     return NextResponse.json(result);
   } catch (err) {

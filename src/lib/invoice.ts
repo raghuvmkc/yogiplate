@@ -62,6 +62,7 @@ export function buildInvoiceHtml(
 
 export async function sendInvoiceEmail(input: {
   to: string;
+  cc?: string[];
   subject: string;
   html: string;
 }) {
@@ -78,6 +79,7 @@ export async function sendInvoiceEmail(input: {
   await resend.emails.send({
     from,
     to: input.to,
+    cc: input.cc?.length ? input.cc : undefined,
     subject: input.subject,
     html: input.html,
   });

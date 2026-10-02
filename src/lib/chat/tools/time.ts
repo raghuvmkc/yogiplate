@@ -1,3 +1,5 @@
+import { chefWithTitle } from "@/lib/people";
+
 export type TimeContextInput = {
   event_date?: string;
   event_time?: string;
@@ -115,7 +117,7 @@ export function runTimeContext(input: TimeContextInput = {}) {
       ? `Standard lead time policy: ${leadRequired} hours.`
       : meets_lead_time
         ? `Meets ${leadRequired}h lead-time policy.`
-        : `Does NOT meet ${leadRequired}h lead-time policy — tell the guest you must check with Mr. Radhavallabh (Chef and Founder) before confirming; do not promise the date; offer WhatsApp handoff and/or a later date.`,
+        : `Does NOT meet ${leadRequired}h lead-time policy — tell the guest you must check with ${chefWithTitle()} before confirming; do not promise the date; offer request_human handoff and/or a later date.`,
   ];
 
   return {

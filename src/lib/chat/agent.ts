@@ -22,10 +22,25 @@ import { getSettings } from "@/lib/repo";
 import type { ContactChannel } from "@/lib/types";
 import {
   getOrCreateGuestMemory,
+  updateGuestMemoryOps,
 } from "@/lib/planning/guest-memory-store";
 import { summarizeGuestMemory } from "@/lib/planning/guest-memory";
 import { getChefSpecialties } from "@/lib/planning/chef-specialties";
 import { getDb } from "@/lib/store/local-db";
+import { resolveRelativeEventDate } from "@/lib/chat/relative-date";
+import {
+  addressCandidateForTurn,
+  verifyAddress,
+  type AddressVerifyResult,
+} from "@/lib/geocode";
+import { notifyManagersOfHumanRequest } from "@/lib/handoff";
+import {
+  chefWithTitle,
+  escapeRegExp,
+  getYogiPeople,
+  handoffTeamPhrase,
+} from "@/lib/people";
+import { upsertCateringBooking } from "@/lib/calendar-bookings";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
 
@@ -48,7 +63,7 @@ export type AgentLead = {
 export type AgentOrderContext = {
   page?: string;
   diet?: string | null;
-  guest_count?: number;
+  guest_count?: number | null;
   event_date?: string;
   notes?: string;
   item_count?: number;
@@ -70,6 +85,8 @@ export type AgentTurnInput = {
   order_draft?: Partial<OrderDraft>;
   session_id?: string;
   channel?: ContactChannel;
+  /** True when guest is on the voice Call path — keep spoken replies short. */
+  voice_mode?: boolean;
 };
 
 export type AgentMenuLine = {
@@ -96,12 +113,16 @@ export type AgentTurnResult = {
   quote_url: string | null;
   skills_used: string[];
   tools_used: string[];
+  /** Geocoded guest address for on-screen confirmation */
+  verified_address: AddressVerifyResult | null;
+  /** Voice call: latest guest turn was unrelated to Yogiplate catering. */
+  off_topic: boolean;
 };
 
 function parseMenuLines(raw: unknown): AgentMenuLine[] {
   if (!Array.isArray(raw)) return [];
   const out: AgentMenuLine[] = [];
-  for (const item of raw.slice(0, 10)) {
+  for (const item of raw.slice(0, 12)) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
     const name = String(row.name || row.item || "").trim();
@@ -130,7 +151,14 @@ function parseMenuLines(raw: unknown): AgentMenuLine[] {
   return out;
 }
 
+/**
+ * Chat transfer to WhatsApp — disabled for now; set true to re-activate later.
+ * (Owner E.164 env can stay configured; UI + agent offers stay off until this is true.)
+ */
+const WHATSAPP_CHAT_TRANSFER_ENABLED = false;
+
 function whatsappConfigured() {
+  if (!WHATSAPP_CHAT_TRANSFER_ENABLED) return false;
   const n =
     process.env.OWNER_WHATSAPP_E164 ||
     process.env.NEXT_PUBLIC_OWNER_WHATSAPP_E164 ||
@@ -144,6 +172,34 @@ function ownerWhatsAppE164() {
     process.env.NEXT_PUBLIC_OWNER_WHATSAPP_E164 ||
     "";
   return raw.replace(/\D/g, "");
+}
+
+const CATERING_TURN =
+  /\b(yogi|cater|menu|food|dish|item|tray|guest|people|event|wedding|birthday|party|baby|shower|naming|jain|vegan|vegetarian|deliver|pickup|quote|order|paneer|pizza|lunch|dinner|brunch|diet|allerg|address|chef|deposit|buffet|thali|roti|rice|dessert|spice|onion|garlic|mushroom|book|corporate|invoice|pay|kids?|adults?|date|time|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mild)\b/i;
+
+const SOCIAL_TURN =
+  /^(hi|hello|hey|namaste|thanks|thank you|ok|okay|yes|yeah|yep|no|nope|sure|correct|right|please|goodbye|bye|good morning|good evening|good afternoon|how are you|i am good|i'm good|im good|not now|maybe later)[.!?, ]*$/i;
+
+const CALL_CHECK_TURN =
+  /\b(hear me|are you there|can you repeat|say that again|pardon|one moment|hold on|just a (?:second|minute)|excuse me|what did you say|come again|you there)\b/i;
+
+/** Voice only. True when this turn is clearly not about catering. */
+function voiceTurnIsOffTopic(text: string, modelFlag: boolean): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (SOCIAL_TURN.test(t)) return false;
+  if (CALL_CHECK_TURN.test(t)) return false;
+  if (CATERING_TURN.test(t)) return false;
+  if (/@|\d{3,}/.test(t)) return false;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (
+    words.length <= 4 &&
+    /\b(today|tomorrow|tonight|next week|this weekend)\b/i.test(t)
+  ) {
+    return false;
+  }
+  if (words.length >= 3) return true;
+  return modelFlag;
 }
 
 function stripCodeFences(text: string): string {
@@ -195,7 +251,7 @@ function extractPartialAnswer(text: string): Record<string, unknown> | null {
     const objRe =
       /\{\s*"name"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\s*"quantity"\s*:\s*(\d+)\s*(?:,\s*"unit"\s*:\s*"((?:\\.|[^"\\])*)")?(?:,\s*"price"\s*:\s*([\d.]+))?(?:,\s*"line_total"\s*:\s*([\d.]+))?/g;
     let m: RegExpExecArray | null;
-    while ((m = objRe.exec(linesBlock[1])) && lines.length < 10) {
+    while ((m = objRe.exec(linesBlock[1])) && lines.length < 12) {
       const name = m[1].replace(/\\"/g, '"').trim();
       if (!name) continue;
       const quantity = Math.max(1, Number(m[2]) || 1);
@@ -335,16 +391,76 @@ function modelText(result: {
 }
 
 function mergeLead(prev: AgentLead, next: Partial<AgentLead>): AgentLead {
+  const nextGuests =
+    next.guest_count != null && Number(next.guest_count) > 0
+      ? Number(next.guest_count)
+      : null;
   return {
     name: next.name || prev.name,
     phone: next.phone || prev.phone,
     email: next.email || prev.email,
     event_date: next.event_date || prev.event_date || "",
     guest_count:
-      next.guest_count === undefined ? prev.guest_count ?? null : next.guest_count,
+      next.guest_count === undefined
+        ? prev.guest_count != null && prev.guest_count > 0
+          ? prev.guest_count
+          : null
+        : nextGuests,
     diet: next.diet || prev.diet || "",
     city: next.city || prev.city || "",
     notes: next.notes || prev.notes || "",
+  };
+}
+
+/** Drop Guests/Diet/Date chips unless we actually know those facts. */
+function sanitizeHighlights(
+  highlights: { label: string; value: string }[],
+  known: { guests: number | null; diet: string; date: string }
+): { label: string; value: string }[] {
+  return highlights.filter((h) => {
+    const label = h.label.toLowerCase();
+    const value = h.value.toLowerCase();
+    if (/guest|headcount|people|pax/.test(label)) {
+      if (known.guests == null || known.guests <= 0) return false;
+      // Block classic invented demo values when not confirmed
+      if (/\b25\b/.test(value) && known.guests !== 25) return false;
+      return true;
+    }
+    if (/diet|menu path|cuisine/.test(label)) {
+      if (!known.diet) return false;
+      if (/vegan/.test(value) && !/vegan/i.test(known.diet)) return false;
+      return true;
+    }
+    if (/^date$|event date|when|day/.test(label)) {
+      if (!known.date) return false;
+      if (/sep(t)?\.?\s*26|2026-09-26/.test(value) && !/2026-09-26|sep(t)?\.?\s*26/i.test(known.date)) {
+        return false;
+      }
+      return true;
+    }
+    return true;
+  });
+}
+
+function slimOrderContext(ctx: AgentOrderContext | undefined) {
+  if (!ctx) return null;
+  const guest_count =
+    ctx.guest_count != null && Number(ctx.guest_count) > 0
+      ? Number(ctx.guest_count)
+      : null;
+  const event_date = String(ctx.event_date || "").trim();
+  // Diet from menu browse alone is not an order fact — only when cart has items.
+  const diet =
+    (ctx.item_count || 0) > 0 && ctx.diet ? String(ctx.diet).trim() : "";
+  return {
+    page: ctx.page || "/",
+    diet: diet || null,
+    guest_count,
+    event_date: event_date || "",
+    notes: ctx.notes || "",
+    item_count: ctx.item_count || 0,
+    subtotal: ctx.subtotal || 0,
+    items: ctx.items || [],
   };
 }
 
@@ -437,12 +553,16 @@ export async function runFrontDeskTurn(
 
   const waReady = whatsappConfigured();
   const settings = await getSettings().catch(() => null);
+  const voiceMode = Boolean(input.voice_mode);
   const system = [
     buildLeanFrontDeskSystemPrompt(waReady),
     "",
     toolCatalogForPrompt(),
     channel !== "web_chat"
       ? `\nCHANNEL: This turn arrived via ${channel}. Keep replies concise for that medium.`
+      : "",
+    voiceMode
+      ? "\nVOICE CALL MODE: Guest is on a live phone-style call. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
       : "",
   ].join("\n");
 
@@ -460,28 +580,33 @@ export async function runFrontDeskTurn(
     systemInstruction: system,
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 2200,
+      maxOutputTokens: voiceMode ? 900 : 2200,
       responseMimeType: "application/json",
     },
   });
+
+  const slimCart = slimOrderContext(input.order_context);
+  const ctxGuests = slimCart?.guest_count ?? null;
+  const leadGuests =
+    input.lead.guest_count != null && Number(input.lead.guest_count) > 0
+      ? Number(input.lead.guest_count)
+      : null;
+  const ctxDiet = String(slimCart?.diet || "").trim();
+  const ctxDate = String(slimCart?.event_date || "").trim();
+  const draftAdults =
+    input.order_draft?.adults != null && Number(input.order_draft.adults) > 0
+      ? Number(input.order_draft.adults)
+      : null;
 
   let orderDraft: OrderDraft = mergeOrderDraft(EMPTY_ORDER_DRAFT, {
     ...(input.order_draft || {}),
     event_date:
       input.order_draft?.event_date ||
       input.lead.event_date ||
-      input.order_context?.event_date ||
+      ctxDate ||
       "",
-    adults:
-      input.order_draft?.adults ??
-      input.lead.guest_count ??
-      input.order_context?.guest_count ??
-      null,
-    diet:
-      input.order_draft?.diet ||
-      input.lead.diet ||
-      input.order_context?.diet ||
-      "",
+    adults: draftAdults ?? leadGuests ?? ctxGuests ?? null,
+    diet: input.order_draft?.diet || input.lead.diet || ctxDiet || "",
     city: input.order_draft?.city || input.lead.city || "",
     notes: input.order_draft?.notes || input.lead.notes || "",
   } as Partial<OrderDraft>);
@@ -489,11 +614,45 @@ export async function runFrontDeskTurn(
   let lastQuoteId: string | null = null;
   let quoteUrl: string | null = null;
   let lastHoldId: string | null = null;
+  let humanHandoffSent = false;
 
-  const guestMemory = await getOrCreateGuestMemory({
+  let guestMemory = await getOrCreateGuestMemory({
     session_id: sessionId,
     customer_email: input.lead.email || "unknown@guest.local",
   }).catch(() => null);
+
+  // Persist relative spoken dates (e.g. "next Thursday") into draft + memory
+  // so voice mode cannot "forget" and re-ask on the next turn.
+  const resolvedDate = resolveRelativeEventDate(last.content);
+  let resolvedDateHint = "";
+  if (resolvedDate && !String(orderDraft.event_date || "").trim()) {
+    orderDraft = mergeOrderDraft(orderDraft, {
+      event_date: resolvedDate.iso,
+    });
+    resolvedDateHint = `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Treat this as known — do not re-ask for the date.]`;
+    try {
+      const memResult = await updateGuestMemoryOps({
+        session_id: sessionId,
+        customer_email: input.lead.email || "unknown@guest.local",
+        ops: [
+          {
+            op: "update",
+            path: "event.date",
+            value: resolvedDate.iso,
+          },
+        ],
+      });
+      guestMemory = memResult.memory;
+    } catch {
+      /* keep draft even if memory write fails */
+    }
+  } else if (
+    resolvedDate &&
+    String(orderDraft.event_date || "").trim() === resolvedDate.iso
+  ) {
+    resolvedDateHint = `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Already on file — do not re-ask.]`;
+  }
+
   const memorySummary = guestMemory
     ? summarizeGuestMemory(guestMemory)
     : "(none)";
@@ -503,7 +662,7 @@ export async function runFrontDeskTurn(
   let engineLinesTotal: number | null = null;
 
   const liveCartItems =
-    input.order_context?.items
+    slimCart?.items
       ?.filter((i) => i.menu_item_id)
       .map((i) => ({
         menu_item_id: String(i.menu_item_id),
@@ -513,12 +672,22 @@ export async function runFrontDeskTurn(
         unit_price: i.price,
       })) || [];
 
-  const leadHint = `\n\n[Known lead: ${JSON.stringify(input.lead)}]`;
-  const orderHint = input.order_context
-    ? `\n\n[Cart:\n${JSON.stringify(input.order_context)}]`
+  const leadForModel: AgentLead = {
+    ...input.lead,
+    guest_count: leadGuests,
+    diet: input.lead.diet || ctxDiet || "",
+    event_date:
+      orderDraft.event_date ||
+      input.lead.event_date ||
+      ctxDate ||
+      "",
+  };
+  const leadHint = `\n\n[Known lead: ${JSON.stringify(leadForModel)}]`;
+  const orderHint = slimCart
+    ? `\n\n[Cart:\n${JSON.stringify(slimCart)}]\n(Only use diet/guests/date from Cart if non-empty. Never invent 25 guests, Vegan, or a date.)`
     : "";
   const draftHint = `\n\n[Order draft:\n${JSON.stringify(orderDraft)}]`;
-  const memoryHint = `\n\n[GUEST_MEMORY: ${memorySummary}]`;
+  const memoryHint = `\n\n[GUEST_MEMORY: ${memorySummary}]\n(Do not invent headcount/diet/date missing from GUEST_MEMORY. Do not re-ask facts already listed.)`;
 
   const prefetch = prefetchSkillIds(last.content);
   const { loaded: preloaded } = loadChatSkills(prefetch);
@@ -559,7 +728,7 @@ export async function runFrontDeskTurn(
       specialtyHint = [
         "CHEF_SPECIALTIES (already loaded — answer NOW with type:answer; do not call tools for this):",
         JSON.stringify(rows.slice(0, 8)),
-        "REQUIRED THIS TURN: Guest asked about specialty/signature. Warm reply about Mr. Radhavallabh / sattvik kitchen + Stone Craft pizzas. Put up to 5 items in lines[] using these names/prices (quantity 1). Never invent other dishes.",
+        `REQUIRED THIS TURN: Guest asked about specialty/signature. Warm reply about ${chefWithTitle()} / sattvik kitchen + Stone Craft pizzas. Put up to 5 items in lines[] using these names/prices (quantity 1). Never invent other dishes.`,
       ].join("\n");
     } catch {
       specialtyHint =
@@ -569,6 +738,7 @@ export async function runFrontDeskTurn(
 
   const turn = [
     last.content,
+    resolvedDateHint,
     leadHint,
     orderHint,
     draftHint,
@@ -587,7 +757,7 @@ export async function runFrontDeskTurn(
       ? "Do not call get_chef_specialties this turn — specialties are already in CHEF_SPECIALTIES above."
       : "",
     "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines/prices.",
-    "When proposing dishes/packages: put them in lines[] (max 6 items) with name, quantity, unit, price — never Markdown ** in reply. Keep JSON compact so it is not truncated.",
+    "When proposing dishes: put every build_plan line in lines[] (up to 12). If the guest asked for a number of dishes, call build_plan with dish_count and do not drop any. Never Markdown ** in reply. Keep JSON compact so it is not truncated.",
     "Prefer one tool then answer. Use get_menu / build_plan for planning; catering_math for packages; order_draft for cart; followthrough for quote/deposit.",
     "Use time_context + check_capacity for dates.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
@@ -660,7 +830,7 @@ export async function runFrontDeskTurn(
       result = await chat.sendMessage(
         [
           "Your previous JSON was empty or truncated. Return ONE compact answer JSON now.",
-          "Fields: type:answer, reply (2 short sentences), lines (0–6 menu items with name,quantity,unit,price), lines_total, highlights (optional).",
+          "Fields: type:answer, reply (2 short sentences), lines (every planned dish, up to 12, with name,quantity,unit,price), lines_total, highlights (optional).",
           "No tool_call. No Markdown. Use the cart and skills already in context.",
           lastToolSummary
             ? `Last tool summary to cite: ${lastToolSummary.slice(0, 600)}`
@@ -698,6 +868,8 @@ export async function runFrontDeskTurn(
         setLastQuoteId: (id) => {
           lastQuoteId = id;
         },
+        messages: input.messages,
+        quoteUrl,
         live_cart_items: liveCartItems,
       });
       toolsUsed.push(toolCall.tool);
@@ -706,17 +878,16 @@ export async function runFrontDeskTurn(
           ? String((toolResult as { summary?: string }).summary || "")
           : JSON.stringify(toolResult).slice(0, 400);
       if (toolResult && typeof toolResult === "object") {
-        if (
-          toolCall.tool === "followthrough" &&
-          "quote_url" in toolResult &&
-          typeof (toolResult as { quote_url?: string }).quote_url === "string"
-        ) {
-          quoteUrl = (toolResult as { quote_url: string }).quote_url;
-          if ("quote_id" in toolResult) {
-            lastQuoteId = String(
-              (toolResult as { quote_id?: string }).quote_id || lastQuoteId
-            );
-          }
+        if (toolCall.tool === "followthrough") {
+          const ft = toolResult as {
+            quote_url?: string;
+            quote_id?: string;
+            action?: string;
+            ok?: boolean;
+          };
+          if (typeof ft.quote_url === "string") quoteUrl = ft.quote_url;
+          if (ft.quote_id) lastQuoteId = String(ft.quote_id);
+          if (ft.action === "request_human" && ft.ok) humanHandoffSent = true;
         }
         if (
           toolCall.tool === "catering_calendar" ||
@@ -753,7 +924,7 @@ export async function runFrontDeskTurn(
           JSON.stringify(toolResult),
           toolCall.tool === "build_plan"
             ? "Copy lines, lines_total, and lines_title from this build_plan result into your answer JSON."
-            : "Now return compact answer JSON: reply + lines (max 6) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
+            : "Now return compact answer JSON: reply + every menu line from the tool (up to 12) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
           "Keep the JSON short so it is not truncated. Never use Markdown **.",
           "If cart_proposal is present, tell the guest they can tap Add to Build order.",
           "If quote_url is present, share that link.",
@@ -778,7 +949,7 @@ export async function runFrontDeskTurn(
         }
       }
       result = await chat.sendMessage(
-        `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn compact answer JSON (reply + lines max 6) or one tool_call.`
+        `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn compact answer JSON (reply + every planned line, up to 12) or one tool_call.`
       );
       parsed = safeParse(modelText(result));
       continue;
@@ -792,7 +963,7 @@ export async function runFrontDeskTurn(
   }
 
   const replyRaw = parsed.reply;
-  const reply =
+  let reply =
     typeof replyRaw === "string" && replyRaw.trim()
       ? replyRaw
           .trim()
@@ -800,7 +971,7 @@ export async function runFrontDeskTurn(
           .replace(/__([^_]+)__/g, "$1")
       : "I can help with Yogiplate catering menus, diets, and orders. What would you like to know?";
 
-  const highlights = Array.isArray(parsed.highlights)
+  const rawHighlights = Array.isArray(parsed.highlights)
     ? (parsed.highlights as { label?: string; value?: string }[])
         .filter((h) => h && (h.label || h.value))
         .slice(0, 6)
@@ -809,6 +980,27 @@ export async function runFrontDeskTurn(
           value: String(h.value || ""),
         }))
     : [];
+  const knownGuests =
+    orderDraft.adults != null && orderDraft.adults > 0
+      ? orderDraft.adults + (orderDraft.kids || 0)
+      : leadGuests ?? ctxGuests;
+  const knownDiet = String(
+    orderDraft.diet || leadForModel.diet || ctxDiet || ""
+  ).trim();
+  const knownDate = String(
+    orderDraft.event_date || leadForModel.event_date || ctxDate || ""
+  ).trim();
+  // Prefer guest memory totals when present
+  const memoryGuests =
+    guestMemory?.headcount?.total != null && guestMemory.headcount.total > 0
+      ? guestMemory.headcount.total
+      : knownGuests;
+  const memoryDate = String(guestMemory?.event?.date || knownDate).trim();
+  const highlights = sanitizeHighlights(rawHighlights, {
+    guests: memoryGuests,
+    diet: knownDiet,
+    date: memoryDate,
+  });
   const bullets = Array.isArray(parsed.bullets)
     ? (parsed.bullets as unknown[])
         .map((b) => String(b).trim())
@@ -839,13 +1031,93 @@ export async function runFrontDeskTurn(
     if (sum > 0) lines_total = Math.round(sum * 100) / 100;
   }
 
-  const lead = mergeLead(
-    input.lead,
-    (parsed.lead as Partial<AgentLead>) || {}
-  );
-  const offerWhatsApp = Boolean(parsed.offer_whatsapp) && waReady;
+  const lead = mergeLead(input.lead, {
+    ...((parsed.lead as Partial<AgentLead>) || {}),
+    event_date:
+      orderDraft.event_date ||
+      (parsed.lead as Partial<AgentLead> | undefined)?.event_date ||
+      input.lead.event_date ||
+      "",
+  });
+  const people = getYogiPeople();
+  const chefToken = escapeRegExp(people.chefName);
+  const managerToken = escapeRegExp(people.managerName);
+  const userAskedHuman = new RegExp(
+    `\\b(talk to (a |the )?(human|person|owner|chef|someone|manager)|speak (to|with) (a |the )?(human|person|owner|chef|someone|manager)|call (me|us|you|the owner|${chefToken}|${managerToken})|connect me|real person|live (agent|person|chat)|escalate|restaurant manager|human please|want a person|${chefToken}|${managerToken})\\b`,
+    "i"
+  ).test(last.content);
+  const userAskedWhatsApp = /\b(whats?\s*app|wa\.me)\b/i.test(last.content);
+  const offerWhatsApp =
+    waReady &&
+    (Boolean(parsed.offer_whatsapp) || userAskedHuman || userAskedWhatsApp);
 
   const finalProposal = proposalState.current;
+
+  if (userAskedHuman && !humanHandoffSent) {
+    const handoff = await notifyManagersOfHumanRequest({
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      summary: [
+        orderDraft.occasion ? `Occasion: ${orderDraft.occasion}` : null,
+        orderDraft.event_date ? `Date: ${orderDraft.event_date}` : null,
+        orderDraft.adults || orderDraft.kids
+          ? `Guests: ${(orderDraft.adults || 0) + (orderDraft.kids || 0)}`
+          : null,
+        orderDraft.diet ? `Diet: ${orderDraft.diet}` : null,
+        orderDraft.city || orderDraft.address
+          ? `Location: ${[orderDraft.address, orderDraft.city].filter(Boolean).join(", ")}`
+          : null,
+        "Guest asked to speak with a person.",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      transcript: input.messages
+        .filter((m) => m.content?.trim())
+        .slice(-40)
+        .map((m) => ({
+          role: m.role,
+          content: m.content.slice(0, 2000),
+        })),
+      orderDraft: orderDraft as unknown as Record<string, unknown>,
+      quoteUrl,
+    }).catch(() => null);
+    if (handoff?.ok) {
+      humanHandoffSent = true;
+      toolsUsed.push("followthrough");
+    }
+  }
+
+  if (humanHandoffSent) {
+    const team = handoffTeamPhrase(people);
+    const transferAckRe = new RegExp(
+      `${chefToken}|${managerToken}|restaurant manager|forwarded|transferred|shared your`,
+      "i"
+    );
+    const hasTransferAck = transferAckRe.test(reply);
+    const hasContactPromise =
+      /contact you shortly|reach out|will (call|contact|get back)/i.test(reply);
+    const hasOfferMore =
+      /assist you|help (you )?with|build (your )?order|send (you )?(a )?quote/i.test(
+        reply
+      );
+    const closeBits: string[] = [];
+    if (!hasTransferAck && !hasContactPromise) {
+      closeBits.push(
+        `I've shared your details with ${team} — they will contact you shortly.`
+      );
+    } else if (!hasContactPromise) {
+      closeBits.push("They will contact you shortly.");
+    }
+    if (!hasOfferMore) {
+      closeBits.push(
+        "Is there anything I can assist you with now? I can help build your order or send you a quote."
+      );
+    }
+    if (closeBits.length) {
+      reply = `${reply.replace(/\s+$/, "")} ${closeBits.join(" ")}`.trim();
+    }
+  }
 
   let whatsappUrl: string | null = null;
   if (offerWhatsApp) {
@@ -930,6 +1202,63 @@ export async function runFrontDeskTurn(
           : "browsing",
   }).catch(() => null);
 
+  let verified_address: AddressVerifyResult | null = null;
+  const addressQuery = addressCandidateForTurn({
+    userText: last.content,
+    draftAddress: orderDraft.address,
+    draftCity: orderDraft.city || lead.city,
+    prevDraftAddress: input.order_draft?.address || "",
+  });
+  if (addressQuery) {
+    verified_address = await verifyAddress(
+      addressQuery,
+      orderDraft.city || lead.city || undefined
+    ).catch(() => ({
+      ok: false as const,
+      query: addressQuery,
+      error: "Could not verify that address right now.",
+    }));
+    if (verified_address.ok) {
+      orderDraft = mergeOrderDraft(orderDraft, {
+        address: verified_address.formatted,
+      });
+    }
+  }
+
+  // Mark chat event dates on the admin catering calendar (unconfirmed until paid)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(orderDraft.event_date || ""))) {
+    const itemsSummary = finalProposal?.items?.length
+      ? finalProposal.items
+          .slice(0, 12)
+          .map((i) => `${i.quantity}× ${i.name}`)
+          .join("; ")
+      : null;
+    await upsertCateringBooking({
+      event_date: orderDraft.event_date,
+      event_time: orderDraft.event_time || null,
+      customer_name: lead.name,
+      customer_email: lead.email,
+      customer_phone: lead.phone,
+      chat_session_id: sessionId,
+      draft: orderDraft,
+      quote_id: lastQuoteId,
+      items_summary: itemsSummary,
+      food_subtotal: finalProposal?.items?.length
+        ? finalProposal.items.reduce((s, i) => s + i.price * i.quantity, 0)
+        : null,
+      status: orderDraft.confirmed ? "confirmed" : "unconfirmed",
+    }).catch(() => null);
+  }
+
+  const lastUserText = [...input.messages]
+    .reverse()
+    .find((m) => m.role === "user")?.content;
+  const modelOffTopic =
+    parsed.off_topic === true || parsed.off_topic === "true";
+  const off_topic = voiceMode
+    ? voiceTurnIsOffTopic(String(lastUserText || ""), modelOffTopic)
+    : false;
+
   return {
     reply,
     highlights,
@@ -946,5 +1275,7 @@ export async function runFrontDeskTurn(
     quote_url: quoteUrl,
     skills_used: [...new Set(skillsUsed)],
     tools_used: [...new Set(toolsUsed)],
+    verified_address,
+    off_topic,
   };
 }
