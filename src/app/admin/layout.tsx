@@ -3,6 +3,7 @@ import { AdminLogout } from "@/components/AdminLogout";
 import { isAdminAuthenticated } from "@/lib/auth";
 
 const nav = [
+  { href: "/admin/desk", label: "Desk" },
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/quotes", label: "Quotes" },

@@ -6,7 +6,8 @@ export function buildInvoiceHtml(
   order: Order,
   items: OrderItem[],
   settings: SiteSettings,
-  invoiceNumber: string
+  invoiceNumber: string,
+  payUrl?: string | null
 ) {
   const rows = items
     .map(
@@ -51,6 +52,11 @@ export function buildInvoiceHtml(
       <p>Tax: ${formatMoney(order.tax)}</p>
       <p style="font-size:18px;font-weight:700;margin-top:12px;">Total: ${formatMoney(order.total)}</p>
     </div>
+    ${
+      payUrl
+        ? `<p style="margin-top:28px;font-family:Arial,sans-serif;font-size:15px;"><a href="${payUrl}" style="display:inline-block;background:#2a4a36;color:#ffffff;text-decoration:none;padding:12px 18px;">Pay this invoice</a></p>`
+        : ""
+    }
     <p style="margin-top:36px;font-family:Arial,sans-serif;font-size:13px;color:#777;">
       Thank you for choosing ${settings.business_name}. We cook with pure, fresh ingredients — made for every vegetarian tradition in the Bay Area.
       <br/>${settings.business_email} · ${settings.business_phone}

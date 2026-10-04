@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ClientLogoBand } from "@/components/ClientLogoBand";
 
 const REVIEWS = [
   { src: "/images/Review1.png", w: 1630, h: 647 },
@@ -185,6 +186,9 @@ export function HeroMotion() {
             </div>
 
           </div>
+        </div>
+        <div className="mt-4 lg:mt-3">
+          <ClientLogoBand compact />
         </div>
       </div>
     </section>

@@ -87,8 +87,22 @@ export function moneyAmountToSpeakable(rawAmount: string): string {
   return `${sign}${dollarWords} ${dollarUnit} and ${centWords} ${centUnit}`;
 }
 
-export function speakableText(raw: string): string {
+/** Drop quote URLs so a call does not read the link aloud. */
+export function replyWithoutQuoteUrl(raw: string): string {
   let t = String(raw || "");
+  t = t.replace(
+    /,?\s*and you can (?:view|see|open|review) it at\s+https?:\/\/\S+/gi,
+    ""
+  );
+  t = t.replace(/\s+(?:at|here:?)\s+https?:\/\/\S+/gi, "");
+  t = t.replace(/https?:\/\/\S+/gi, "");
+  t = t.replace(/\bwww\.\S+/gi, "");
+  t = t.replace(/\s{2,}/g, " ").replace(/\s+([,.!?])/g, "$1").trim();
+  return t;
+}
+
+export function speakableText(raw: string): string {
+  let t = replyWithoutQuoteUrl(raw);
   t = t.replace(/```[\s\S]*?```/g, " ");
   t = t.replace(/`([^`]+)`/g, "$1");
   t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
@@ -106,7 +120,13 @@ export function speakableText(raw: string): string {
 export function speakableForCall(raw: string, maxChars = 320): string {
   const t = speakableText(raw);
   if (!t) return "";
-  const parts = t.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [t];
+  const masked = t.replace(
+    /\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/gi,
+    (email) => email.replace(/\./g, "\u0001")
+  );
+  const parts = (masked.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [masked]).map(
+    (part) => part.replace(/\u0001/g, ".")
+  );
   let out = "";
   for (const part of parts.slice(0, 2)) {
     const next = (out + " " + part.trim()).trim();

@@ -1,5 +1,5 @@
 import { formatMoney } from "@/lib/pricing";
-import { chefWithTitle } from "@/lib/people";
+import { chefWithTitle, getYogiPeople } from "@/lib/people";
 import {
   escHtml,
   prettyDate,
@@ -17,6 +17,11 @@ export type QuoteEmailContext = {
   businessPhone?: string;
   businessEmail?: string;
 };
+
+function quoteIntro() {
+  const name = getYogiPeople().chefName || "Radhavallabh";
+  return `Thank you for inviting Yogiplate to your table. ${name} began this kitchen so no one would have to choose between food that tastes wonderful and food that is pure. Below is a quotation for your gathering, prepared with fresh ingredients and care.`;
+}
 
 function detailRow(label: string, value: string) {
   if (!value) return "";
@@ -92,7 +97,7 @@ export function buildQuoteEmailHtml(quote: Quote, ctx: QuoteEmailContext) {
           Dear ${escHtml(quote.customer_name || "friend")},
         </td></tr>
         <tr><td style="padding:0 32px 8px;font-family:Georgia,'Times New Roman',serif;color:#3c463f;font-size:16px;line-height:1.65;">
-          Thank you for inviting Yogiplate to your table. Below is a quotation for a sattvik menu, cooked without onion, garlic, or mushrooms, and portioned for your gathering.
+          ${escHtml(quoteIntro())}
         </td></tr>
         <tr><td style="padding:8px 32px 4px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,Helvetica,sans-serif;">
@@ -186,7 +191,7 @@ export function buildQuoteEmailText(quote: Quote, ctx: QuoteEmailContext) {
     "",
     `Dear ${quote.customer_name},`,
     "",
-    "Thank you for inviting Yogiplate to your table. Here is your quotation.",
+    quoteIntro(),
     "",
     when ? `When: ${when}` : null,
     quote.guest_count ? `Guests: ${quote.guest_count}` : null,

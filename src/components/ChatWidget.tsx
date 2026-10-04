@@ -95,17 +95,17 @@ function isValidPhone(phone: string) {
   return digits.length >= 10 && digits.length <= 15;
 }
 
+/** Spoken and shown when chat or a call opens. */
+const OPENING_MESSAGE =
+  "Namaste. I'm AI Yogi with Yogiplate. Our chef and founder, Radhavallabh Prabhu, graduated from IIT Bombay, lived as a monk, and cooks sattvik food that is pure and full of flavor. First I'll collect a few basic details about your event, and then we'll plan the menu together. What occasion are you gathering for?";
+
 function welcomeFor(
   _orderAware?: boolean,
   _diet?: string | null,
   _itemNames?: string[]
 ) {
-  return "Namaste 🙏 Welcome! Planning an event or just exploring our menu? Tell me a little about what you have in mind and I'll take it from there.";
+  return OPENING_MESSAGE;
 }
-
-/** Spoken on call connect — short for fast TTS. */
-const CALL_VOICE_GREETING =
-  "Namaste, welcome to Yogiplate. What can I help you plan today?";
 
 const CALL_SILENCE_MS = 60_000;
 const CALL_OFF_TOPIC_LIMIT = 4;
@@ -648,10 +648,14 @@ export function ChatWidget() {
     });
   }
 
-  async function fetchTtsBlob(text: string): Promise<Blob | null> {
-    const spoken = listeningRef.current
-      ? speakableForCall(text)
-      : text.trim();
+  async function fetchTtsBlob(
+    text: string,
+    opts?: { full?: boolean }
+  ): Promise<Blob | null> {
+    const spoken =
+      listeningRef.current && !opts?.full
+        ? speakableForCall(text)
+        : text.trim();
     if (!spoken) return null;
     const res = await fetch("/api/voice/tts", {
       method: "POST",
@@ -758,7 +762,7 @@ export function ChatWidget() {
 
       // Short ring while greeting TTS prefetches — then AI Yogi speaks first.
       try {
-        const greetingPrefetch = fetchTtsBlob(CALL_VOICE_GREETING);
+        const greetingPrefetch = fetchTtsBlob(OPENING_MESSAGE, { full: true });
         await playPhoneRing({ bursts: 1, volume: 0.11 });
         if (!listeningRef.current) return;
 
@@ -767,7 +771,7 @@ export function ChatWidget() {
           const last = prev[prev.length - 1];
           if (
             last?.role === "assistant" &&
-            last.content.includes("Planning an event")
+            last.content.includes("Radhavallabh Prabhu")
           ) {
             messagesRef.current = prev;
             return prev;
@@ -788,7 +792,8 @@ export function ChatWidget() {
         if (ready) {
           await playAudioBlob(ready);
         } else {
-          await speakReply(CALL_VOICE_GREETING);
+          const again = await fetchTtsBlob(OPENING_MESSAGE, { full: true });
+          if (again) await playAudioBlob(again);
         }
         voiceSpeakRef.current = prevSpeak;
         setVoiceSpeak(prevSpeak);

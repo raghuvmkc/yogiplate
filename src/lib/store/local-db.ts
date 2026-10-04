@@ -43,8 +43,16 @@ export interface LocalDatabase {
   chat_sessions?: ChatSessionLog[];
   channel_threads?: ChannelThread[];
   guest_events?: GuestEventMemory[];
+  call_tickets?: CallTicket[];
   admin: { email: string; password_hash: string };
 }
+
+export type CallTicket = {
+  id: string;
+  to: string;
+  expires_at: string;
+  used_at: string | null;
+};
 
 /** In-memory fallback when the host FS is read-only (Netlify / serverless). */
 let memoryDb: LocalDatabase | null = null;

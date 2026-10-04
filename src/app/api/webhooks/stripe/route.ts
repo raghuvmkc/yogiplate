@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { markDeskInvoicePaid } from "@/lib/desk-invoice";
 import { fulfillPaidOrder } from "@/lib/orders";
 import { markQuoteDepositPaid } from "@/lib/quotes";
 import { getDb } from "@/lib/store/local-db";
@@ -30,6 +31,11 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     const db = await getDb();
+
+    if (session.metadata?.kind === "desk_invoice" && session.metadata?.order_id) {
+      await markDeskInvoicePaid(String(session.metadata.order_id), session.id);
+      return NextResponse.json({ received: true, desk_invoice: true });
+    }
 
     if (session.metadata?.kind === "quote_deposit" && session.metadata?.quote_id) {
       await markQuoteDepositPaid({

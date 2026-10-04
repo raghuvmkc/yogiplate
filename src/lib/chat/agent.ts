@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { replyWithoutQuoteUrl } from "@/lib/speakable";
 import {
   CHAT_SKILL_CATALOG,
   buildLeanFrontDeskSystemPrompt,
@@ -562,7 +563,7 @@ export async function runFrontDeskTurn(
       ? `\nCHANNEL: This turn arrived via ${channel}. Keep replies concise for that medium.`
       : "",
     voiceMode
-      ? "\nVOICE CALL MODE: Guest is on a live phone-style call. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
+      ? "\nVOICE CALL MODE: Guest is on a live phone-style call. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Never say a URL, localhost address, or quote link out loud. Say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
       : "",
   ].join("\n");
 
@@ -927,7 +928,7 @@ export async function runFrontDeskTurn(
             : "Now return compact answer JSON: reply + every menu line from the tool (up to 12) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
           "Keep the JSON short so it is not truncated. Never use Markdown **.",
           "If cart_proposal is present, tell the guest they can tap Add to Build order.",
-          "If quote_url is present, share that link.",
+          "If quote_url is present, do NOT put the URL, localhost, or any web address in reply. Say you emailed the quotation. The chat already shows a button for the link.",
         ].join("\n")
       );
       parsed = safeParse(modelText(result));
@@ -970,6 +971,13 @@ export async function runFrontDeskTurn(
           .replace(/\*\*([^*]+)\*\*/g, "$1")
           .replace(/__([^_]+)__/g, "$1")
       : "I can help with Yogiplate catering menus, diets, and orders. What would you like to know?";
+  if (voiceMode || channel === "web_chat") {
+    reply = replyWithoutQuoteUrl(reply);
+    if (!reply && quoteUrl) {
+      reply =
+        "I've emailed your catering quotation. You can open it with the button here.";
+    }
+  }
 
   const rawHighlights = Array.isArray(parsed.highlights)
     ? (parsed.highlights as { label?: string; value?: string }[])

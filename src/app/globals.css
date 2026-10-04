@@ -123,6 +123,44 @@ h3,
   color: var(--accent-deep);
 }
 
+@keyframes client-marquee-rtl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.client-marquee-rtl {
+  animation: client-marquee-rtl 28s linear infinite;
+}
+
+.client-marquee-window {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-marquee-rtl {
+    animation: none;
+    transform: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .client-marquee-copy {
+    display: none;
+  }
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

@@ -129,7 +129,7 @@ export async function runFollowthroughTool(
       sms_sent: delivery.sms_sent,
       sms_reason: delivery.sms_reason,
       item_count: quote.items.length,
-      summary: `Quote ${quote.quote_number} includes all ${quote.items.length} dishes (${quote.deposit_percent}% deposit $${quote.deposit_amount}). Link: ${url}. Delivery to guest: ${deliverySummary(delivery)}. Tell the guest you sent the quotation to their email and phone when delivery succeeded. Do not say a shorter menu was sent.`,
+      summary: `Quote ${quote.quote_number} includes all ${quote.items.length} dishes (${quote.deposit_percent}% deposit $${quote.deposit_amount}). Delivery to guest: ${deliverySummary(delivery)}. Tell the guest you emailed the quotation. Do not include the link, localhost, or any web address in the reply — the chat shows a button. Do not say a shorter menu was sent.`,
     };
   }
 
@@ -159,7 +159,7 @@ export async function runFollowthroughTool(
       quote_url: (await publicQuoteUrlFromId(id)) || undefined,
       summary: delivery.ok
         ? `Quote resent to guest (${deliverySummary(delivery)}).`
-        : `Could not send quote (${deliverySummary(delivery)}). Share the quote link instead.`,
+        : `Could not send quote (${deliverySummary(delivery)}). Tell the guest to use the quote button in the chat. Do not read a web address.`,
     };
   }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ClientLogoBand } from "@/components/ClientLogoBand";
 import { CorporateInquiryForm } from "@/components/CorporateInquiryForm";
 
 export const metadata: Metadata = {
@@ -43,9 +44,10 @@ export default function CorporateCateringPage() {
           <p className="lede mt-6 max-w-2xl">
             From all-hands lunches to executive offsites, Yogiplate brings pure
             vegetarian hospitality to technology campuses across Silicon Valley.
-            We are proud to serve some of the top Bay Area technology companies
-            — teams that expect flavor, freshness, and respect for every dietary
-            tradition at the table.
+            We are a proud corporate caterer for Google, LinkedIn, SanDisk,
+            Uber, Adobe, Applied Materials, and Illumina — teams that expect
+            flavor, freshness, and respect for every dietary tradition at the
+            table.
           </p>
           <p className="mt-5 max-w-2xl text-base font-medium text-muted sm:text-lg">
             Minimum catering order is $400.{" "}
@@ -56,6 +58,8 @@ export default function CorporateCateringPage() {
           </p>
         </div>
       </section>
+
+      <ClientLogoBand />
 
       <section className="border-b border-line px-4 py-16 sm:px-6 lg:py-20">
         <div className="mx-auto max-w-6xl">
