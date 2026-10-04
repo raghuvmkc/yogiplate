@@ -8,6 +8,7 @@ import {
   defaultSettings,
   menuItems,
 } from "@/lib/data/menu-seed";
+import { serverEnv } from "@/lib/server-env";
 import type {
   CalendarBlock,
   CateringBooking,
@@ -78,10 +79,12 @@ async function tryPersist(db: LocalDatabase, filePath: string): Promise<boolean>
 
 async function createSeedDb(): Promise<LocalDatabase> {
   const bcrypt = await import("bcryptjs");
-  const password_hash = await bcrypt.hash(
-    process.env.ADMIN_PASSWORD || "yogiplate-admin",
-    10
-  );
+  const password = serverEnv("ADMIN_PASSWORD");
+  const email = serverEnv("ADMIN_EMAIL");
+  if (!password || !email) {
+    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be set");
+  }
+  const password_hash = await bcrypt.hash(password, 10);
   return {
     seed_version: MENU_SEED_VERSION,
     categories,
@@ -107,7 +110,7 @@ async function createSeedDb(): Promise<LocalDatabase> {
     channel_threads: [],
     guest_events: [],
     admin: {
-      email: process.env.ADMIN_EMAIL || "admin@yogiplate.com",
+      email,
       password_hash,
     },
   };

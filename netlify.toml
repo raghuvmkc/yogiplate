@@ -7,6 +7,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # These stay in server code only. Next still copies them into server bundles.
+  SECRETS_SCAN_OMIT_KEYS = "ADMIN_EMAIL,ADMIN_PASSWORD,ADMIN_SESSION_SECRET"
 
 # Allow longer serverless time for Gemini chat (capped by plan).
 [functions]

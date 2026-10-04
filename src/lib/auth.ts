@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { getDb } from "@/lib/store/local-db";
+import { serverEnv } from "@/lib/server-env";
 
 const COOKIE = "yogiplate_admin";
 
@@ -12,7 +13,7 @@ export async function verifyAdmin(email: string, password: string) {
 
 export async function setAdminSession() {
   const jar = await cookies();
-  jar.set(COOKIE, process.env.ADMIN_SESSION_SECRET || "yogiplate-session", {
+  jar.set(COOKIE, serverEnv("ADMIN_SESSION_SECRET", "yogiplate-session"), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -29,7 +30,7 @@ export async function clearAdminSession() {
 export async function isAdminAuthenticated() {
   const jar = await cookies();
   const val = jar.get(COOKIE)?.value;
-  return Boolean(val && val === (process.env.ADMIN_SESSION_SECRET || "yogiplate-session"));
+  return Boolean(val && val === serverEnv("ADMIN_SESSION_SECRET", "yogiplate-session"));
 }
 
 export async function requireAdmin() {

@@ -15,11 +15,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Copy `.env.example` to `.env.local` and fill keys as needed. The app works in **demo mode** without Stripe/Resend/Maps/Supabase — orders persist under `.data/`.
 
-### Demo admin
+### Admin
 
 - URL: `/admin/login`
-- Email: `admin@yogiplate.com`
-- Password: `yogiplate-admin`
+- Email and password: `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your environment
 
 ### Demo coupons
 

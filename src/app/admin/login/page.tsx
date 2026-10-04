@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@yogiplate.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -33,9 +33,6 @@ export default function AdminLoginPage() {
       >
         Admin login
       </h1>
-      <p className="mt-2 text-sm text-muted">
-        Default: admin@yogiplate.com / yogiplate-admin
-      </p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <label className="block text-sm">
           Email
