@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prettyLabel } from "@/lib/quote-format";
+import { serverEnv } from "@/lib/server-env";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
 
@@ -53,7 +54,7 @@ export async function composeQuoteClosing(
   input: QuoteClosingInput
 ): Promise<string> {
   const fallback = fallbackClosing(input);
-  const key = process.env.GEMINI_API_KEY;
+  const key = serverEnv("GEMINI_API_KEY");
   if (!key) return fallback;
 
   const occasion = String(input.occasion || "").trim();

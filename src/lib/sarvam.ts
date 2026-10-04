@@ -1,27 +1,28 @@
 import { speakableText, speakableForCall } from "@/lib/speakable";
+import { serverEnv } from "@/lib/server-env";
 
 export { speakableText, speakableForCall };
 
 const SARVAM_BASE = "https://api.sarvam.ai";
 
 export function isSarvamConfigured(): boolean {
-  return Boolean(process.env.SARVAM_API_KEY?.trim());
+  return Boolean(serverEnv("SARVAM_API_KEY"));
 }
 
 function apiKey(): string {
-  return (process.env.SARVAM_API_KEY || "").trim();
+  return serverEnv("SARVAM_API_KEY");
 }
 
 function ttsSpeaker(): string {
-  return (process.env.SARVAM_TTS_SPEAKER || "priya").toLowerCase().trim();
+  return serverEnv("SARVAM_TTS_SPEAKER", "priya").toLowerCase();
 }
 
 function ttsModel(): string {
-  return (process.env.SARVAM_TTS_MODEL || "bulbul:v3").trim();
+  return serverEnv("SARVAM_TTS_MODEL", "bulbul:v3");
 }
 
 function sttModel(): string {
-  return (process.env.SARVAM_STT_MODEL || "saaras:v3").trim();
+  return serverEnv("SARVAM_STT_MODEL", "saaras:v3");
 }
 
 /** Map short locale → Sarvam BCP-47. */

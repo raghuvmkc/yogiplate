@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { agentErrorCode, runFrontDeskTurn } from "@/lib/chat/agent";
+import { serverEnv } from "@/lib/server-env";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
@@ -70,7 +71,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!(process.env.GEMINI_API_KEY || "").trim()) {
+  if (!serverEnv("GEMINI_API_KEY")) {
     return NextResponse.json(
       { error: "Chat is not configured (missing GEMINI_API_KEY).", code: "no_key" },
       { status: 503 }

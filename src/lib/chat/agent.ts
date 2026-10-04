@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { replyWithoutQuoteUrl } from "@/lib/speakable";
+import { serverEnv } from "@/lib/server-env";
 import {
   CHAT_SKILL_CATALOG,
   buildLeanFrontDeskSystemPrompt,
@@ -529,7 +530,7 @@ export function agentErrorCode(detail: string): string {
 export async function runFrontDeskTurn(
   input: AgentTurnInput
 ): Promise<AgentTurnResult> {
-  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+  const apiKey = serverEnv("GEMINI_API_KEY");
   if (!apiKey) {
     throw new Error("missing_GEMINI_API_KEY");
   }

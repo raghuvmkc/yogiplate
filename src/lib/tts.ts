@@ -1,5 +1,6 @@
 import { googleSynthesize, isGoogleTtsConfigured } from "@/lib/google-tts";
 import { isSarvamConfigured, sarvamSynthesize } from "@/lib/sarvam";
+import { serverEnv } from "@/lib/server-env";
 
 export type TtsProvider = "google" | "sarvam";
 
@@ -8,18 +9,16 @@ export const GOOGLE_TTS_VOICE_OPTIONS = ["Kore", "Aoede", "Charon"] as const;
 export const SARVAM_TTS_VOICE_OPTIONS = ["priya", "neha", "rahul"] as const;
 
 export function ttsProvider(): TtsProvider {
-  const raw = (process.env.TTS_PROVIDER || "sarvam").trim().toLowerCase();
+  const raw = serverEnv("TTS_PROVIDER", "sarvam").toLowerCase();
   return raw === "google" ? "google" : "sarvam";
 }
 
 export function ttsVoice(): string {
-  const explicit = (process.env.TTS_VOICE || "").trim();
+  const explicit = serverEnv("TTS_VOICE");
   if (ttsProvider() === "google") {
     return explicit || "Kore";
   }
-  return (explicit || process.env.SARVAM_TTS_SPEAKER || "priya")
-    .toLowerCase()
-    .trim();
+  return (explicit || serverEnv("SARVAM_TTS_SPEAKER", "priya")).toLowerCase();
 }
 
 export function isTtsConfigured(): boolean {

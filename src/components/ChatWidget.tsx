@@ -1102,6 +1102,36 @@ export function ChatWidget() {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
+              {voiceEnabled ? (
+                <button
+                  type="button"
+                  aria-label={listening ? "End call" : "Call AI Yogi"}
+                  title={
+                    listening
+                      ? "End call"
+                      : "Call AI Yogi — stay on the line and talk naturally"
+                  }
+                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white transition hover:bg-white/10 ${
+                    listening ? "bg-red-700" : ""
+                  }`}
+                  onClick={() => {
+                    if (!identified) {
+                      setGateError(
+                        "Add your name, phone, and email, then you can call."
+                      );
+                      return;
+                    }
+                    void toggleListening();
+                  }}
+                >
+                  {listening ? (
+                    <PhoneOff className="h-4 w-4" />
+                  ) : (
+                    <Phone className="h-4 w-4" />
+                  )}
+                  {listening ? "End" : "Call"}
+                </button>
+              ) : null}
               {voiceEnabled && identified && listening ? (
                 <button
                   type="button"
@@ -1168,6 +1198,9 @@ export function ChatWidget() {
               <p className="text-sm font-medium leading-relaxed text-foreground">
                 Before we begin, please share your name, phone, and email so our
                 team can follow up if needed.
+                {voiceEnabled
+                  ? " Then tap Call to talk with AI Yogi."
+                  : ""}
               </p>
               <label className="block text-xs font-semibold tracking-wide text-muted">
                 Name

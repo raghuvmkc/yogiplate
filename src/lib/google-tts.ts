@@ -1,9 +1,10 @@
 import { speakableText } from "@/lib/speakable";
+import { serverEnv } from "@/lib/server-env";
 
 const DEFAULT_MODEL = "gemini-2.5-flash-preview-tts";
 
 function apiKey() {
-  return (process.env.GEMINI_API_KEY || "").trim();
+  return serverEnv("GEMINI_API_KEY");
 }
 
 export function isGoogleTtsConfigured() {
@@ -11,7 +12,7 @@ export function isGoogleTtsConfigured() {
 }
 
 function googleTtsModel() {
-  return (process.env.GOOGLE_TTS_MODEL || DEFAULT_MODEL).trim();
+  return serverEnv("GOOGLE_TTS_MODEL", DEFAULT_MODEL);
 }
 
 function pcmToWav(pcm: Buffer, sampleRate: number) {
