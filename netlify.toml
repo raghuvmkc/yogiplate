@@ -7,9 +7,9 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  # Admin and voice keys are read on the server. Webpack still stores them in its cache.
-  SECRETS_SCAN_OMIT_KEYS = "ADMIN_EMAIL,ADMIN_PASSWORD,ADMIN_SESSION_SECRET,SARVAM_API_KEY,GEMINI_API_KEY"
-  # The cache is not published. The scan hits are only in this pack file.
+  # Names, titles, emails, and voice settings are written on the public site on purpose.
+  # Passwords and API keys stay scanned.
+  SECRETS_SCAN_OMIT_KEYS = "ADMIN_EMAIL,ADMIN_PASSWORD,ADMIN_SESSION_SECRET,SARVAM_API_KEY,GEMINI_API_KEY,CHEF_FOUNDER_NAME,CHEF_FOUNDER_TITLE,CHEF_FOUNDER_PREFIX,MANAGER_NAME,MANAGER_TITLE,MANAGER_NOTIFY_EMAILS,MANAGER_NOTIFY_PHONES,CORPORATE_NOTIFY_EMAILS,CHAT_SUMMARY_NOTIFY_EMAILS,SMTP_HOST,SMTP_USER,SMTP_FROM_NAME,INVOICE_FROM_EMAIL,KITCHEN_ADDRESS,NEXT_PUBLIC_SITE_URL,NEXT_PUBLIC_OWNER_WHATSAPP_E164,OWNER_WHATSAPP_E164,TTS_PROVIDER,TTS_VOICE,SARVAM_STT_MODEL,SARVAM_TTS_MODEL"
   SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**,.next/cache/**"
 
 # Allow longer serverless time for Gemini chat (capped by plan).
