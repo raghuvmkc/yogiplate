@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  webpack: (config, { dev }) => {
+    if (!dev) {
+      // Avoid writing .next/cache/webpack/*.pack, which Netlify's secret scan reads.
+      config.cache = false;
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {
