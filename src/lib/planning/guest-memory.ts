@@ -112,6 +112,7 @@ export interface GuestEventMemory {
     quantity: number;
     unit: string;
     price: number;
+    reason?: string;
   }[];
   change_log: MemoryChangeLogEntry[];
   conflicts: string[];

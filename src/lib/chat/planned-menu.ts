@@ -59,6 +59,7 @@ export async function proposalFromLatestPlan(input: {
     quantity: i.quantity,
     unit: i.unit,
     price: i.price,
+    reason: i.reason,
   }));
   memory.updated_at = new Date().toISOString();
   await persistGuestMemory(memory);

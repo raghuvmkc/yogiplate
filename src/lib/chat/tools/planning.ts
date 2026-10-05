@@ -237,6 +237,35 @@ export async function runBuildPlan(
     args.dish_count != null && Number.isFinite(Number(args.dish_count))
       ? Number(args.dish_count)
       : undefined;
+  const SWAP_ROLES = new Set([
+    "appetizer",
+    "chaat",
+    "main",
+    "dal",
+    "starch",
+    "bread",
+    "salad",
+    "dessert",
+    "soup",
+    "pizza",
+    "side",
+  ]);
+  const swap_role = SWAP_ROLES.has(String(args.swap_role || "").trim().toLowerCase())
+    ? (String(args.swap_role).trim().toLowerCase() as
+        | "appetizer"
+        | "chaat"
+        | "main"
+        | "dal"
+        | "starch"
+        | "bread"
+        | "salad"
+        | "dessert"
+        | "soup"
+        | "pizza"
+        | "side")
+    : undefined;
+  const swap_item_id =
+    args.swap_item_id != null ? String(args.swap_item_id).trim() : undefined;
 
   const plan = buildPlan({
     memory,
@@ -245,6 +274,8 @@ export async function runBuildPlan(
     replace,
     prefer_item_ids,
     dish_count,
+    swap_role,
+    swap_item_id,
   });
 
   if (plan.mode === "build" && plan.items.length) {
@@ -255,6 +286,7 @@ export async function runBuildPlan(
       quantity: i.quantity,
       unit: i.unit,
       price: i.price,
+      reason: i.reason,
     }));
     memory.updated_at = new Date().toISOString();
     await persistGuestMemory(memory);

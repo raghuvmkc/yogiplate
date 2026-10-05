@@ -485,6 +485,7 @@ function prefetchSkillIds(userText: string): ChatSkillId[] {
     )
   ) {
     ids.add("menu-index");
+    ids.add("menu-recommend");
   }
   if (/appetizer|samosa|pakora|chaat|poori|pani/.test(t)) {
     ids.add("menu-appetizers");
@@ -564,7 +565,7 @@ export async function runFrontDeskTurn(
       ? `\nCHANNEL: This turn arrived via ${channel}. Keep replies concise for that medium.`
       : "",
     voiceMode
-      ? "\nVOICE CALL MODE: Guest is on a live phone-style call. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Never say a URL, localhost address, or quote link out loud. Say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
+      ? "\nVOICE CALL MODE: Guest is on a live phone-style call. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. If they did, name at most two dishes and one reason from the tool. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Never say a URL, localhost address, or quote link out loud. Say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
       : "",
   ].join("\n");
 
@@ -730,7 +731,7 @@ export async function runFrontDeskTurn(
       specialtyHint = [
         "CHEF_SPECIALTIES (already loaded — answer NOW with type:answer; do not call tools for this):",
         JSON.stringify(rows.slice(0, 8)),
-        `REQUIRED THIS TURN: Guest asked about specialty/signature. Warm reply about ${chefWithTitle()} / sattvik kitchen + Stone Craft pizzas. Put up to 5 items in lines[] using these names/prices (quantity 1). Never invent other dishes.`,
+        `REQUIRED THIS TURN: Guest asked about specialty/signature. Warm reply about ${chefWithTitle()} and wholesome vegetarian cooking, pure and full of flavor, plus Stone Craft pizzas. Put up to 5 items in lines[] using these names/prices (quantity 1). Never invent other dishes. Never say sattvik. Never say Prabhu.`,
       ].join("\n");
     } catch {
       specialtyHint =
@@ -758,8 +759,8 @@ export async function runFrontDeskTurn(
     asksSpecialty
       ? "Do not call get_chef_specialties this turn — specialties are already in CHEF_SPECIALTIES above."
       : "",
-    "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines/prices.",
-    "When proposing dishes: put every build_plan line in lines[] (up to 12). If the guest asked for a number of dishes, call build_plan with dish_count and do not drop any. Never Markdown ** in reply. Keep JSON compact so it is not truncated.",
+    "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines, prices, and reason. Load menu-recommend before you recommend. Say I’ll help you choose. Never say we’ll plan.",
+    "When proposing dishes: put every build_plan line in lines[] (up to 12) and use each line’s reason. If the guest asked for a number of dishes, call build_plan with dish_count and do not drop any. Two or three sentences before the list: occasion, balance, and one reason. On a voice call, one or two sentences and at most two dish names. Never Markdown ** in reply. Keep JSON compact so it is not truncated.",
     "Prefer one tool then answer. Use get_menu / build_plan for planning; catering_math for packages; order_draft for cart; followthrough for quote/deposit.",
     "Use time_context + check_capacity for dates.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
@@ -925,7 +926,7 @@ export async function runFrontDeskTurn(
           `Tool ${toolCall.tool} result (cite these numbers; do not invent):`,
           JSON.stringify(toolResult),
           toolCall.tool === "build_plan"
-            ? "Copy lines, lines_total, and lines_title from this build_plan result into your answer JSON."
+            ? "Copy lines, lines_total, and lines_title from this build_plan result into your answer JSON. In reply, use each line’s reason. Do not add a dish or a price."
             : "Now return compact answer JSON: reply + every menu line from the tool (up to 12) with name/quantity/unit/price + lines_total, or one more tool_call if essential.",
           "Keep the JSON short so it is not truncated. Never use Markdown **.",
           "If cart_proposal is present, tell the guest they can tap Add to Build order.",

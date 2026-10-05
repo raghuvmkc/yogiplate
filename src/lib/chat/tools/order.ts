@@ -1,5 +1,6 @@
 import { proposalFromLatestPlan } from "@/lib/chat/planned-menu";
 import { runCateringMath } from "@/lib/chat/tools/math";
+import { getOrCreateGuestMemory } from "@/lib/planning/guest-memory-store";
 import {
   EMPTY_ORDER_DRAFT,
   buildCartProposalFromPackage,
@@ -24,6 +25,8 @@ export type OrderToolInput = {
   tier?: "good" | "better" | "best";
   replace_cart?: boolean;
   confirmed?: boolean;
+  /** Guest accepted the dish-by-dish readback. */
+  menu_confirmed?: boolean;
   /** Use the short good/better/best package instead of the planned menu. */
   force_package?: boolean;
 };
@@ -35,6 +38,22 @@ export type OrderToolContext = {
   sessionId?: string;
   customerEmail?: string;
 };
+
+async function plannedMenuReadback(ctx: OrderToolContext): Promise<string> {
+  if (!ctx.sessionId) return "";
+  const memory = await getOrCreateGuestMemory({
+    session_id: ctx.sessionId,
+    customer_email: ctx.customerEmail || "",
+  });
+  const items = memory.planned_menu || [];
+  if (!items.length) return "";
+  return items
+    .map((line, index) => {
+      const why = line.reason ? ` — ${line.reason}` : "";
+      return `${index + 1}. ${line.name} × ${line.quantity} ${line.unit}${why}`;
+    })
+    .join("\n");
+}
 
 export async function runOrderTool(
   input: OrderToolInput,
@@ -81,18 +100,37 @@ export async function runOrderTool(
   if (action === "read_back") {
     const missing = missingOrderSlots(ctx.draft);
     const text = formatOrderReadback(ctx.draft);
+    const menu = await plannedMenuReadback(ctx);
+    const readback = menu
+      ? `${text}\n\nDishes:\n${menu}`
+      : text;
     return {
       ok: true,
       tool: "order_draft",
       action,
       draft: ctx.draft,
       missing_slots: missing,
-      readback: text,
-      summary: `Read this back to the guest and ask them to confirm before proposing the cart:\n${text}`,
+      readback,
+      summary: menu
+        ? `Read the event details and every dish and tray size back, then wait for the guest to accept before propose_cart:\n${readback}`
+        : `Read this back to the guest and ask them to confirm before proposing the cart:\n${text}`,
     };
   }
 
   if (action === "propose_cart") {
+    const menu = await plannedMenuReadback(ctx);
+    if (menu && input.menu_confirmed !== true && input.force_package !== true) {
+      return {
+        ok: true,
+        held: true,
+        tool: "order_draft",
+        action,
+        draft: ctx.draft,
+        readback: menu,
+        summary:
+          "Do not place this menu yet. Read each dish and tray size back and wait. Call propose_cart again with menu_confirmed true only after the guest accepts. Do not rebuild the menu.",
+      };
+    }
     if (input.force_package !== true && ctx.sessionId) {
       const planned = await proposalFromLatestPlan({
         session_id: ctx.sessionId,

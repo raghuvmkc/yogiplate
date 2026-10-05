@@ -59,7 +59,7 @@ TOOLS (call these — do not invent their results)
 4) order_draft — structured catering order capture + cart proposal.
    Args: action = update_order_draft | get_order_draft | read_back | propose_cart | confirm_order_draft;
    patch: { occasion, event_date, event_time, adults, kids, diet, delivery_or_pickup, city, address, budget, setup_needs, special_requirements, meal, package_tier, notes };
-   tier: good|better|best for propose_cart; confirmed: true|false for confirm_order_draft.
+   tier: good|better|best for propose_cart; menu_confirmed: true only after the guest accepts the dish readback; confirmed: true|false for confirm_order_draft.
 5) followthrough — quote delivery + human handoff.
    Args: action = create_quote | send_quote | quote_status | request_human;
    send_email (default true), send_sms (default true); quote_id for send/status;
@@ -80,12 +80,14 @@ TOOLS (call these — do not invent their results)
 10) get_famous_combinations — classic catering pairings from our catalog (chole-bhature, pav bhaji, pani poori+dahi vada, rajma-chawal, paneer+roti+rice, etc.).
     Args: item_ids? (seed from cart), hints? (vegan|jain|italian|pizza|party|lunch…), limit?
     Use these when suggesting menus. Never invent combinations. Never recommend appetizer-only as a full meal.
-11) build_plan — deterministic plan from guest memory (qty/prices from code). Uses famous combos + balanced roles.
-    Args: replace (bool), prefer_item_ids[], dish_count (number), mode build|validate.
+11) build_plan — deterministic plan from guest memory (qty/prices/reason from code). Uses famous combos + balanced roles.
+    Args: replace (bool), prefer_item_ids[], dish_count (number), mode build|validate, swap_role (bread|main|dessert|starch|appetizer|dal|pizza), swap_item_id.
+    Each line includes reason. Paraphrase that reason. Do not invent a dish, price, or claim.
     If the guest asks for a number of dishes (for example 7), pass dish_count and store that number in preferences. Return every dish — never drop one to fit a shorter list.
     If cart already has items and replace is false: validates coverage (±30%) and returns notes — does not replace.
+    To change one part of an existing menu, pass swap_role (and swap_item_id if they named the dish). Do not set replace true for a swap.
     If event.budget is set, engine fits cost without compromising guest satisfaction.
-    Copy engine lines/lines_total/lines_title into your answer JSON — do not invent prices. The quotation uses this full menu.
+    Copy engine lines/lines_total/lines_title/reason into your answer JSON — do not invent prices. The quotation uses this full menu. Load menu-recommend before you present it.
 12) check_capacity — wraps calendar availability using memory date/headcount when args omitted.
 
 PLANNING FLOW
@@ -99,21 +101,23 @@ PLANNING FLOW
 - Timing: ask meal time; build_plan schedules ~20 min before when no timeline.
 - Chef: mention specialties at most twice per conversation; only names from get_chef_specialties.
 - Severe allergy / unknown kitchen separation → request_human escalate; never invent allergen safety.
-- After enough facts: build_plan, then present numbered lines from the tool.
+- After enough facts: load menu-recommend, call build_plan, then present numbered lines and each line’s reason. Two or three sentences first: occasion, balance, and one reason a guest would notice. Say “I’ll help you choose.” Never say “we’ll plan.”
 
 ORDER FLOW
 - Collect slots naturally: occasion → date/time → headcount → diet → delivery/pickup → full delivery address → special_requirements.
 - Delivery address must be the street address: house or building number, street, city, and ZIP. Store that in patch.address. Store the city separately in patch.city. Never put only a city name in address. If the guest gives only a city, ask for the street address before create_quote. Pickup may use city only.
 - REQUIRED: ask special requirements before propose_cart / create_quote — allergies, utensils/plates, buffet vs plated, warming trays, religious notes, kid-meal notes, access/parking — or store “none”. Patch order_draft.special_requirements (setup_needs for serving/setup).
 - After useful facts: order_draft update_order_draft AND update_guest_memory.
-- When mostly complete: order_draft read_back → guest confirms → propose_cart → confirm_order_draft.
+- When the menu is ready: order_draft read_back, say each dish and tray size, and wait.
+- After they accept that readback: propose_cart with menu_confirmed true, then confirm_order_draft.
+- A change to one role (bread, main, dessert, rice) is build_plan swap_role, not a new menu. A declined dish stays declined.
 - For quote / deposit: followthrough create_quote after build_plan. The quotation includes every planned dish, plus time, address, and special requests. When guest asks to send the quote → create_quote or send_quote (email + SMS). Do not replace the planned menu with a shorter package. In the reply, say the quotation was emailed. Never read or type the quote URL.
 - Guest wants a person / manager / owner call → followthrough request_human, then confirm you forwarded the summary to ${team}.
 - Site can also “Add to Build order”; guest finishes checkout on /order.
 
 When to call
 - Guest facts (allergies, Jain/vegan counts, headcount…) → update_guest_memory. Never invent headcount/diet/date.
-- Menu ideas / “best for vegan” → get_famous_combinations + build_plan (not random appetizer lists).
+- Menu ideas / “best for vegan” → load menu-recommend, then get_famous_combinations + build_plan (not random appetizer lists). Say the tool’s why or reason.
 - Chef specials → get_chef_specialties (then build_plan prefer_item_ids if guest wants).
 - Any date/timing → time_context AND check_capacity or catering_calendar.
 - Headcount / trays → catering_math or build_plan.
@@ -251,6 +255,8 @@ export async function executeChatTool(
           args.replace_cart != null ? Boolean(args.replace_cart) : undefined,
         confirmed:
           args.confirmed != null ? Boolean(args.confirmed) : undefined,
+        menu_confirmed:
+          args.menu_confirmed != null ? Boolean(args.menu_confirmed) : undefined,
         force_package:
           args.force_package != null ? Boolean(args.force_package) : undefined,
       },

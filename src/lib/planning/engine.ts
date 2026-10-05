@@ -19,6 +19,7 @@ import {
   categoryToRole,
   pickBestCombo,
   type ComboRole,
+  type FamousCombination,
 } from "@/lib/planning/famous-combinations";
 
 export type PlanLine = {
@@ -31,6 +32,8 @@ export type PlanLine = {
   line_total: number;
   serves?: number | null;
   coverage_for?: string;
+  /** Why this dish is on this menu. Written by the planner, not the model. */
+  reason?: string;
 };
 
 export type PlanCoverage = {
@@ -64,6 +67,7 @@ export type BuildPlanResult = {
     unit: string;
     price: number;
     line_total: number;
+    reason?: string;
   }[];
   lines_title: string;
   lines_total: number;
@@ -313,13 +317,7 @@ function validateCart(
     timeline: [],
     warnings,
     notes,
-    lines: items.slice(0, MAX_PLAN_LINES).map((i) => ({
-      name: i.name,
-      quantity: i.quantity,
-      unit: i.unit,
-      price: i.price,
-      line_total: i.line_total,
-    })),
+    lines: answerLines(withReasons(items, catalog, null)),
     lines_title: "Your cart (validated)",
     lines_total: Math.round(total * 100) / 100,
     summary: warnings.length
@@ -341,7 +339,14 @@ export function buildPlan(input: {
   prefer_item_ids?: string[];
   /** How many distinct dishes the guest asked for. */
   dish_count?: number;
+  /** Replace only this meal role and keep the rest of the menu. */
+  swap_role?: ComboRole;
+  /** Catalog id to use for that role, when the guest named a dish. */
+  swap_item_id?: string;
 }): BuildPlanResult {
+  if (input.swap_role) {
+    return swapRolePlan(input);
+  }
   const { memory, catalog } = input;
   const declined = new Set(
     memory.declined_suggestions.map((d) => d.toLowerCase())
@@ -723,7 +728,11 @@ export function buildPlan(input: {
     MAX_PLAN_LINES,
     requestedLines != null ? requestedLines : collapsed.length
   );
-  const shown = collapsed.slice(0, displayCap);
+  const shown = withReasons(
+    collapsed.slice(0, displayCap),
+    catalog,
+    combo
+  );
   if (requestedLines != null && shown.length < requestedLines) {
     notes.push(
       `Guest asked for ${requestedLines} dishes; the catalog could support ${shown.length}.`
@@ -775,13 +784,7 @@ export function buildPlan(input: {
     timeline,
     warnings,
     notes,
-    lines: shown.map((i) => ({
-      name: i.name,
-      quantity: i.quantity,
-      unit: i.unit,
-      price: i.price,
-      line_total: i.line_total,
-    })),
+    lines: answerLines(shown),
     lines_title:
       total && dietFilter.vegan
         ? `Suggested for ${total} vegan guests`
@@ -811,8 +814,241 @@ function collapseLines(lines: PlanLine[]): PlanLine[] {
     if (l.coverage_for && prev.coverage_for !== l.coverage_for) {
       prev.coverage_for = `${prev.coverage_for}+${l.coverage_for}`;
     }
+    if (!prev.reason && l.reason) prev.reason = l.reason;
   }
   return Array.from(map.values());
+}
+
+const ROLE_REASON: Record<ComboRole, string> = {
+  appetizer: "The crisp start",
+  chaat: "The chaat that opens the meal",
+  main: "The main",
+  dal: "The lighter curry beside the main",
+  starch: "The rice",
+  bread: "The bread that completes the plate",
+  salad: "A fresh salad",
+  dessert: "A sweet finish",
+  soup: "A light soup",
+  pizza: "The pizza for this gathering",
+  side: "A small side",
+};
+
+function answerLines(items: PlanLine[]) {
+  return items.map((i) => ({
+    name: i.name,
+    quantity: i.quantity,
+    unit: i.unit,
+    price: i.price,
+    line_total: i.line_total,
+    reason: i.reason || "",
+  }));
+}
+
+function trayPhrase(line: PlanLine): string {
+  const label = line.name.match(/\(([^)]+)\)\s*$/)?.[1]?.trim() || "";
+  const size = label
+    ? /tray/i.test(label)
+      ? label.toLowerCase()
+      : `${label.toLowerCase()} tray`
+    : (line.unit || "tray").toLowerCase();
+  const covers = Math.round((line.serves || 20) * Math.max(1, line.quantity));
+  const article = /^[aeiou]/i.test(size) ? "An" : "A";
+  return `${article} ${size} covers about ${covers} guests`;
+}
+
+function reasonForLine(
+  line: PlanLine,
+  item: MenuItem | undefined,
+  combo: FamousCombination | null
+): string {
+  const coverage = line.coverage_for || "";
+  let lead = "";
+  if (coverage.includes("jain")) lead = "For the Jain guests";
+  else if (coverage.includes("vegan")) lead = "For the vegan guests";
+  else if (coverage.includes("kids")) lead = "A mild dish for the children";
+  else if (combo && item && combo.item_ids.includes(item.id)) lead = combo.why.replace(/\.$/, "");
+  else {
+    const role = item ? categoryToRole(item.category_id) : null;
+    lead = role ? ROLE_REASON[role] : "Part of this menu";
+  }
+  return `${lead}. ${trayPhrase(line)}.`;
+}
+
+function withReasons(
+  lines: PlanLine[],
+  catalog: MenuItem[],
+  combo: FamousCombination | null
+): PlanLine[] {
+  return lines.map((line) => {
+    const item = catalog.find((i) => i.id === line.menu_item_id);
+    return { ...line, reason: reasonForLine(line, item, combo) };
+  });
+}
+
+function swapRolePlan(input: {
+  memory: GuestEventMemory;
+  catalog: MenuItem[];
+  cart_items?: CartHintLine[];
+  swap_role?: ComboRole;
+  swap_item_id?: string;
+}): BuildPlanResult {
+  const role = input.swap_role!;
+  const declined = new Set(
+    input.memory.declined_suggestions.map((d) => d.toLowerCase())
+  );
+  const existing =
+    input.cart_items?.length
+      ? input.cart_items
+      : (input.memory.planned_menu || []).map((l) => ({
+          menu_item_id: l.menu_item_id,
+          variant_id: l.variant_id,
+          name: l.name,
+          quantity: l.quantity,
+          unit_price: l.price,
+        }));
+
+  if (!existing.length) {
+    return {
+      ok: false,
+      mode: "build",
+      items: [],
+      per_head: null,
+      total: 0,
+      coverage: [],
+      timeline: [],
+      warnings: ["No menu to change yet."],
+      notes: ["Help the guest choose a menu before swapping one dish."],
+      lines: [],
+      lines_title: "",
+      lines_total: 0,
+      summary: "Missing menu.",
+    };
+  }
+
+  const isRole = (item: MenuItem) => {
+    const mapped = categoryToRole(item.category_id);
+    if (mapped === role) return true;
+    if (
+      role === "bread" &&
+      mapped === "side" &&
+      /poori|puri|pav|roti|naan|paratha|focaccia|bread|kulcha|bhatura/i.test(
+        item.name
+      )
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const kept: PlanLine[] = [];
+  const removed: typeof existing = [];
+  for (const c of existing) {
+    const item = input.catalog.find((i) => i.id === c.menu_item_id);
+    if (!item) continue;
+    if (categoryToRole(item.category_id) === role) {
+      removed.push(c);
+      continue;
+    }
+    const v =
+      (c.variant_id && item.variants?.find((x) => x.id === c.variant_id)) ||
+      pickDefaultVariant(item);
+    const price = c.unit_price ?? v?.price ?? item.price;
+    kept.push({
+      menu_item_id: item.id,
+      variant_id: v?.id,
+      name: c.name || (v ? `${item.name} (${v.label})` : item.name),
+      quantity: c.quantity,
+      unit: v?.unit || item.unit,
+      price,
+      line_total: Math.round(price * c.quantity * 100) / 100,
+      serves: v?.serves || 20,
+      coverage_for: "general",
+    });
+  }
+
+  const totalGuests = input.memory.headcount.total || 20;
+  const dietJain = input.memory.requirement_groups.some(
+    (g) => g.kind === "jain" && g.count >= totalGuests * 0.8
+  );
+  const dietVegan = input.memory.requirement_groups.some(
+    (g) => g.kind === "vegan" && g.count >= totalGuests * 0.8
+  );
+  const notes: string[] = [];
+  const warnings: string[] = [];
+
+  const fits = (item: MenuItem) => {
+    if (!isRole(item)) return false;
+    if (declined.has(item.id.toLowerCase()) || declined.has(item.name.toLowerCase())) {
+      return false;
+    }
+    if (kept.some((k) => k.menu_item_id === item.id)) return false;
+    if (
+      removed.some((r) => r.menu_item_id === item.id) &&
+      item.id !== input.swap_item_id
+    ) {
+      return false;
+    }
+    const tags = derivePlanningTags(item);
+    if (dietJain && !tags.jain_ok) return false;
+    if (dietVegan && !tags.vegan) return false;
+    return item.is_available !== false;
+  };
+
+  let chosen: MenuItem | undefined;
+  if (input.swap_item_id) {
+    const named = input.catalog.find((i) => i.id === input.swap_item_id);
+    if (named && fits(named)) chosen = named;
+    else notes.push("That dish does not fit this part of the menu, so a matching dish was used instead.");
+  }
+  if (!chosen) {
+    chosen = input.catalog.find((i) => fits(i));
+  }
+
+  if (!chosen) {
+    const fallback = removed
+      .map((r) => input.catalog.find((i) => i.id === r.menu_item_id))
+      .find((item): item is MenuItem => Boolean(item));
+    if (fallback) {
+      chosen = fallback;
+      notes.push(`No other ${role} fits this menu, so that dish stayed.`);
+    } else {
+      warnings.push(`No ${role} dish available to swap in.`);
+    }
+  }
+  if (chosen) {
+    const v = pickVariantServes(chosen);
+    const qty = Math.max(1, traysForServes(totalGuests * 0.7, v.serves));
+    addLine(kept, chosen, qty, "general");
+    if (!notes.some((n) => n.includes("stayed"))) {
+      notes.push(`Swapped only the ${role}. The rest of the menu stayed.`);
+    }
+  }
+
+  const combo = pickBestCombo({
+    catalogIds: new Set(input.catalog.map((i) => i.id)),
+    item_ids: kept.map((l) => l.menu_item_id),
+    declined,
+  });
+  const shown = withReasons(collapseLines(kept), input.catalog, combo);
+  const money = shown.reduce((s, l) => s + l.line_total, 0);
+  return {
+    ok: Boolean(chosen),
+    mode: "build",
+    items: shown,
+    per_head:
+      totalGuests > 0 ? Math.round((money / totalGuests) * 100) / 100 : null,
+    total: Math.round(money * 100) / 100,
+    coverage: [],
+    timeline: [],
+    warnings,
+    notes,
+    lines: answerLines(shown),
+    lines_title: `Menu with a new ${role}`,
+    lines_total: Math.round(money * 100) / 100,
+    summary: chosen
+      ? `Replaced the ${role} only. ${shown.length} dishes remain.`
+      : `Could not replace the ${role}.`,
+  };
 }
 
 /** Lightweight row export for get_menu tool */

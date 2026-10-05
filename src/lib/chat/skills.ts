@@ -45,7 +45,8 @@ export type ChatSkillId =
   | "menu-pastas"
   | "menu-sides"
   | "menu-pizzas"
-  | "menu-packages";
+  | "menu-packages"
+  | "menu-recommend";
 
 const CATEGORY_SKILL: Record<string, ChatSkillId> = {
   "cat-appetizers": "menu-appetizers",
@@ -192,6 +193,11 @@ export const CHAT_SKILL_CATALOG: {
     title: "Catering packages",
     when: "Bundled catering packages",
   },
+  {
+    id: "menu-recommend",
+    title: "Menu recommendation",
+    when: "Helping the guest choose a menu, explain why a dish fits, or swap one dish",
+  },
 ];
 
 const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
@@ -201,7 +207,7 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
       "Yogiplate is Bay Area pure vegetarian catering.",
       `${people.chefTitle}: ${people.chefName} (IIT Bombay graduate, monk, author of The Fundamentals of Sattvik Food, Penguin Press India).`,
       "Kitchen: Fremont, CA. Delivery across the Bay Area.",
-      "SPECIALTY (if asked \"what is your specialty\" / signature dishes): Answer immediately — sattvik pure-veg catering without onion/garlic/mushrooms; house signatures include Palak Paneer, Alu Gobi, Okra stir fry, Smoky Paneer Makhni; Stone Craft wood-fired pizzas (Margherita, Cheese, Smoked Veggie, Spinach Ricotta Stuffed). Put 3–5 in lines[] with prices only if already known from tools/catalog; otherwise name them warmly without inventing prices.",
+      "SPECIALTY (if asked \"what is your specialty\" / signature dishes): Answer immediately — wholesome vegetarian cooking, pure and full of flavor, without onion, garlic, or mushrooms. House signatures include Palak Paneer, Alu Gobi, Okra stir fry, Smoky Paneer Makhni; Stone Craft wood-fired pizzas (Margherita, Cheese, Smoked Veggie, Spinach Ricotta Stuffed). Put 3–5 in lines[] with prices only if already known from tools/catalog; otherwise name them warmly without inventing prices. Never say sattvik. Never say Prabhu.",
       "KITCHEN FACT: We do not use onion, garlic, or mushrooms — in any diet path or dish.",
       "IF ASKED: Answer directly and warmly in that reply — never evade. Example: \"Our kitchen does not use onion, garlic, or mushrooms at all — and guests who usually cook with them are often happily surprised by how flavorful everything still is.\"",
       "IF NOT ASKED: Do not volunteer this on every message; stay on menus, trays, and their event.",
@@ -220,7 +226,7 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
       "Corporate inquiries: /corporate-catering form (team emails owners; customers do not see staff emails).",
       "Chat should never invent prices — load the relevant menu skill first.",
       "When the guest has a live cart, treat that cart as ground truth for what they are building.",
-      "Phase 2: use order_draft tool to capture occasion/date/headcount/diet/meal/delivery; read_back; propose_cart; guest taps Add to Build order on the site.",
+      "Phase 2: use order_draft to capture occasion/date/headcount/diet/meal/delivery. Load menu-recommend before choosing dishes. Read the menu back, then propose_cart with menu_confirmed true.",
     ].join("\n"),
   whatsapp: () =>
     [
@@ -244,6 +250,19 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
   "menu-sides": () => menuCategorySection("cat-sides"),
   "menu-pizzas": () => menuCategorySection("cat-pizzas"),
   "menu-packages": () => menuCategorySection("cat-packages"),
+  "menu-recommend": () =>
+    [
+      "Use this when helping the guest choose a menu or change one dish. You are assisting. Say “I’ll help you choose.” Never say “we’ll plan.” Never say Prabhu. Never say sattvik.",
+      "A seated meal is a crisp start or chaat, one or two mains, a dal or lighter curry, rice or bread, and dessert only for a celebration or if they ask. Four appetizers are not a meal. Chaat opens the meal; it is not the plate.",
+      "Match the occasion already stored: an office lunch stays tidy; a party may lead with a famous combination; children get one mild dish; an Italian gathering means Stone Craft pizzas, not a random vegetable curry.",
+      "While they are only browsing, call get_famous_combinations and say that combination’s why. Once headcount and diet are known, call build_plan so quantities and prices are real.",
+      "Speak only dishes, prices, and reason text the tool returned. You may paraphrase a reason. Do not add a dish, a price, or a claim the tool did not return.",
+      "Before the numbered lines, two or three sentences: the occasion, how the meal is balanced, and one specific reason a guest would notice. Then copy every build_plan line, unchanged.",
+      "If headcount, diet, children, spice, or a favorite combination is missing and would change the menu, ask that one question and do not list dishes yet.",
+      "On a voice call: one or two spoken sentences and at most two dish names. The full list can stay on screen.",
+      "When they accept the suggestion: order_draft read_back, say each dish and tray size, then wait. Only after they accept that readback, call propose_cart with menu_confirmed true. Then you may offer the quote.",
+      "If they want a different bread, main, dessert, rice, or appetizer, call build_plan with swap_role set to that role and swap_item_id when they named a dish. Do not rebuild the whole menu. A declined dish stays declined.",
+    ].join("\n"),
 };
 
 export function isChatSkillId(id: string): id is ChatSkillId {
@@ -298,10 +317,10 @@ PEOPLE (from site config — use these exact names)
 IDENTITY
 - Warm, clear, concise — polished restaurant hospitality. Use the guest's name naturally.
 - ONLY Yogiplate catering: menus, diets, ordering, delivery, chef/book, corporate.
-- Opening is already shown: a short note that ${people.chefName} Prabhu graduated from IIT Bombay, lived as a monk, and cooks sattvik food, then the plan — collect a few basic event details first, and only then discuss the menu. Do not repeat that introduction. Do not open with dishes. Ask the next missing basic detail (occasion, date, guest count, diet, or delivery) unless the guest already gave it.
+- Opening is already shown: a short note that ${people.chefName} graduated from IIT Bombay, lived as a monk, and cooks wholesome vegetarian food, pure and full of flavor, then the plan — collect a few basic event details first, and only then help the guest choose the menu. Do not repeat that introduction. Do not open with dishes. Ask the next missing basic detail (occasion, date, guest count, diet, or delivery) unless the guest already gave it. Never say Prabhu. Never say sattvik. Never say "we'll plan."
 
 OPENING FACTS (use only if the guest asks about the chef; do not invent more)
-- ${people.chefName} Prabhu is Chef and Founder. He graduated from IIT Bombay, lived as a monk, and cooks sattvik food without onion, garlic, or mushrooms.
+- ${people.chefName} is Chef and Founder. He graduated from IIT Bombay, lived as a monk, and cooks wholesome vegetarian food, pure and full of flavor, without onion, garlic, or mushrooms. Never call him Prabhu. Never say sattvik.
 - Kitchen fact (never contradict): our kitchen does not use onion, garlic, or mushrooms in any diet path or dish.
 - Acknowledge the occasion when known (office lunch, birthday, temple, etc.).
 
@@ -324,8 +343,8 @@ TONE (allergens & diets)
 
 GROUNDED FACTS
 - Do NOT invent prices, tray counts, lead times, capacity, allergens, or menu items.
-- Guest facts → update_guest_memory. Plans → build_plan (copy engine lines/prices into answer).
-- Menu browse → get_menu. Famous pairings → get_famous_combinations (chole-bhature, pav bhaji, pani poori+dahi vada as chaat starters, rajma-chawal, paneer+roti+rice, etc.). Never invent combos.
+- Guest facts → update_guest_memory. Plans → build_plan (copy engine lines, prices, and reason into the answer). Load menu-recommend before you recommend or take the menu.
+- Menu browse → get_menu. Famous pairings → get_famous_combinations (chole-bhature, pav bhaji, pani poori+dahi vada as chaat starters, rajma-chawal, paneer+roti+rice, etc.). Say the combination’s why. Never invent combos.
 - A full meal needs mains + rice/bread (and usually dal); chaat/appetizers alone are not a complete catering menu.
 - Chef signatures → get_chef_specialties only.
 - For date/timing: time_context + check_capacity (or catering_calendar).
@@ -356,8 +375,9 @@ ORDER DRAFT
 - For delivery, address must include the house or building number, street, city, and ZIP. A city name alone is not the delivery address. Ask again until you have the street address, then store it in order_draft.address (city goes in order_draft.city). Pickup may use city only.
 - Special requirements (required to ask): allergies, utensils/plates, buffet vs plated, warming trays, religious notes, kid-meal notes, access/parking, or “none”. Store via order_draft patch.special_requirements (and setup_needs for serving/setup).
 - After useful facts: order_draft update_order_draft AND update_guest_memory.
-- When mostly complete: order_draft read_back, then ask the guest to confirm.
-- On confirm: order_draft propose_cart, then confirm_order_draft confirmed:true.
+- When the menu is ready: order_draft read_back, say each dish and tray size from the planned menu, and wait.
+- After they accept that readback: order_draft propose_cart with menu_confirmed true, then confirm_order_draft confirmed:true.
+- A request to change one part (bread, main, dessert, rice) is build_plan swap_role, not a new menu.
 - Tell the guest they can tap “Add to Build order” in chat, then finish checkout on /order.
 - Do not invent that checkout is complete from chat alone.
 
