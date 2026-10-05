@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   webpack: (config, { dev }) => {
     if (!dev) {
       // Avoid writing .next/cache/webpack/*.pack, which Netlify's secret scan reads.
