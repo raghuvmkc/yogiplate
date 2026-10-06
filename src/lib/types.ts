@@ -137,6 +137,8 @@ export interface Quote {
   deposit_amount: number;
   deposit_paid_at?: string | null;
   stripe_deposit_session_id?: string | null;
+  /** Catering order created when the pay link is issued, so Stripe can tag it. */
+  order_id?: string | null;
   public_token: string;
   chat_session_id?: string | null;
   channel?: ContactChannel | null;
@@ -275,6 +277,11 @@ export interface Order {
   notes: string | null;
   created_at: string;
   paid_at: string | null;
+  /** Running total of recorded payments. Pending until this reaches `total`. */
+  amount_paid?: number;
+  payments?: PaymentRecord[];
+  /** Set after the payment confirmation email is sent, so Stripe retries do not send it twice. */
+  payment_email_sent_at?: string | null;
 }
 
 export interface Invoice {
@@ -282,6 +289,8 @@ export interface Invoice {
   order_id: string;
   invoice_number: string;
   html: string;
+  /** Current Stripe link for the balance due, if one was issued. */
+  pay_url?: string | null;
   email_sent_at: string | null;
   created_at: string;
 }
@@ -328,9 +337,22 @@ export interface CalendarBlock {
   created_at: string;
 }
 
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  paid_at: string;
+  stripe_session_id?: string | null;
+  note?: string | null;
+}
+
 /** Admin catering calendar entry from chat / quotes / orders. */
 export type CateringBookingStatus =
   | "unconfirmed"
+  | "quote_sent"
+  | "order_placed"
+  | "invoice_sent"
+  | "partial"
+  | "paid"
   | "confirmed"
   | "cancelled";
 
@@ -355,7 +377,14 @@ export interface CateringBooking {
   items_summary?: string | null;
   food_subtotal?: number | null;
   quote_id?: string | null;
+  quote_number?: string | null;
   order_id?: string | null;
+  order_number?: string | null;
+  invoice_number?: string | null;
+  /** Amount the guest owes for this event. */
+  amount_due?: number | null;
+  amount_paid?: number | null;
+  payments?: PaymentRecord[];
   chat_session_id?: string | null;
   admin_notes?: string | null;
   created_at: string;

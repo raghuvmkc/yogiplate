@@ -1,4 +1,5 @@
 import { proposalFromLatestPlan } from "@/lib/chat/planned-menu";
+import { fromCents, lineCents } from "@/lib/pricing";
 import { runCateringMath } from "@/lib/chat/tools/math";
 import { getOrCreateGuestMemory } from "@/lib/planning/guest-memory-store";
 import {
@@ -143,9 +144,8 @@ export async function runOrderTool(
           tool: "order_draft",
           action,
           draft: ctx.draft,
-          food_subtotal: planned.items.reduce(
-            (s, i) => s + i.price * i.quantity,
-            0
+          food_subtotal: fromCents(
+            planned.items.reduce((sum, item) => sum + lineCents(item.price, item.quantity), 0)
           ),
           cart_proposal: planned,
           readback: formatOrderReadback(ctx.draft),

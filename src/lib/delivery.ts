@@ -118,5 +118,6 @@ export async function quoteDelivery(input: {
     in_service: inService,
     service_radius_miles: input.settings.service_radius_miles,
     free_delivery_threshold: input.settings.free_delivery_threshold,
+    tax_rate: input.settings.tax_rate,
   };
 }

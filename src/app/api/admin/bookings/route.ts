@@ -9,6 +9,7 @@ import {
 import type { CateringBookingStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   if (!(await isAdminAuthenticated())) {
@@ -17,8 +18,12 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const from = url.searchParams.get("from") || undefined;
   const to = url.searchParams.get("to") || undefined;
-  const bookings = await listCateringBookings({ from, to });
-  return NextResponse.json({ bookings });
+  const q = url.searchParams.get("q") || undefined;
+  const bookings = await listCateringBookings({ from, to, q });
+  return NextResponse.json(
+    { bookings },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function POST(req: Request) {

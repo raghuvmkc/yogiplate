@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/pricing";
+import { formatMoney, lineTotal } from "@/lib/pricing";
 import { chefWithTitle, getYogiPeople } from "@/lib/people";
 import {
   escHtml,
@@ -59,7 +59,7 @@ export function buildQuoteEmailHtml(quote: Quote, ctx: QuoteEmailContext) {
         <td style="padding:12px 10px;border-bottom:1px solid #efe6d4;color:#243028;">${escHtml(i.name)}</td>
         <td style="padding:12px 8px;border-bottom:1px solid #efe6d4;text-align:center;color:#243028;">${i.quantity}</td>
         <td style="padding:12px 8px;border-bottom:1px solid #efe6d4;text-align:center;color:#6d6456;font-size:13px;">${escHtml(prettyLabel(i.unit) || "Tray")}</td>
-        <td style="padding:12px 10px;border-bottom:1px solid #efe6d4;text-align:right;color:#243028;">${formatMoney(i.unit_price * i.quantity)}</td>
+        <td style="padding:12px 10px;border-bottom:1px solid #efe6d4;text-align:right;color:#243028;">${formatMoney(lineTotal(i.unit_price, i.quantity))}</td>
       </tr>`;
     })
     .join("");
@@ -182,7 +182,7 @@ export function buildQuoteEmailText(quote: Quote, ctx: QuoteEmailContext) {
   const lines = quote.items
     .map(
       (i) =>
-        `- ${i.quantity}× ${i.name}: ${formatMoney(i.unit_price * i.quantity)}`
+        `- ${i.quantity}× ${i.name}: ${formatMoney(lineTotal(i.unit_price, i.quantity))}`
     )
     .join("\n");
   const occasion = resolveOccasion(quote);

@@ -43,6 +43,7 @@ import {
   handoffTeamPhrase,
 } from "@/lib/people";
 import { upsertCateringBooking } from "@/lib/calendar-bookings";
+import { fromCents, lineCents } from "@/lib/pricing";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
 
@@ -1237,6 +1238,10 @@ export async function runFrontDeskTurn(
 
   // Mark chat event dates on the admin catering calendar (unconfirmed until paid)
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(orderDraft.event_date || ""))) {
+    const foodCents = finalProposal?.items?.length
+      ? finalProposal.items.reduce((sum, item) => sum + lineCents(item.price, item.quantity), 0)
+      : 0;
+    const foodTotal = foodCents ? fromCents(foodCents) : null;
     const itemsSummary = finalProposal?.items?.length
       ? finalProposal.items
           .slice(0, 12)
@@ -1253,10 +1258,9 @@ export async function runFrontDeskTurn(
       draft: orderDraft,
       quote_id: lastQuoteId,
       items_summary: itemsSummary,
-      food_subtotal: finalProposal?.items?.length
-        ? finalProposal.items.reduce((s, i) => s + i.price * i.quantity, 0)
-        : null,
-      status: orderDraft.confirmed ? "confirmed" : "unconfirmed",
+      food_subtotal: foodTotal,
+      amount_due: lastQuoteId ? undefined : foodTotal,
+      status: "unconfirmed",
     }).catch(() => null);
   }
 

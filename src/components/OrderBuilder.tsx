@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DIET_DETAILS, DIET_LABELS, PRIMARY_DIETS } from "@/lib/data/menu-seed";
 import { useCartStore } from "@/lib/cart-store";
 import { notesForActiveDiet } from "@/lib/notes-for-diet";
-import { formatMoney } from "@/lib/pricing";
+import { cartSubtotal, formatMoney, lineTotal } from "@/lib/pricing";
 import type { DietTag, MenuCategory, MenuItem, MenuVariant } from "@/lib/types";
 
 const diets = PRIMARY_DIETS;
@@ -215,7 +215,7 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
     return [...pizzas, ...rest];
   }, [activeDiet, categories]);
 
-  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const subtotal = cartSubtotal(items);
 
   if (!mounted) {
     return (
@@ -435,7 +435,7 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
                   <div className="flex items-start justify-between gap-3">
                     <span className="min-w-0 leading-snug">{i.name}</span>
                     <span className="shrink-0 font-medium">
-                      {formatMoney(i.price * i.quantity)}
+                      {formatMoney(lineTotal(i.price, i.quantity))}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center gap-2">

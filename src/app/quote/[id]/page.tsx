@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatMoney } from "@/lib/pricing";
+import { formatMoney, lineTotal } from "@/lib/pricing";
 import {
   prettyDate,
   prettyLabel,
@@ -21,6 +21,7 @@ export default function PublicQuotePage() {
   const id = String(params?.id || "");
   const token = search.get("t") || "";
   const depositFlag = search.get("deposit");
+  const sessionId = search.get("session_id") || "";
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +43,34 @@ export default function PublicQuotePage() {
         return;
       }
       setQuote(data.quote as Quote);
-      if (depositFlag === "1") {
+      if (sessionId) {
+        const confirmed = await fetch("/api/checkout/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        const paid = await confirmed.json();
+        if (cancelled) return;
+        if (confirmed.ok) {
+          const refreshed = await fetch(
+            `/api/quotes/${id}?t=${encodeURIComponent(token)}`
+          );
+          const body = await refreshed.json();
+          if (!cancelled && refreshed.ok) setQuote(body.quote as Quote);
+          setNote(
+            `Payment received for order ${paid.order_number}. It is on the calendar, and invoice ${paid.invoice_number} is updated.`
+          );
+        } else if (depositFlag === "1") {
+          setNote(paid.error || "Payment is not confirmed yet.");
+        }
+      } else if (depositFlag === "1") {
         setNote("Thank you — if your deposit payment completed, we will confirm by email shortly.");
       }
     })().catch(() => setError("Could not load quote"));
     return () => {
       cancelled = true;
     };
-  }, [id, token, depositFlag]);
+  }, [id, token, depositFlag, sessionId]);
 
   async function payDeposit() {
     if (!quote) return;
@@ -201,7 +222,7 @@ export default function PublicQuotePage() {
                     <span>
                       {i.quantity}× {i.name}
                     </span>
-                    <span>{formatMoney(i.unit_price * i.quantity)}</span>
+                    <span>{formatMoney(lineTotal(i.unit_price, i.quantity))}</span>
                   </li>
                 ))}
               </ul>

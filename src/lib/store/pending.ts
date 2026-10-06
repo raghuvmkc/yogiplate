@@ -21,6 +21,9 @@ export interface PendingCheckout {
   coupon_code: string | null;
   notes: string | null;
   created_at: string;
+  order_id?: string;
+  order_number?: string;
+  invoice_number?: string;
 }
 
 async function readAll(): Promise<Record<string, PendingCheckout>> {

@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 import { formatMoney } from "@/lib/pricing";
+import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
+import { getDb, updateDb } from "@/lib/store/local-db";
 import type { Order, OrderItem, SiteSettings } from "@/lib/types";
 
 export function buildInvoiceHtml(
@@ -7,7 +9,8 @@ export function buildInvoiceHtml(
   items: OrderItem[],
   settings: SiteSettings,
   invoiceNumber: string,
-  payUrl?: string | null
+  payUrl?: string | null,
+  opts?: { paidLabel?: string | null }
 ) {
   const rows = items
     .map(
@@ -53,8 +56,13 @@ export function buildInvoiceHtml(
       <p style="font-size:18px;font-weight:700;margin-top:12px;">Total: ${formatMoney(order.total)}</p>
     </div>
     ${
-      payUrl
-        ? `<p style="margin-top:28px;font-family:Arial,sans-serif;font-size:15px;"><a href="${payUrl}" style="display:inline-block;background:#2a4a36;color:#ffffff;text-decoration:none;padding:12px 18px;">Pay this invoice</a></p>`
+      opts?.paidLabel
+        ? `<p style="margin-top:28px;font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#2a4a36;">${opts.paidLabel}</p><p style="font-family:Arial,sans-serif;font-size:13px;color:#555;">Order ${order.order_number}</p>`
+        : ""
+    }
+    ${
+      payUrl && !opts?.paidLabel
+        ? `<p style="margin-top:28px;font-family:Arial,sans-serif;font-size:15px;"><a href="${payUrl}" style="display:inline-block;background:#2a4a36;color:#ffffff;text-decoration:none;padding:12px 18px;">Pay this invoice</a></p><p style="font-family:Arial,sans-serif;font-size:13px;color:#555;">Order ${order.order_number}</p>`
         : ""
     }
     <p style="margin-top:36px;font-family:Arial,sans-serif;font-size:13px;color:#777;">
@@ -90,4 +98,99 @@ export async function sendInvoiceEmail(input: {
     html: input.html,
   });
   return { sent: true as const };
+}
+
+export function buildPaymentConfirmationHtml(input: {
+  name: string;
+  orderNumber: string;
+  invoiceNumber: string;
+  eventDate: string;
+  amountLabel: string;
+  deposit: boolean;
+}) {
+  const safeName = input.name
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const lead = input.deposit
+    ? `We received your deposit of ${input.amountLabel} for order ${input.orderNumber}.`
+    : `We received your payment of ${input.amountLabel} for order ${input.orderNumber}.`;
+  const next = input.deposit
+    ? "Your event is confirmed on our calendar. We will follow up on the remaining balance."
+    : "Your event is confirmed on our calendar, and your invoice is marked paid.";
+  return `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ffffff;color:#1c1c1c;font-family:Georgia,serif;">
+  <div style="max-width:640px;margin:0 auto;padding:40px 24px;">
+    <h1 style="font-size:32px;margin:0 0 4px;">Yogiplate</h1>
+    <p style="margin:0 0 28px;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Payment confirmation</p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">Dear ${safeName},</p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">${lead}</p>
+    <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;">
+      Invoice ${input.invoiceNumber}<br/>
+      Event: ${input.eventDate || "to be confirmed"}
+    </p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">${next}</p>
+    <p style="margin-top:28px;font-family:Arial,sans-serif;font-size:14px;color:#555;">Thank you for choosing Yogiplate.</p>
+  </div>
+</body>
+</html>`;
+}
+
+/** Email the guest once after Stripe marks the payment paid. */
+export async function emailPaymentReceived(
+  orderId: string,
+  opts?: { depositAmount?: number }
+) {
+  try {
+    const db = await getDb();
+    const order = db.orders.find((row) => row.id === orderId);
+    if (!order?.customer_email || order.payment_email_sent_at) return { sent: false as const };
+    const invoice = db.invoices.find((row) => row.order_id === order.id);
+    const deposit = opts?.depositAmount != null;
+    const amount = deposit ? opts.depositAmount! : order.total;
+    const amountLabel = formatMoney(amount);
+    const html = buildPaymentConfirmationHtml({
+      name: order.customer_name || "Guest",
+      orderNumber: order.order_number,
+      invoiceNumber: invoice?.invoice_number || "",
+      eventDate: order.event_date,
+      amountLabel,
+      deposit,
+    });
+    const subject = deposit
+      ? `Deposit received — Order ${order.order_number}`
+      : `Payment received — Order ${order.order_number}`;
+    const text = `${subject}. ${amountLabel}. Invoice ${invoice?.invoice_number || ""}. Event ${order.event_date}.`;
+    let sent = false;
+    try {
+      const resend = await sendInvoiceEmail({
+        to: order.customer_email,
+        subject,
+        html,
+      });
+      sent = resend.sent;
+    } catch (err) {
+      console.error("[payment] resend confirmation failed", err);
+    }
+    if (!sent && smtpConfigured()) {
+      await sendGuestQuoteSmtp({
+        to: order.customer_email,
+        name: order.customer_name,
+        subject,
+        html,
+        text,
+      });
+      sent = true;
+    }
+    if (!sent) return { sent: false as const };
+    await updateDb((next) => {
+      const row = next.orders.find((item) => item.id === orderId);
+      if (row) row.payment_email_sent_at = new Date().toISOString();
+    });
+    return { sent: true as const };
+  } catch (err) {
+    console.error("[payment] confirmation email failed", err);
+    return { sent: false as const };
+  }
 }

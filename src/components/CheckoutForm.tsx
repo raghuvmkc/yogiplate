@@ -3,7 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/cart-store";
-import { formatMoney } from "@/lib/pricing";
+import { cartSubtotal, chargeTotals, formatMoney, lineTotal } from "@/lib/pricing";
 import { DIET_LABELS } from "@/lib/data/menu-seed";
 
 export function CheckoutForm() {
@@ -22,16 +22,14 @@ export function CheckoutForm() {
     miles: number;
     delivery_fee: number;
     in_service: boolean;
+    tax_rate?: number;
   } | null>(null);
   const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const subtotal = useMemo(
-    () => items.reduce((s, i) => s + i.price * i.quantity, 0),
-    [items]
-  );
+  const subtotal = useMemo(() => cartSubtotal(items), [items]);
 
   async function refreshQuote() {
     if (!address || !city || !zip) return;
@@ -126,10 +124,15 @@ export function CheckoutForm() {
     );
   }
 
-  const deliveryFee = quote?.delivery_fee ?? 0;
-  const taxable = Math.max(0, subtotal - discount + deliveryFee);
-  const tax = Math.round(taxable * 0.0975 * 100) / 100;
-  const total = Math.round((taxable + tax) * 100) / 100;
+  const priced = chargeTotals({
+    subtotal,
+    discount,
+    deliveryFee: quote?.delivery_fee ?? 0,
+    taxRate: quote?.tax_rate ?? 0,
+  });
+  const deliveryFee = priced.delivery_fee;
+  const tax = priced.tax;
+  const total = priced.total;
 
   return (
     <form
@@ -256,7 +259,7 @@ export function CheckoutForm() {
               <span>
                 {i.name} × {i.quantity}
               </span>
-              <span>{formatMoney(i.price * i.quantity)}</span>
+              <span>{formatMoney(lineTotal(i.price, i.quantity))}</span>
             </li>
           ))}
         </ul>

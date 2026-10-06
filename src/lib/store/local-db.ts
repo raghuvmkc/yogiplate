@@ -70,7 +70,16 @@ function candidateDbPaths(): string[] {
 async function tryPersist(db: LocalDatabase, filePath: string): Promise<boolean> {
   try {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify(db, null, 2));
+    const temp = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    const body = JSON.stringify(db, null, 2);
+    await fs.writeFile(temp, body);
+    try {
+      await fs.rename(temp, filePath);
+    } catch {
+      // Windows and OneDrive can lock the target while it is being read.
+      await fs.writeFile(filePath, body);
+      await fs.unlink(temp).catch(() => undefined);
+    }
     return true;
   } catch {
     return false;
@@ -195,56 +204,70 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
   return changed;
 }
 
-async function ensureDb(): Promise<LocalDatabase> {
-  if (memoryDb) {
-    applySeedIfNeeded(memoryDb);
-    return memoryDb;
-  }
+type BlobStore = Awaited<ReturnType<typeof import("@netlify/blobs")["getStore"]>>;
 
-  // Prefer an existing on-disk DB when readable.
+const BLOB_KEY = "db";
+const MAX_WRITE_ATTEMPTS = 6;
+
+/**
+ * On Netlify every request can land on a different server, and the disk is not
+ * shared, so the database lives in Netlify Blobs. Locally it is `.data/db.json`.
+ */
+async function blobsStore(): Promise<BlobStore | null> {
+  const onNetlify =
+    process.env.NETLIFY === "true" ||
+    Boolean(process.env.NETLIFY_BLOBS_CONTEXT) ||
+    Boolean((globalThis as { netlifyBlobsContext?: unknown }).netlifyBlobsContext);
+  if (!onNetlify) return null;
+  try {
+    const { getStore } = await import("@netlify/blobs");
+    return getStore({ name: "yogiplate", consistency: "strong" });
+  } catch {
+    return null;
+  }
+}
+
+async function readBlob(
+  store: BlobStore
+): Promise<{ db: LocalDatabase | null; etag: string | null }> {
+  const hit = await store.getWithMetadata(BLOB_KEY, { type: "text" });
+  if (!hit?.data) return { db: null, etag: null };
+  return { db: JSON.parse(hit.data) as LocalDatabase, etag: hit.etag || null };
+}
+
+/** Write only if nobody saved in between, so one save cannot erase another. */
+async function writeBlob(
+  store: BlobStore,
+  db: LocalDatabase,
+  etag: string | null
+): Promise<boolean> {
+  const body = JSON.stringify(db);
+  const result = etag
+    ? await store.set(BLOB_KEY, body, { onlyIfMatch: etag })
+    : await store.set(BLOB_KEY, body, { onlyIfNew: true });
+  return result.modified;
+}
+
+async function readDiskDb(): Promise<LocalDatabase | null> {
   for (const filePath of candidateDbPaths()) {
     try {
       const raw = await fs.readFile(filePath, "utf8");
       const db = JSON.parse(raw) as LocalDatabase;
-      const changed = applySeedIfNeeded(db);
-      memoryDb = db;
-      resolvedDbFile = filePath;
-      if (changed) {
-        persistEnabled = await tryPersist(db, filePath);
-      } else {
-        persistEnabled = true;
-      }
-      return db;
-    } catch {
-      // try next path / create fresh
-    }
-  }
-
-  const db = await createSeedDb();
-  memoryDb = db;
-
-  for (const filePath of candidateDbPaths()) {
-    if (await tryPersist(db, filePath)) {
       resolvedDbFile = filePath;
       persistEnabled = true;
       return db;
+    } catch {
+      // try the next path
     }
   }
-
-  // Serverless read-only FS — keep seeded catalog in memory for this instance.
-  persistEnabled = false;
-  resolvedDbFile = null;
-  return db;
+  return null;
 }
 
-async function saveDb(db: LocalDatabase) {
+async function writeDiskDb(db: LocalDatabase) {
   memoryDb = db;
-  if (persistEnabled === false) return;
-
   const targets = resolvedDbFile
     ? [resolvedDbFile, ...candidateDbPaths()]
     : candidateDbPaths();
-
   for (const filePath of targets) {
     if (await tryPersist(db, filePath)) {
       resolvedDbFile = filePath;
@@ -255,17 +278,74 @@ async function saveDb(db: LocalDatabase) {
   persistEnabled = false;
 }
 
+/** One writer at a time inside this server, shared across route bundles. */
+function withLocalLock<T>(task: () => Promise<T>): Promise<T> {
+  const holder = globalThis as { __yogiplateDbLock?: Promise<unknown> };
+  const prev = holder.__yogiplateDbLock || Promise.resolve();
+  const run = prev.then(task, task);
+  holder.__yogiplateDbLock = run.catch(() => undefined);
+  return run;
+}
+
+async function loadDisk(): Promise<LocalDatabase> {
+  const stored = await readDiskDb();
+  if (stored) {
+    if (applySeedIfNeeded(stored)) await writeDiskDb(stored);
+    memoryDb = stored;
+    return stored;
+  }
+  if (memoryDb) {
+    applySeedIfNeeded(memoryDb);
+    return memoryDb;
+  }
+  const db = await createSeedDb();
+  await writeDiskDb(db);
+  return db;
+}
+
+async function loadBlob(store: BlobStore): Promise<LocalDatabase> {
+  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
+    const { db, etag } = await readBlob(store);
+    if (db) {
+      if (applySeedIfNeeded(db)) await writeBlob(store, db, etag);
+      return db;
+    }
+    const seed = await createSeedDb();
+    if (await writeBlob(store, seed, null)) return seed;
+  }
+  throw new Error("Could not load the shared database.");
+}
+
 export async function getDb() {
-  return ensureDb();
+  const store = await blobsStore();
+  if (store) return loadBlob(store);
+  return loadDisk();
 }
 
 export async function updateDb(
   mutator: (db: LocalDatabase) => void | Promise<void>
 ) {
-  const db = await ensureDb();
-  await mutator(db);
-  await saveDb(db);
-  return db;
+  const store = await blobsStore();
+  if (!store) {
+    return withLocalLock(async () => {
+      const db = await loadDisk();
+      await mutator(db);
+      await writeDiskDb(db);
+      return db;
+    });
+  }
+
+  return withLocalLock(async () => {
+    for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
+      const { db: stored, etag } = await readBlob(store);
+      const db = stored || (await createSeedDb());
+      applySeedIfNeeded(db);
+      await mutator(db);
+      if (await writeBlob(store, db, stored ? etag : null)) return db;
+      await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
+    }
+    throw new Error("Another save was in progress. Please try again.");
+  });
 }
 
 export function uid(prefix: string) {

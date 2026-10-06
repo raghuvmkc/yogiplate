@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
-import { getQuoteByToken, markQuoteDepositPaid } from "@/lib/quotes";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
+import {
+  ensureQuotePaymentRecord,
+  getQuoteByToken,
+  markQuoteDepositPaid,
+} from "@/lib/quotes";
+import { stripeConfigured } from "@/lib/stripe";
+import { createCateringPaymentLink } from "@/lib/stripe-checkout";
 import { siteUrl } from "@/lib/site";
-import { updateDb } from "@/lib/store/local-db";
+import { buildInvoiceHtml } from "@/lib/invoice";
+import { getDb, updateDb } from "@/lib/store/local-db";
 
 export async function POST(
   req: Request,
@@ -33,37 +39,41 @@ export async function POST(
   }
 
   if (stripeConfigured()) {
-    const stripe = getStripe()!;
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
+    const linked = await ensureQuotePaymentRecord(quote.id);
+    const session = await createCateringPaymentLink({
       customer_email: quote.customer_email,
-      success_url: `${siteUrl()}/quote/${quote.id}?t=${quote.public_token}&deposit=1`,
+      amount: quote.deposit_amount,
+      product_name: `Yogiplate deposit — ${linked.order.order_number}`,
+      description: `Order ${linked.order.order_number}. Deposit (${quote.deposit_percent}%) for event ${quote.event_date || "TBD"}`,
+      success_url: `${siteUrl()}/quote/${quote.id}?t=${quote.public_token}&deposit=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl()}/quote/${quote.id}?t=${quote.public_token}`,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "usd",
-            unit_amount: Math.round(quote.deposit_amount * 100),
-            product_data: {
-              name: `Yogiplate deposit — ${quote.quote_number}`,
-              description: `Deposit (${quote.deposit_percent}%) for event ${quote.event_date || "TBD"}`,
-            },
-          },
-        },
-      ],
-      metadata: {
-        quote_id: quote.id,
-        kind: "quote_deposit",
-      },
+      order_id: linked.order.id,
+      order_number: linked.order.order_number,
+      invoice_number: linked.invoice.invoice_number,
+      kind: "quote_deposit",
+      extra: { quote_id: quote.id },
     });
 
+    const db = await getDb();
+    const items = db.order_items.filter((row) => row.order_id === linked.order.id);
+    const html = buildInvoiceHtml(
+      linked.order,
+      items,
+      db.settings,
+      linked.invoice.invoice_number,
+      session.url
+    );
     await updateDb((d) => {
       const q = (d.quotes || []).find((x) => x.id === quote.id);
       if (q) {
+        q.order_id = linked.order.id;
         q.stripe_deposit_session_id = session.id;
         q.updated_at = new Date().toISOString();
       }
+      const inv = d.invoices.find((row) => row.id === linked.invoice.id);
+      if (inv && session.url) inv.html = html;
+      const order = d.orders.find((row) => row.id === linked.order.id);
+      if (order) order.stripe_session_id = session.id;
     });
 
     return NextResponse.json({ url: session.url });

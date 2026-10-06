@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getDb, updateDb, uid } from "@/lib/store/local-db";
 import type { CalendarBlock, CalendarBlockKind } from "@/lib/types";
@@ -13,14 +16,17 @@ export async function GET() {
       ? a.start_time.localeCompare(b.start_time)
       : a.date.localeCompare(b.date)
   );
-  return NextResponse.json({
-    blocks,
-    settings: {
-      lead_time_hours: db.settings.lead_time_hours ?? 48,
-      max_guests_per_day: db.settings.max_guests_per_day ?? 200,
-      hold_ttl_minutes: db.settings.hold_ttl_minutes ?? 120,
+  return NextResponse.json(
+    {
+      blocks,
+      settings: {
+        lead_time_hours: db.settings.lead_time_hours ?? 48,
+        max_guests_per_day: db.settings.max_guests_per_day ?? 200,
+        hold_ttl_minutes: db.settings.hold_ttl_minutes ?? 120,
+      },
     },
-  });
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function POST(req: Request) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMonths,
@@ -17,6 +17,7 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
+import { BookingDetailDrawer } from "@/components/BookingDetailDrawer";
 import type { CalendarBlock, CateringBooking } from "@/lib/types";
 
 type ViewMode = "year" | "month" | "week" | "day";
@@ -29,6 +30,31 @@ const STATUS_STYLE: Record<
     bg: "bg-amber-100",
     border: "border-amber-400",
     label: "Unconfirmed",
+  },
+  quote_sent: {
+    bg: "bg-sky-100",
+    border: "border-sky-500",
+    label: "Quote sent",
+  },
+  order_placed: {
+    bg: "bg-teal-100",
+    border: "border-teal-600",
+    label: "Order placed",
+  },
+  invoice_sent: {
+    bg: "bg-violet-100",
+    border: "border-violet-500",
+    label: "Invoice sent",
+  },
+  partial: {
+    bg: "bg-orange-100",
+    border: "border-orange-500",
+    label: "Partial payment",
+  },
+  paid: {
+    bg: "bg-emerald-100",
+    border: "border-emerald-600",
+    label: "Paid in full",
   },
   confirmed: {
     bg: "bg-emerald-100",
@@ -44,6 +70,50 @@ const STATUS_STYLE: Record<
 
 function bookingColor(status: string) {
   return STATUS_STYLE[status] || STATUS_STYLE.unconfirmed!;
+}
+
+function usd(amount: number | null | undefined) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount || 0);
+}
+
+function bookingCaption(booking: CateringBooking) {
+  if (booking.status === "paid") return "Paid in full";
+  if (booking.status === "partial") {
+    const count = booking.payments?.length || 0;
+    const money =
+      booking.amount_due != null
+        ? `${usd(booking.amount_paid)} of ${usd(booking.amount_due)}`
+        : usd(booking.amount_paid);
+    return count > 1
+      ? `Partial · ${money} · ${count} payments`
+      : `Partial · ${money}`;
+  }
+  return bookingColor(booking.status).label;
+}
+
+function dayTone(hits: CateringBooking[]) {
+  if (hits.some((hit) => hit.status === "paid" || hit.status === "confirmed")) {
+    return "bg-emerald-100 font-semibold text-emerald-800";
+  }
+  if (hits.some((hit) => hit.status === "partial")) {
+    return "bg-orange-100 font-semibold text-orange-900";
+  }
+  if (hits.some((hit) => hit.status === "invoice_sent")) {
+    return "bg-violet-100 font-semibold text-violet-900";
+  }
+  if (hits.some((hit) => hit.status === "order_placed")) {
+    return "bg-teal-100 font-semibold text-teal-900";
+  }
+  if (hits.some((hit) => hit.status === "quote_sent")) {
+    return "bg-sky-100 font-semibold text-sky-900";
+  }
+  if (hits.some((hit) => hit.status === "unconfirmed")) {
+    return "bg-amber-100 font-semibold text-amber-900";
+  }
+  return "";
 }
 
 type CreateDraft = {
@@ -78,10 +148,12 @@ export function AdminCateringCalendar() {
   const [view, setView] = useState<ViewMode>("month");
   const [cursor, setCursor] = useState(() => new Date());
   const [bookings, setBookings] = useState<CateringBooking[]>([]);
+  const [searchText, setSearchText] = useState("");
+  const [searchHits, setSearchHits] = useState<CateringBooking[] | null>(null);
+  const [searching, setSearching] = useState(false);
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<CateringBooking | null>(null);
-  const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateDraft>(EMPTY_CREATE);
@@ -104,24 +176,39 @@ export function AdminCateringCalendar() {
     return { from: format(s, "yyyy-MM-dd"), to: format(e, "yyyy-MM-dd") };
   }, [cursor, view]);
 
+  const loadGen = useRef(0);
   const load = useCallback(async () => {
+    const gen = ++loadGen.current;
     setError(null);
     try {
       const [bRes, cRes] = await Promise.all([
         fetch(
-          `/api/admin/bookings?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`
+          `/api/admin/bookings?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
+          { cache: "no-store" }
         ),
-        fetch("/api/admin/calendar"),
+        fetch("/api/admin/calendar", { cache: "no-store" }),
       ]);
+      if (gen !== loadGen.current) return;
       if (!bRes.ok || !cRes.ok) {
         setError("Could not load calendar (are you logged in?)");
         return;
       }
       const bData = await bRes.json();
       const cData = await cRes.json();
-      setBookings(bData.bookings || []);
+      const incoming = (bData.bookings || []) as CateringBooking[];
+      const incomingIds = new Set(incoming.map((b) => b.id));
+      setBookings((current) => {
+        const kept = current.filter(
+          (b) =>
+            !incomingIds.has(b.id) &&
+            b.event_date >= range.from &&
+            b.event_date <= range.to
+        );
+        return [...incoming, ...kept];
+      });
       setBlocks(cData.blocks || []);
     } catch {
+      if (gen !== loadGen.current) return;
       setError("Could not load calendar");
     }
   }, [range.from, range.to]);
@@ -167,29 +254,15 @@ export function AdminCateringCalendar() {
     return blocks.filter((b) => b.date === key && b.status === "active");
   }
 
-  async function saveSelected(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/bookings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(selected),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Save failed");
-        return;
-      }
-      const data = await res.json();
-      setSelected(data.booking);
-      await load();
-    } finally {
-      setSaving(false);
-    }
-  }
+  const onBookingChanged = useCallback((booking: CateringBooking) => {
+    setBookings((rows) =>
+      rows.some((row) => row.id === booking.id)
+        ? rows.map((row) => (row.id === booking.id ? booking : row))
+        : [...rows, booking]
+    );
+  }, []);
+
+  const closeDetail = useCallback(() => setSelected(null), []);
 
   async function createBooking(e: React.FormEvent) {
     e.preventDefault();
@@ -221,16 +294,59 @@ export function AdminCateringCalendar() {
         return;
       }
       const data = await res.json();
+      const created = data.booking as CateringBooking | undefined;
       setCreateForm(EMPTY_CREATE);
       setShowCreate(false);
-      setSelected(data.booking || null);
-      if (createForm.event_date) {
-        setCursor(new Date(`${createForm.event_date}T12:00:00`));
+      setSelected(created || null);
+      if (created) {
+        setBookings((rows) =>
+          rows.some((row) => row.id === created.id)
+            ? rows.map((row) => (row.id === created.id ? created : row))
+            : [...rows, created]
+        );
+        const [year, month, day] = created.event_date.split("-").map(Number);
+        setCursor(new Date(year, (month || 1) - 1, day || 1, 12));
         setView("day");
       }
-      await load();
     } finally {
       setCreating(false);
+    }
+  }
+
+  function openBooking(booking: CateringBooking) {
+    const [year, month, day] = booking.event_date.split("-").map(Number);
+    setCursor(new Date(year, (month || 1) - 1, day || 1, 12));
+    setView("day");
+    setSelected(booking);
+    setBookings((rows) =>
+      rows.some((row) => row.id === booking.id) ? rows : [...rows, booking]
+    );
+  }
+
+  async function searchBookings(e: React.FormEvent) {
+    e.preventDefault();
+    const q = searchText.trim();
+    if (!q) {
+      setSearchHits(null);
+      return;
+    }
+    setSearching(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/admin/bookings?q=${encodeURIComponent(q)}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) {
+        setError("Could not search the calendar");
+        return;
+      }
+      const data = await res.json();
+      const found = (data.bookings || []) as CateringBooking[];
+      setSearchHits(found);
+      if (found[0]) openBooking(found[0]);
+    } finally {
+      setSearching(false);
     }
   }
 
@@ -299,6 +415,66 @@ export function AdminCateringCalendar() {
           </button>
         </div>
       </div>
+
+      <form
+        onSubmit={(e) => void searchBookings(e)}
+        className="flex flex-wrap items-end gap-2"
+      >
+        <label className="block min-w-[16rem] flex-1 text-sm">
+          <span className="font-semibold">Search</span>
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Order ID, customer name, or event date"
+            className="mt-1 w-full border border-line bg-white px-3 py-2"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={searching}
+          className="border border-line px-3 py-2 text-sm font-semibold"
+        >
+          {searching ? "Searching…" : "Search"}
+        </button>
+        {searchHits ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchHits(null);
+              setSearchText("");
+            }}
+            className="px-3 py-2 text-sm font-semibold text-accent-deep underline"
+          >
+            Clear
+          </button>
+        ) : null}
+      </form>
+
+      {searchHits ? (
+        <div className="border border-line bg-warm p-3 text-sm">
+          {searchHits.length ? (
+            <ul className="space-y-1">
+              {searchHits.map((hit) => (
+                <li key={hit.id}>
+                  <button
+                    type="button"
+                    onClick={() => openBooking(hit)}
+                    className="text-left font-medium text-foreground underline"
+                  >
+                    {hit.event_date}
+                    {hit.event_time ? ` ${hit.event_time}` : ""} ·{" "}
+                    {hit.customer_name || "Guest"} · {bookingCaption(hit)}
+                    {hit.order_number ? ` · ${hit.order_number}` : ""}
+                    {hit.quote_number ? ` · ${hit.quote_number}` : ""}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted">No bookings match that search.</p>
+          )}
+        </div>
+      ) : null}
 
       {showCreate ? (
         <form
@@ -449,11 +625,27 @@ export function AdminCateringCalendar() {
         <div className="flex flex-wrap gap-3 text-xs font-semibold">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-3 w-3 border border-amber-400 bg-amber-100" />
-            Unconfirmed (chat)
+            Unconfirmed
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 border border-emerald-500 bg-emerald-100" />
-            Confirmed
+            <span className="h-3 w-3 border border-sky-500 bg-sky-100" />
+            Quote sent
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 border border-teal-600 bg-teal-100" />
+            Order placed
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 border border-violet-500 bg-violet-100" />
+            Invoice sent
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 border border-orange-500 bg-orange-100" />
+            Partial payment
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 border border-emerald-600 bg-emerald-100" />
+            Paid in full
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-3 w-3 border border-rose-300 bg-rose-50" />
@@ -489,19 +681,11 @@ export function AdminCateringCalendar() {
                   {monthDays.map((d) => {
                     const hits = bookingsOn(d);
                     const inMonth = isSameMonth(d, monthDate);
-                    const conf = hits.some((h) => h.status === "confirmed");
-                    const unconf = hits.some((h) => h.status === "unconfirmed");
                     return (
                       <span
                         key={d.toISOString()}
                         className={`flex h-5 items-center justify-center ${
-                          !inMonth
-                            ? "text-muted/40"
-                            : conf
-                              ? "bg-emerald-100 font-semibold text-emerald-800"
-                              : unconf
-                                ? "bg-amber-100 font-semibold text-amber-900"
-                                : ""
+                          !inMonth ? "text-muted/40" : dayTone(hits)
                         }`}
                       >
                         {format(d, "d")}
@@ -576,9 +760,8 @@ export function AdminCateringCalendar() {
                           {b.customer_name || "Guest"}
                         </span>
                         <span className="block truncate text-muted">
-                          {b.guest_count ? `${b.guest_count} guests` : ""}
-                          {b.diet ? ` · ${b.diet}` : ""}
-                          {b.occasion ? ` · ${b.occasion}` : ""}
+                          {bookingCaption(b)}
+                          {b.guest_count ? ` · ${b.guest_count} guests` : ""}
                         </span>
                       </button>
                     );
@@ -591,255 +774,11 @@ export function AdminCateringCalendar() {
       )}
 
       {selected ? (
-        <form
-          onSubmit={(e) => void saveSelected(e)}
-          className="border border-line bg-warm p-5"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="eyebrow">Booking detail</p>
-              <h3 className="font-display mt-1 text-2xl text-foreground">
-                {selected.customer_name || "Guest"}
-              </h3>
-              <p className="mt-1 text-sm text-muted">
-                {bookingColor(selected.status).label} · {selected.event_date}
-                {selected.event_time ? ` ${selected.event_time}` : ""}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="text-sm font-semibold text-accent-deep underline"
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-semibold">Status</span>
-              <select
-                value={selected.status}
-                onChange={(e) =>
-                  setSelected({
-                    ...selected,
-                    status: e.target.value as CateringBooking["status"],
-                  })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              >
-                <option value="unconfirmed">Unconfirmed (amber)</option>
-                <option value="confirmed">Confirmed (green)</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Event date</span>
-              <input
-                type="date"
-                value={selected.event_date}
-                onChange={(e) =>
-                  setSelected({ ...selected, event_date: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Event time</span>
-              <input
-                value={selected.event_time || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, event_time: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-                placeholder="HH:mm"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Guests</span>
-              <input
-                type="number"
-                value={selected.guest_count ?? ""}
-                onChange={(e) =>
-                  setSelected({
-                    ...selected,
-                    guest_count: e.target.value
-                      ? Number(e.target.value)
-                      : null,
-                  })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Name</span>
-              <input
-                value={selected.customer_name}
-                onChange={(e) =>
-                  setSelected({ ...selected, customer_name: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Phone</span>
-              <input
-                value={selected.customer_phone}
-                onChange={(e) =>
-                  setSelected({ ...selected, customer_phone: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Email</span>
-              <input
-                value={selected.customer_email}
-                onChange={(e) =>
-                  setSelected({ ...selected, customer_email: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Diet</span>
-              <input
-                value={selected.diet || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, diet: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Occasion</span>
-              <input
-                value={selected.occasion || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, occasion: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Meal</span>
-              <input
-                value={selected.meal || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, meal: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">Delivery / pickup</span>
-              <select
-                value={selected.delivery_or_pickup || ""}
-                onChange={(e) =>
-                  setSelected({
-                    ...selected,
-                    delivery_or_pickup: e.target.value,
-                  })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              >
-                <option value="">—</option>
-                <option value="delivery">Delivery</option>
-                <option value="pickup">Pickup</option>
-              </select>
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-semibold">Address</span>
-              <input
-                value={
-                  [selected.address, selected.city].filter(Boolean).join(", ") ||
-                  ""
-                }
-                onChange={(e) =>
-                  setSelected({ ...selected, address: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-semibold">Special requirements</span>
-              <textarea
-                rows={2}
-                value={selected.special_requirements || ""}
-                onChange={(e) =>
-                  setSelected({
-                    ...selected,
-                    special_requirements: e.target.value,
-                  })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-semibold">Setup needs</span>
-              <textarea
-                rows={2}
-                value={selected.setup_needs || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, setup_needs: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-semibold">Menu / items</span>
-              <textarea
-                rows={2}
-                value={selected.items_summary || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, items_summary: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-semibold">Notes</span>
-              <textarea
-                rows={2}
-                value={selected.notes || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, notes: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-semibold">Admin notes</span>
-              <textarea
-                rows={2}
-                value={selected.admin_notes || ""}
-                onChange={(e) =>
-                  setSelected({ ...selected, admin_notes: e.target.value })
-                }
-                className="mt-1 w-full border border-line bg-white px-3 py-2"
-              />
-            </label>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted">
-            {selected.quote_id ? <span>Quote: {selected.quote_id}</span> : null}
-            {selected.order_id ? <span>Order: {selected.order_id}</span> : null}
-            {selected.chat_session_id ? (
-              <span>Chat: {selected.chat_session_id}</span>
-            ) : null}
-            {selected.food_subtotal != null ? (
-              <span>Food est: ${selected.food_subtotal.toFixed(2)}</span>
-            ) : null}
-          </div>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="mt-5 bg-accent-deep px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </form>
+        <BookingDetailDrawer
+          bookingId={selected.id}
+          onClose={closeDetail}
+          onChanged={onBookingChanged}
+        />
       ) : null}
     </div>
   );

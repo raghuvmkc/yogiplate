@@ -1,16 +1,43 @@
 import type { CartLine, Coupon, SiteSettings } from "@/lib/types";
 
+/** Whole cents, so $10.10 is 1010 and not a binary float. */
+export function toCents(amount: number): number {
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * 100);
+}
+
+export function fromCents(cents: number): number {
+  return cents / 100;
+}
+
+export function lineCents(unitPrice: number, quantity: number): number {
+  return toCents(unitPrice) * Math.max(0, quantity);
+}
+
+export function lineTotal(unitPrice: number, quantity: number): number {
+  return fromCents(lineCents(unitPrice, quantity));
+}
+
+/** Percent of a cent amount, rounded to the nearest cent. */
+export function percentCents(amountCents: number, percent: number): number {
+  return Math.round((amountCents * percent) / 100);
+}
+
+export function isPaidInFull(amountPaid: number, amountDue: number): boolean {
+  return toCents(amountDue) > 0 && toCents(amountPaid) >= toCents(amountDue);
+}
+
 export function cartSubtotal(items: CartLine[]) {
-  return round2(items.reduce((sum, i) => sum + i.price * i.quantity, 0));
+  return fromCents(items.reduce((sum, item) => sum + lineCents(item.price, item.quantity), 0));
 }
 
 export function applyCoupon(subtotal: number, coupon: Coupon | null) {
-  if (!coupon) return 0;
-  if (subtotal < coupon.min_order) return 0;
+  const subtotalCents = toCents(subtotal);
+  if (!coupon || subtotal < coupon.min_order) return 0;
   if (coupon.type === "percent") {
-    return round2((subtotal * coupon.value) / 100);
+    return fromCents(percentCents(subtotalCents, coupon.value));
   }
-  return round2(Math.min(coupon.value, subtotal));
+  return fromCents(Math.min(toCents(coupon.value), subtotalCents));
 }
 
 export function calcDeliveryFee(
@@ -19,12 +46,32 @@ export function calcDeliveryFee(
   settings: SiteSettings
 ) {
   if (subtotal >= settings.free_delivery_threshold) return 0;
-  const distanceFee = miles * settings.rate_per_mile;
-  return round2(Math.max(settings.base_delivery_fee, distanceFee));
+  const distanceCents = Math.round(miles * toCents(settings.rate_per_mile));
+  return fromCents(Math.max(toCents(settings.base_delivery_fee), distanceCents));
 }
 
 export function calcTax(amount: number, settings: SiteSettings) {
-  return round2(amount * settings.tax_rate);
+  return fromCents(Math.round(toCents(amount) * settings.tax_rate));
+}
+
+export function chargeTotals(input: {
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  taxRate: number;
+}) {
+  const subtotalCents = toCents(input.subtotal);
+  const discountCents = Math.min(toCents(input.discount), subtotalCents);
+  const deliveryCents = toCents(input.deliveryFee);
+  const taxableCents = Math.max(0, subtotalCents - discountCents + deliveryCents);
+  const taxCents = Math.round(taxableCents * input.taxRate);
+  return {
+    subtotal: fromCents(subtotalCents),
+    discount: fromCents(discountCents),
+    delivery_fee: fromCents(deliveryCents),
+    tax: fromCents(taxCents),
+    total: fromCents(taxableCents + taxCents),
+  };
 }
 
 export function calcOrderTotals(input: {
@@ -36,14 +83,16 @@ export function calcOrderTotals(input: {
   const subtotal = cartSubtotal(input.items);
   const discount = applyCoupon(subtotal, input.coupon);
   const delivery_fee = calcDeliveryFee(input.miles, subtotal, input.settings);
-  const taxable = Math.max(0, subtotal - discount + delivery_fee);
-  const tax = calcTax(taxable, input.settings);
-  const total = round2(taxable + tax);
-  return { subtotal, discount, delivery_fee, tax, total };
+  return chargeTotals({
+    subtotal,
+    discount,
+    deliveryFee: delivery_fee,
+    taxRate: input.settings.tax_rate,
+  });
 }
 
 export function round2(n: number) {
-  return Math.round(n * 100) / 100;
+  return fromCents(toCents(n));
 }
 
 export function formatMoney(n: number) {

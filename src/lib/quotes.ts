@@ -1,5 +1,23 @@
-import { sendInvoiceEmail } from "@/lib/invoice";
-import { formatMoney, round2 } from "@/lib/pricing";
+import type {
+  ContactChannel,
+  DietTag,
+  Invoice,
+  Order,
+  OrderItem,
+  Quote,
+  QuoteLine,
+  QuoteStatus,
+} from "@/lib/types";
+import { buildInvoiceHtml, emailPaymentReceived, sendInvoiceEmail } from "@/lib/invoice";
+import {
+  formatMoney,
+  fromCents,
+  isPaidInFull,
+  lineCents,
+  lineTotal,
+  percentCents,
+  toCents,
+} from "@/lib/pricing";
 import { scheduleQuoteReminders } from "@/lib/reminders";
 import { upsertCustomerFromLead } from "@/lib/crm";
 import { composeQuoteClosing } from "@/lib/quote-closing";
@@ -16,9 +34,14 @@ import {
   smtpConfigured,
 } from "@/lib/smtp";
 import { sendSms, smsConfigured } from "@/lib/sms";
-import { upsertCateringBooking } from "@/lib/calendar-bookings";
+import {
+  appendPaymentRecord,
+  upsertCateringBooking,
+} from "@/lib/calendar-bookings";
 import {
   getDb,
+  invoiceNumber,
+  orderNumber,
   quoteNumber,
   uid,
   updateDb,
@@ -27,12 +50,6 @@ import type {
   CartProposal,
   OrderDraft,
 } from "@/lib/chat/order-draft";
-import type {
-  ContactChannel,
-  Quote,
-  QuoteLine,
-  QuoteStatus,
-} from "@/lib/types";
 
 export { publicQuoteUrl };
 
@@ -72,12 +89,10 @@ export async function createQuote(input: {
   if (!items.length) {
     throw new Error("Quote needs at least one menu line from a cart proposal.");
   }
-  const food_subtotal = round2(
-    items.reduce((s, i) => s + i.unit_price * i.quantity, 0)
-  );
-  // Rough estimate: food + typical delivery floor; guest sees deposit on food estimate.
+  const foodCents = items.reduce((sum, item) => sum + lineCents(item.unit_price, item.quantity), 0);
+  const food_subtotal = fromCents(foodCents);
   const estimated_total = food_subtotal;
-  const deposit_amount = round2((estimated_total * depositPercent) / 100);
+  const deposit_amount = fromCents(percentCents(foodCents, depositPercent));
   const now = new Date().toISOString();
 
   const customer = await upsertCustomerFromLead({
@@ -154,7 +169,9 @@ export async function createQuote(input: {
         .map((i) => `${i.quantity}× ${i.name}`)
         .join("; "),
       food_subtotal: quote.food_subtotal,
-      status: "unconfirmed",
+      quote_number: quote.quote_number,
+      amount_due: quote.estimated_total,
+      status: "quote_sent",
     }).catch(() => null);
   }
 
@@ -306,6 +323,27 @@ export async function emailQuote(quoteId: string) {
     }
   });
 
+  if (result.sent) {
+    const sent = await getQuote(quoteId);
+    if (sent?.event_date) {
+      await upsertCateringBooking({
+        event_date: sent.event_date,
+        event_time: sent.event_time,
+        customer_name: sent.customer_name,
+        customer_email: sent.customer_email,
+        customer_phone: sent.customer_phone,
+        chat_session_id: sent.chat_session_id,
+        quote_id: sent.id,
+        quote_number: sent.quote_number,
+        order_id: sent.order_id,
+        amount_due: sent.estimated_total,
+        items_summary: sent.items.map((i) => `${i.quantity}× ${i.name}`).join("; "),
+        food_subtotal: sent.food_subtotal,
+        status: "quote_sent",
+      }).catch(() => null);
+    }
+  }
+
   return result.sent
     ? { sent: true as const }
     : { sent: false as const, reason: result.reason || "send_failed" };
@@ -341,6 +379,24 @@ export async function smsQuote(quoteId: string) {
     if (q.status === "draft") q.status = "sent";
   });
 
+  if (quote.event_date) {
+    await upsertCateringBooking({
+      event_date: quote.event_date,
+      event_time: quote.event_time,
+      customer_name: quote.customer_name,
+      customer_email: quote.customer_email,
+      customer_phone: quote.customer_phone,
+      chat_session_id: quote.chat_session_id,
+      quote_id: quote.id,
+      quote_number: quote.quote_number,
+      order_id: quote.order_id,
+      amount_due: quote.estimated_total,
+      items_summary: quote.items.map((i) => `${i.quantity}× ${i.name}`).join("; "),
+      food_subtotal: quote.food_subtotal,
+      status: "quote_sent",
+    }).catch(() => null);
+  }
+
   return { sent: true as const, to: result.to };
 }
 
@@ -366,9 +422,102 @@ export async function deliverQuoteToGuest(
   };
 }
 
+const DIET_TAGS = new Set<DietTag>([
+  "jain",
+  "swaminarayan",
+  "pushtimarg",
+  "pure_vegetarian",
+  "vegan",
+  "italian",
+]);
+
+function asDiet(value: string): DietTag {
+  return DIET_TAGS.has(value as DietTag) ? (value as DietTag) : "pure_vegetarian";
+}
+
+/** Create the catering order before the pay link so Stripe can tag that order id. */
+export async function ensureQuotePaymentRecord(quoteId: string) {
+  const quote = await getQuote(quoteId);
+  if (!quote) throw new Error("Quote not found");
+  const db = await getDb();
+  if (quote.order_id) {
+    const order = db.orders.find((row) => row.id === quote.order_id);
+    const invoice = db.invoices.find((row) => row.order_id === quote.order_id);
+    if (order && invoice) return { quote, order, invoice };
+  }
+
+  const now = new Date().toISOString();
+  const orderId = uid("ord");
+  const ordNum = orderNumber();
+  const invNum = invoiceNumber();
+  const customerId = quote.customer_id || uid("cust");
+  const order: Order = {
+    id: orderId,
+    order_number: ordNum,
+    customer_id: customerId,
+    customer_name: quote.customer_name,
+    customer_email: quote.customer_email,
+    customer_phone: quote.customer_phone,
+    diet_profile: asDiet(quote.diet_profile),
+    event_date: quote.event_date,
+    guest_count: quote.guest_count,
+    delivery_address: quote.address || quote.city || "",
+    delivery_city: quote.city || "",
+    delivery_state: "CA",
+    delivery_zip: "",
+    delivery_miles: 0,
+    subtotal: quote.food_subtotal,
+    delivery_fee: 0,
+    discount: 0,
+    tax: 0,
+    total: quote.estimated_total,
+    coupon_code: null,
+    status: "pending",
+    stripe_session_id: null,
+    notes: quote.notes || null,
+    created_at: now,
+    paid_at: null,
+  };
+  const orderItems: OrderItem[] = quote.items.map((item) => ({
+    id: uid("oi"),
+    order_id: orderId,
+    menu_item_id: item.menu_item_id,
+    name: item.name,
+    unit_price: item.unit_price,
+    quantity: item.quantity,
+    line_total: lineTotal(item.unit_price, item.quantity),
+  }));
+  const invoice: Invoice = {
+    id: uid("inv"),
+    order_id: orderId,
+    invoice_number: invNum,
+    html: buildInvoiceHtml(order, orderItems, db.settings, invNum),
+    email_sent_at: null,
+    created_at: now,
+  };
+
+  await updateDb((next) => {
+    next.orders.unshift(order);
+    next.order_items.push(...orderItems);
+    next.invoices.push(invoice);
+    const row = (next.quotes || []).find((item) => item.id === quote.id);
+    if (row) {
+      row.order_id = orderId;
+      row.updated_at = now;
+    }
+  });
+
+  return {
+    quote: { ...quote, order_id: orderId },
+    order,
+    invoice,
+  };
+}
+
 export async function markQuoteDepositPaid(input: {
   quoteId: string;
   stripeSessionId?: string | null;
+  amount?: number | null;
 }) {
   await updateDb((d) => {
     const q = (d.quotes || []).find((x) => x.id === input.quoteId);
@@ -379,7 +528,67 @@ export async function markQuoteDepositPaid(input: {
     q.updated_at = q.deposit_paid_at;
   });
   const quote = await getQuote(input.quoteId);
-  if (quote?.event_date) {
+  if (!quote) return quote;
+  const paidNow =
+    input.amount != null && input.amount > 0 ? input.amount : quote.deposit_amount;
+  const sessionKey =
+    input.stripeSessionId || `demo-deposit:${quote.id}`;
+  let orderNumber: string | null = null;
+  let invoiceNumber: string | null = null;
+  if (quote.order_id) {
+    const db = await getDb();
+    const order = db.orders.find((row) => row.id === quote.order_id);
+    const invoice = db.invoices.find((row) => row.order_id === quote.order_id);
+    const items = db.order_items.filter((row) => row.order_id === quote.order_id);
+    if (order && invoice) {
+      orderNumber = order.order_number;
+      invoiceNumber = invoice.invoice_number;
+      const payments = appendPaymentRecord(order.payments, {
+        amount: paidNow,
+        stripe_session_id: sessionKey,
+        note: "Partial payment",
+      });
+      const amountPaid = fromCents(payments.reduce((sum, row) => sum + toCents(row.amount), 0));
+      const fullyPaid = isPaidInFull(amountPaid, order.total);
+      const paidLabel = fullyPaid
+        ? "Paid in full"
+        : `Partial payment ${formatMoney(amountPaid)} of ${formatMoney(order.total)}${
+            payments.length > 1 ? ` · ${payments.length} payments` : ""
+          }`;
+      const html = buildInvoiceHtml(
+        { ...order, amount_paid: amountPaid, payments, status: fullyPaid ? "paid" : order.status },
+        items,
+        db.settings,
+        invoice.invoice_number,
+        null,
+        { paidLabel }
+      );
+      await updateDb((next) => {
+        const inv = next.invoices.find((row) => row.id === invoice.id);
+        if (inv) inv.html = html;
+        const row = next.orders.find((item) => item.id === order.id);
+        if (!row) return;
+        row.payments = appendPaymentRecord(row.payments, {
+          amount: paidNow,
+          stripe_session_id: sessionKey,
+          note: fullyPaid ? "Paid in full" : "Partial payment",
+        });
+        row.amount_paid = fromCents(
+          (row.payments || []).reduce((sum, item) => sum + toCents(item.amount), 0)
+        );
+        row.stripe_session_id = input.stripeSessionId || row.stripe_session_id;
+        if (row.amount_paid != null && isPaidInFull(row.amount_paid, row.total)) {
+          row.status = "paid";
+          row.paid_at = row.paid_at || new Date().toISOString();
+        }
+        const note = `Deposit paid ${formatMoney(paidNow)}`;
+        if (!row.notes?.includes("Deposit paid")) {
+          row.notes = [row.notes, note].filter(Boolean).join(" · ");
+        }
+      });
+    }
+  }
+  if (quote.event_date) {
     await upsertCateringBooking({
       event_date: quote.event_date,
       event_time: quote.event_time,
@@ -388,30 +597,24 @@ export async function markQuoteDepositPaid(input: {
       customer_phone: quote.customer_phone,
       chat_session_id: quote.chat_session_id,
       quote_id: quote.id,
-      draft: {
-        event_date: quote.event_date,
-        event_time: quote.event_time || "",
-        diet: quote.diet_profile,
-        occasion: quote.occasion || "",
-        meal: (quote.meal as "lunch") || "",
-        delivery_or_pickup: (quote.delivery_or_pickup as "delivery") || "",
-        city: quote.city || "",
-        address: quote.address || "",
-        notes: quote.notes || "",
-        adults: quote.guest_count || null,
-        kids: null,
-        budget: "",
-        setup_needs: quote.setup_needs || "",
-        special_requirements: quote.special_requirements || "",
-        package_tier: "",
-        confirmed: true,
-      },
-      items_summary: quote.items
-        .map((i) => `${i.quantity}× ${i.name}`)
-        .join("; "),
+      quote_number: quote.quote_number,
+      order_id: quote.order_id,
+      order_number: orderNumber,
+      invoice_number: invoiceNumber,
+      amount_due: quote.estimated_total,
+      items_summary: quote.items.map((i) => `${i.quantity}× ${i.name}`).join("; "),
       food_subtotal: quote.food_subtotal,
-      status: "confirmed",
+      payment: {
+        amount: paidNow,
+        stripe_session_id: sessionKey,
+        note: "Partial payment",
+      },
     }).catch(() => null);
+  }
+  if (quote.order_id) {
+    await emailPaymentReceived(quote.order_id, {
+      depositAmount: paidNow,
+    });
   }
   return quote;
 }

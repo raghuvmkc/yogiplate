@@ -26,6 +26,7 @@ import {
   type OrderDraft,
 } from "@/lib/chat/order-draft";
 import { useCartStore } from "@/lib/cart-store";
+import { cartSubtotal } from "@/lib/pricing";
 import { ContinuousMic } from "@/lib/mic-recorder";
 import { playPhoneRing } from "@/lib/phone-ring";
 import { speakableForCall } from "@/lib/speakable";
@@ -200,7 +201,7 @@ export function ChatWidget() {
       diet && diet in DIET_LABELS
         ? DIET_LABELS[diet as DietTag]
         : diet || null;
-    const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const subtotal = cartSubtotal(items);
     // Only pass order facts the guest actually set. Diet alone (menu browse)
     // is not enough — require cart items so we never leak sticky defaults.
     const hasItems = items.length > 0;

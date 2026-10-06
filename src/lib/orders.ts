@@ -1,5 +1,5 @@
-import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
-import { calcOrderTotals } from "@/lib/pricing";
+import { buildInvoiceHtml, emailPaymentReceived, sendInvoiceEmail } from "@/lib/invoice";
+import { calcOrderTotals, lineTotal } from "@/lib/pricing";
 import { scheduleOrderDayBefore } from "@/lib/reminders";
 import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import {
@@ -139,6 +139,10 @@ export async function fulfillPaidOrder(input: {
   coupon_code: string | null;
   notes: string | null;
   stripe_session_id: string | null;
+  /** Pre-tagged on the Stripe pay link so the saved order matches the charge. */
+  order_id?: string;
+  order_number?: string;
+  invoice_number?: string;
 }) {
   const db = await getDb();
   const coupon = input.coupon_code
@@ -152,9 +156,9 @@ export async function fulfillPaidOrder(input: {
   });
 
   const now = new Date().toISOString();
-  const orderId = uid("ord");
-  const invNum = invoiceNumber();
-  const ordNum = orderNumber();
+  const orderId = input.order_id || uid("ord");
+  const invNum = input.invoice_number || invoiceNumber();
+  const ordNum = input.order_number || orderNumber();
 
   let customer = db.customers.find(
     (c) => c.email.toLowerCase() === input.customer_email.toLowerCase()
@@ -187,6 +191,16 @@ export async function fulfillPaidOrder(input: {
     notes: input.notes,
     created_at: now,
     paid_at: now,
+    amount_paid: totals.total,
+    payments: [
+      {
+        id: uid("pay"),
+        amount: totals.total,
+        paid_at: now,
+        stripe_session_id: input.stripe_session_id,
+        note: "Paid in full",
+      },
+    ],
   };
 
   const orderItems: OrderItem[] = input.items.map((i) => ({
@@ -196,10 +210,12 @@ export async function fulfillPaidOrder(input: {
     name: i.name,
     unit_price: i.price,
     quantity: i.quantity,
-    line_total: Math.round(i.price * i.quantity * 100) / 100,
+    line_total: lineTotal(i.price, i.quantity),
   }));
 
-  const html = buildInvoiceHtml(order, orderItems, db.settings, invNum);
+  const html = buildInvoiceHtml(order, orderItems, db.settings, invNum, null, {
+    paidLabel: "Paid in full",
+  });
   const invoice: Invoice = {
     id: uid("inv"),
     order_id: orderId,
@@ -267,7 +283,15 @@ export async function fulfillPaidOrder(input: {
         .map((i) => `${i.quantity}× ${i.name}`)
         .join("; "),
       food_subtotal: order.subtotal,
-      status: "confirmed",
+      order_number: order.order_number,
+      invoice_number: invNum,
+      amount_due: order.total,
+      payment: {
+        amount: order.total,
+        stripe_session_id: order.stripe_session_id,
+        note: "Paid in full",
+      },
+      status: "paid",
     }).catch(() => null);
   }
 
@@ -294,6 +318,8 @@ export async function fulfillPaidOrder(input: {
       if (inv) inv.email_sent_at = new Date().toISOString();
     });
   }
+
+  await emailPaymentReceived(orderId);
 
   if (order.event_date) {
     try {

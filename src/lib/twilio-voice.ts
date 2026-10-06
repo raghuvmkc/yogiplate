@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { toE164 } from "@/lib/sms";
-import { getDb, uid, updateDb, type CallTicket } from "@/lib/store/local-db";
+import { getDb, updateDb, type CallTicket } from "@/lib/store/local-db";
 
 export const MANAGER_VOICE_IDENTITY = "yogiplate-manager";
 
@@ -119,24 +119,52 @@ export function twiml(body: string) {
 export async function issueCallTicket(to: string): Promise<CallTicket | null> {
   const dest = toE164(to);
   if (!dest) return null;
+  const expires = Date.now() + 2 * 60 * 1000;
   const ticket: CallTicket = {
-    id: uid("call"),
+    id: signCallTicket(dest, expires),
     to: dest,
-    expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
+    expires_at: new Date(expires).toISOString(),
     used_at: null,
   };
-  await updateDb((db) => {
-    const now = Date.now();
-    db.call_tickets = (db.call_tickets || []).filter(
-      (row) => new Date(row.expires_at).getTime() > now
-    );
-    db.call_tickets.push(ticket);
-  });
   return ticket;
 }
 
-/** Accept a ticket once. A Twilio retry within 20 seconds for the same number still passes. */
+function signCallTicket(to: string, expires: number) {
+  const body = base64url(JSON.stringify({ to, exp: expires }));
+  const sig = crypto
+    .createHmac("sha256", env("TWILIO_AUTH_TOKEN"))
+    .update(body)
+    .digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function readSignedCallTicket(id: string): string | null {
+  const split = id.indexOf(".");
+  if (split <= 0) return null;
+  const body = id.slice(0, split);
+  const sig = id.slice(split + 1);
+  const secret = env("TWILIO_AUTH_TOKEN");
+  if (!secret || !sig) return null;
+  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const a = Buffer.from(expected);
+  const b = Buffer.from(sig);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as {
+      to?: string;
+      exp?: number;
+    };
+    if (!data.to || !data.exp || data.exp < Date.now()) return null;
+    return toE164(data.to);
+  } catch {
+    return null;
+  }
+}
+
+/** Accept a signed ticket. Twilio may retry the same request, so it stays valid until it expires. */
 export async function consumeCallTicket(id: string): Promise<string | null> {
+  const signed = readSignedCallTicket(id);
+  if (signed) return signed;
   const db = await getDb();
   const ticket = (db.call_tickets || []).find((row) => row.id === id);
   if (!ticket) return null;

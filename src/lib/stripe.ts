@@ -1,13 +1,13 @@
 import Stripe from "stripe";
+import { serverEnv } from "@/lib/server-env";
 
+/** Same Stripe account as the Stone Craft Pizza site. Keys are read at runtime. */
 export function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = serverEnv("STRIPE_SECRET_KEY");
   if (!key) return null;
   return new Stripe(key);
 }
 
 export function stripeConfigured() {
-  return Boolean(
-    process.env.STRIPE_SECRET_KEY && process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  );
+  return Boolean(serverEnv("STRIPE_SECRET_KEY"));
 }

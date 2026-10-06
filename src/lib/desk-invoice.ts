@@ -1,9 +1,23 @@
-import { upsertCateringBooking } from "@/lib/calendar-bookings";
+import {
+  appendPaymentRecord,
+  upsertCateringBooking,
+} from "@/lib/calendar-bookings";
 import { quoteDelivery } from "@/lib/delivery";
-import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
-import { calcOrderTotals, calcTax, round2 } from "@/lib/pricing";
+import { buildInvoiceHtml, emailPaymentReceived, sendInvoiceEmail } from "@/lib/invoice";
+import {
+  calcOrderTotals,
+  cartSubtotal,
+  chargeTotals,
+  formatMoney,
+  fromCents,
+  isPaidInFull,
+  lineTotal,
+  toCents,
+} from "@/lib/pricing";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { stripeConfigured } from "@/lib/stripe";
+import { createCateringPaymentLink } from "@/lib/stripe-checkout";
+import { siteUrl } from "@/lib/site";
 import { getDb, invoiceNumber, orderNumber, uid, updateDb } from "@/lib/store/local-db";
 import type { CartLine, DietTag, Invoice, Order, OrderItem } from "@/lib/types";
 
@@ -43,7 +57,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
       city: input.city,
       state: input.state,
       zip: input.zip,
-      subtotal: input.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      subtotal: cartSubtotal(input.items),
       settings: db.settings,
     });
     if (!quote.in_service) {
@@ -61,10 +75,15 @@ export async function createDeskInvoice(input: DeskBillInput) {
     settings: db.settings,
   });
   if (pickup) {
-    totals.delivery_fee = 0;
-    const taxable = Math.max(0, totals.subtotal - totals.discount);
-    totals.tax = calcTax(taxable, db.settings);
-    totals.total = round2(taxable + totals.tax);
+    Object.assign(
+      totals,
+      chargeTotals({
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        deliveryFee: 0,
+        taxRate: db.settings.tax_rate,
+      })
+    );
   }
 
   const now = new Date().toISOString();
@@ -104,31 +123,19 @@ export async function createDeskInvoice(input: DeskBillInput) {
     paid_at: null,
   };
 
-  const stripe = getStripe();
-  if (!stripe) throw new Error("Stripe is not configured, so a pay link cannot be sent.");
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
+  const session = await createCateringPaymentLink({
     customer_email: order.customer_email,
-    success_url: `${siteUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: siteUrl,
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: Math.round(order.total * 100),
-          product_data: {
-            name: `Yogiplate invoice ${invNum}`,
-            description: input.items
-              .map((item) => `${item.name} × ${item.quantity}`)
-              .join(", ")
-              .slice(0, 400),
-          },
-        },
-      },
-    ],
-    metadata: { kind: "desk_invoice", order_id: orderId },
+    amount: order.total,
+    product_name: `Yogiplate invoice ${invNum}`,
+    description: `Order ${ordNum}. ${input.items
+      .map((item) => `${item.name} × ${item.quantity}`)
+      .join(", ")}`,
+    success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: siteUrl(),
+    order_id: orderId,
+    order_number: ordNum,
+    invoice_number: invNum,
+    kind: "desk_invoice",
   });
   order.stripe_session_id = session.id;
   const payUrl = session.url;
@@ -141,7 +148,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
     name: item.name,
     unit_price: item.price,
     quantity: item.quantity,
-    line_total: round2(item.price * item.quantity),
+    line_total: lineTotal(item.price, item.quantity),
   }));
   const html = buildInvoiceHtml(order, orderItems, db.settings, invNum, payUrl);
   const invoice: Invoice = {
@@ -149,6 +156,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
     order_id: orderId,
     invoice_number: invNum,
     html,
+    pay_url: payUrl,
     email_sent_at: null,
     created_at: now,
   };
@@ -202,7 +210,10 @@ export async function createDeskInvoice(input: DeskBillInput) {
       },
       items_summary: orderItems.map((item) => `${item.quantity}× ${item.name}`).join("; "),
       food_subtotal: order.subtotal,
-      status: "unconfirmed",
+      order_number: order.order_number,
+      invoice_number: invNum,
+      amount_due: order.total,
+      status: "invoice_sent",
     }).catch(() => null);
   }
 
@@ -245,17 +256,59 @@ export async function createDeskInvoice(input: DeskBillInput) {
   };
 }
 
-export async function markDeskInvoicePaid(orderId: string, stripeSessionId: string) {
+export async function markDeskInvoicePaid(
+  orderId: string,
+  stripeSessionId: string,
+  amount?: number | null
+) {
   const db = await getDb();
   const order = db.orders.find((row) => row.id === orderId);
-  if (!order || order.status === "paid") return;
-  await updateDb((next) => {
-    const row = next.orders.find((item) => item.id === orderId);
-    if (!row || row.status === "paid") return;
-    row.status = "paid";
-    row.paid_at = new Date().toISOString();
-    row.stripe_session_id = stripeSessionId;
+  if (!order) return;
+  const paidNow = amount != null && amount > 0 ? amount : order.total;
+  const invoice = db.invoices.find((row) => row.order_id === orderId);
+  const items = db.order_items.filter((row) => row.order_id === orderId);
+  const payments = appendPaymentRecord(order.payments, {
+    amount: paidNow,
+    stripe_session_id: stripeSessionId,
+    note: "Payment",
   });
+  const amountPaid = fromCents(payments.reduce((sum, row) => sum + toCents(row.amount), 0));
+  const fullyPaid = isPaidInFull(amountPaid, order.total);
+  const paidLabel = fullyPaid
+    ? "Paid in full"
+    : `Partial payment ${formatMoney(amountPaid)} of ${formatMoney(order.total)}${
+        payments.length > 1 ? ` · ${payments.length} payments` : ""
+      }`;
+  if (invoice) {
+    const html = buildInvoiceHtml(
+      { ...order, amount_paid: amountPaid, payments, status: fullyPaid ? "paid" : order.status },
+      items,
+      db.settings,
+      invoice.invoice_number,
+      null,
+      { paidLabel }
+    );
+    await updateDb((next) => {
+      const row = next.orders.find((item) => item.id === orderId);
+      if (row) {
+        row.payments = appendPaymentRecord(row.payments, {
+          amount: paidNow,
+          stripe_session_id: stripeSessionId,
+          note: fullyPaid ? "Paid in full" : "Partial payment",
+        });
+        row.amount_paid = fromCents(
+          (row.payments || []).reduce((sum, item) => sum + toCents(item.amount), 0)
+        );
+        row.stripe_session_id = stripeSessionId || row.stripe_session_id;
+        if (isPaidInFull(row.amount_paid, row.total)) {
+          row.status = "paid";
+          row.paid_at = row.paid_at || new Date().toISOString();
+        }
+      }
+      const inv = next.invoices.find((rowItem) => rowItem.id === invoice.id);
+      if (inv) inv.html = html;
+    });
+  }
   if (order.event_date) {
     await upsertCateringBooking({
       event_date: order.event_date,
@@ -263,7 +316,17 @@ export async function markDeskInvoicePaid(orderId: string, stripeSessionId: stri
       customer_email: order.customer_email,
       customer_phone: order.customer_phone,
       order_id: order.id,
-      status: "confirmed",
+      order_number: order.order_number,
+      invoice_number: invoice?.invoice_number,
+      amount_due: order.total,
+      items_summary: items.map((item) => `${item.quantity}× ${item.name}`).join("; "),
+      food_subtotal: order.subtotal,
+      payment: {
+        amount: paidNow,
+        stripe_session_id: stripeSessionId,
+        note: fullyPaid ? "Paid in full" : "Partial payment",
+      },
     }).catch(() => null);
   }
+  await emailPaymentReceived(orderId, fullyPaid ? undefined : { depositAmount: paidNow });
 }

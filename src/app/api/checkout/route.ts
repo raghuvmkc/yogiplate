@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import { quoteDelivery } from "@/lib/delivery";
 import { findCoupon, fulfillPaidOrder } from "@/lib/orders";
-import { calcOrderTotals } from "@/lib/pricing";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
-import { getDb, uid } from "@/lib/store/local-db";
+import { calcOrderTotals, cartSubtotal } from "@/lib/pricing";
+import { stripeConfigured } from "@/lib/stripe";
+import { createCateringPaymentLink } from "@/lib/stripe-checkout";
+import { siteUrl } from "@/lib/site";
+import { getDb, invoiceNumber, orderNumber, uid } from "@/lib/store/local-db";
 import { savePending } from "@/lib/store/pending";
 import type { CartLine, DietTag } from "@/lib/types";
 
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
       city: body.delivery_city,
       state: body.delivery_state,
       zip: body.delivery_zip,
-      subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
+      subtotal: cartSubtotal(items),
       settings: db.settings,
     });
 
@@ -50,9 +53,49 @@ export async function POST(req: Request) {
       settings: db.settings,
     });
 
+    const site = siteUrl();
+    const orderId = uid("ord");
+    const ordNum = orderNumber();
+    const invNum = invoiceNumber();
+
+    await upsertCateringBooking({
+      event_date: String(body.event_date),
+      customer_name: String(body.customer_name || "Guest"),
+      customer_email: String(body.customer_email || ""),
+      customer_phone: String(body.customer_phone || ""),
+      order_id: orderId,
+      order_number: ordNum,
+      invoice_number: invNum,
+      amount_due: totals.total,
+      food_subtotal: totals.subtotal,
+      items_summary: items.map((item) => `${item.quantity}× ${item.name}`).join("; "),
+      status: "order_placed",
+      draft: {
+        event_date: String(body.event_date),
+        event_time: "",
+        diet: String(body.diet_profile || ""),
+        adults: Number(body.guest_count) || null,
+        kids: null,
+        city: String(body.delivery_city || ""),
+        address: String(body.delivery_address || ""),
+        notes: body.notes ? String(body.notes) : "",
+        delivery_or_pickup: "delivery",
+        occasion: "",
+        meal: "",
+        budget: "",
+        setup_needs: "",
+        special_requirements: "",
+        package_tier: "",
+        confirmed: false,
+      },
+    }).catch(() => null);
+
     const pendingId = uid("pending");
     await savePending({
       id: pendingId,
+      order_id: orderId,
+      order_number: ordNum,
+      invoice_number: invNum,
       customer_name: body.customer_name,
       customer_email: body.customer_email,
       customer_phone: body.customer_phone,
@@ -70,32 +113,21 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     });
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
     if (stripeConfigured()) {
-      const stripe = getStripe()!;
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
+      const session = await createCateringPaymentLink({
         customer_email: body.customer_email,
-        success_url: `${siteUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteUrl}/checkout`,
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: "usd",
-              unit_amount: Math.round(totals.total * 100),
-              product_data: {
-                name: `Yogiplate catering — ${body.diet_profile}`,
-                description: items
-                  .map((i) => `${i.name} × ${i.quantity}`)
-                  .join(", ")
-                  .slice(0, 400),
-              },
-            },
-          },
-        ],
-        metadata: { pending_id: pendingId },
+        amount: totals.total,
+        product_name: `Yogiplate catering — ${ordNum}`,
+        description: `Order ${ordNum}. ${items
+          .map((i) => `${i.name} × ${i.quantity}`)
+          .join(", ")}`,
+        success_url: `${site}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${site}/checkout`,
+        order_id: orderId,
+        order_number: ordNum,
+        invoice_number: invNum,
+        kind: "checkout",
+        extra: { pending_id: pendingId },
       });
       return NextResponse.json({ url: session.url });
     }

@@ -20,7 +20,7 @@ export function AdminCalendarPageClient() {
   const [blockKey, setBlockKey] = useState(0);
 
   async function loadBlocks() {
-    const res = await fetch("/api/admin/calendar");
+    const res = await fetch("/api/admin/calendar", { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
     setBlocks(data.blocks || []);
