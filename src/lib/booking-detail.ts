@@ -14,9 +14,17 @@ import { siteUrl } from "@/lib/site";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
 import { stripeConfigured } from "@/lib/stripe";
 import { createCateringPaymentLink } from "@/lib/stripe-checkout";
-import { getDb, uid, updateDb, type LocalDatabase } from "@/lib/store/local-db";
+import {
+  getDb,
+  invoiceNumber,
+  orderNumber,
+  uid,
+  updateDb,
+  type LocalDatabase,
+} from "@/lib/store/local-db";
 import type {
   CateringBooking,
+  DietTag,
   Invoice,
   Order,
   OrderItem,
@@ -24,6 +32,17 @@ import type {
   Quote,
   QuoteLine,
 } from "@/lib/types";
+
+/** One pickable menu line: a dish, or a dish at a specific tray size. */
+export type MenuChoice = {
+  key: string;
+  menu_item_id: string;
+  category: string;
+  name: string;
+  unit_price: number;
+  unit: string;
+  min_quantity: number;
+};
 
 export type BookingDetail = {
   booking: CateringBooking;
@@ -35,6 +54,8 @@ export type BookingDetail = {
   amount_paid: number;
   balance_due: number | null;
   tax_rate: number;
+  base_delivery_fee: number;
+  menu: MenuChoice[];
 };
 
 export type EditableLine = {
@@ -124,7 +145,100 @@ export async function getBookingDetail(id: string): Promise<BookingDetail | null
     balance_due:
       amount_due == null ? null : fromCents(Math.max(0, toCents(amount_due) - toCents(amount_paid))),
     tax_rate: db.settings.tax_rate,
+    base_delivery_fee: db.settings.base_delivery_fee,
+    menu: menuChoices(db),
   };
+}
+
+function menuChoices(db: LocalDatabase): MenuChoice[] {
+  const categories = new Map(db.categories.map((c) => [c.id, c]));
+  return db.menu_items
+    .filter((item) => item.is_available)
+    .sort(
+      (a, b) =>
+        (categories.get(a.category_id)?.sort_order ?? 999) -
+          (categories.get(b.category_id)?.sort_order ?? 999) || a.name.localeCompare(b.name)
+    )
+    .flatMap((item): MenuChoice[] => {
+      const category = categories.get(item.category_id)?.name || "Menu";
+      const min = Math.max(1, item.min_quantity || 1);
+      if (item.variants?.length) {
+        return item.variants.map((variant) => ({
+          key: `${item.id}:${variant.id}`,
+          menu_item_id: item.id,
+          category,
+          name: `${item.name} (${variant.label})`,
+          unit_price: variant.price,
+          unit: variant.unit || item.unit,
+          min_quantity: min,
+        }));
+      }
+      return [
+        {
+          key: item.id,
+          menu_item_id: item.id,
+          category,
+          name: item.name,
+          unit_price: item.price,
+          unit: item.unit,
+          min_quantity: min,
+        },
+      ];
+    });
+}
+
+const DIET_TAGS: DietTag[] = ["jain", "swaminarayan", "pushtimarg", "pure_vegetarian", "vegan", "italian"];
+
+/** Start an order (and its invoice) for a calendar entry that has neither an order nor a quote. */
+function startOrderForBooking(db: LocalDatabase, row: CateringBooking, now: string): Order {
+  const email = (row.customer_email || "").trim();
+  const customer = email
+    ? db.customers.find((c) => c.email.toLowerCase() === email.toLowerCase())
+    : undefined;
+  const diet = (row.diet || "").toLowerCase().replace(/[\s-]+/g, "_") as DietTag;
+  const pickup = row.delivery_or_pickup === "pickup";
+  const order: Order = {
+    id: uid("ord"),
+    order_number: orderNumber(),
+    customer_id: customer?.id || uid("cust"),
+    customer_name: row.customer_name || "Guest",
+    customer_email: email,
+    customer_phone: row.customer_phone || "",
+    diet_profile: DIET_TAGS.includes(diet) ? diet : "pure_vegetarian",
+    event_date: row.event_date,
+    guest_count: row.guest_count || 0,
+    delivery_address: pickup ? "Pickup" : row.address || "",
+    delivery_city: row.city || "",
+    delivery_state: "CA",
+    delivery_zip: "",
+    delivery_miles: 0,
+    subtotal: 0,
+    delivery_fee: pickup ? 0 : db.settings.base_delivery_fee,
+    discount: 0,
+    tax: 0,
+    total: 0,
+    coupon_code: null,
+    status: "pending",
+    stripe_session_id: null,
+    notes: row.notes || null,
+    created_at: now,
+    paid_at: null,
+    amount_paid: 0,
+    payments: [...(row.payments || [])],
+  };
+  db.orders.push(order);
+  db.invoices.push({
+    id: uid("inv"),
+    order_id: order.id,
+    invoice_number: invoiceNumber(),
+    html: "",
+    pay_url: null,
+    email_sent_at: null,
+    created_at: now,
+  });
+  row.order_id = order.id;
+  if (row.status === "unconfirmed") row.status = "order_placed";
+  return order;
 }
 
 function cleanLines(lines: EditableLine[]): EditableLine[] {
@@ -159,13 +273,15 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
   const before = await getDb();
   const booking = (before.catering_bookings || []).find((row) => row.id === id);
   if (!booking) throw new Error("Booking not found");
-  const links = linked(before, booking);
+  let orderId = linked(before, booking).order?.id ?? null;
   let totalChanged = false;
 
   await updateDb((db) => {
     const row = (db.catering_bookings || []).find((item) => item.id === id);
     if (!row) return;
-    const { quote, order, invoice } = linked(db, row);
+    const found = linked(db, row);
+    const quote = found.quote;
+    let { order, invoice } = found;
     const now = new Date().toISOString();
 
     if (patch.booking) {
@@ -173,6 +289,12 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
       if (patch.booking.guest_count != null) {
         row.guest_count = Number(patch.booking.guest_count) || null;
       }
+    }
+
+    if (!order && !quote && patch.order?.items && cleanLines(patch.order.items).length) {
+      order = startOrderForBooking(db, row, now);
+      invoice = db.invoices.find((item) => item.order_id === order!.id) || null;
+      orderId = order.id;
     }
 
     if (order) {
@@ -297,8 +419,8 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
     row.updated_at = now;
   });
 
-  if (totalChanged && links.order) {
-    await refreshPayLink(links.order.id).catch(() => null);
+  if (totalChanged && orderId) {
+    await refreshPayLink(orderId).catch(() => null);
   }
   return getBookingDetail(id);
 }
@@ -381,15 +503,17 @@ export async function recordManualPayment(
     });
   }
 
-  await upsertCateringBooking({
-    event_date: booking.event_date,
-    customer_name: booking.customer_name,
-    customer_email: booking.customer_email,
-    customer_phone: booking.customer_phone,
-    order_id: booking.order_id,
-    quote_id: booking.quote_id,
-    amount_due: order?.total ?? booking.amount_due,
-    payment,
+  await updateDb((next) => {
+    const row = (next.catering_bookings || []).find((item) => item.id === id);
+    if (!row) return;
+    row.payments = appendPaymentRecord(row.payments, payment);
+    row.amount_paid = fromCents(row.payments.reduce((sum, item) => sum + toCents(item.amount), 0));
+    if (order) row.amount_due = order.total;
+    if (row.status !== "cancelled") {
+      row.status =
+        row.amount_due != null && isPaidInFull(row.amount_paid, row.amount_due) ? "paid" : "partial";
+    }
+    row.updated_at = new Date().toISOString();
   });
   return getBookingDetail(id);
 }

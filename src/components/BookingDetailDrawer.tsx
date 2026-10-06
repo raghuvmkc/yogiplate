@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { BookingDetail, BookingDetailPatch, EditableLine } from "@/lib/booking-detail";
+import type {
+  BookingDetail,
+  BookingDetailPatch,
+  EditableLine,
+  MenuChoice,
+} from "@/lib/booking-detail";
 import {
   chargeTotals,
   formatMoney,
@@ -119,6 +124,7 @@ export function BookingDetailDrawer(props: {
   const [deliveryFee, setDeliveryFee] = useState("0");
   const [discount, setDiscount] = useState("0");
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("pending");
+  const [pickKey, setPickKey] = useState("");
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -130,7 +136,12 @@ export function BookingDetailDrawer(props: {
       setDetail(next);
       setForm(bookingForm(next.booking));
       setLines(linesFrom(next));
-      setDeliveryFee(String(next.order?.delivery_fee ?? 0));
+      setDeliveryFee(
+        String(
+          next.order?.delivery_fee ??
+            (next.booking.delivery_or_pickup === "pickup" ? 0 : next.base_delivery_fee)
+        )
+      );
       setDiscount(String(next.order?.discount ?? 0));
       setOrderStatus(next.order?.status || "pending");
       onChanged(next.booking);
@@ -168,13 +179,16 @@ export function BookingDetailDrawer(props: {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  /** Priced as an order (delivery, discount, tax) unless the event only has a quote. */
+  const orderMode = Boolean(detail && (detail.order || !detail.quote));
+
   const preview = useMemo(() => {
     const subtotalCents = lines.reduce(
       (sum, line) => sum + lineCents(Number(line.unit_price) || 0, Number(line.quantity) || 0),
       0
     );
     const subtotal = fromCents(subtotalCents);
-    if (detail?.order) {
+    if (detail && orderMode && (detail.order || lines.length)) {
       return chargeTotals({
         subtotal,
         discount: Number(discount) || 0,
@@ -183,7 +197,41 @@ export function BookingDetailDrawer(props: {
       });
     }
     return { subtotal, discount: 0, delivery_fee: 0, tax: 0, total: subtotal };
-  }, [lines, discount, deliveryFee, detail]);
+  }, [lines, discount, deliveryFee, detail, orderMode]);
+
+  const menuGroups = useMemo(() => {
+    const groups = new Map<string, MenuChoice[]>();
+    for (const choice of detail?.menu || []) {
+      groups.set(choice.category, [...(groups.get(choice.category) || []), choice]);
+    }
+    return [...groups.entries()];
+  }, [detail]);
+
+  function addFromMenu() {
+    const choice = detail?.menu.find((c) => c.key === pickKey);
+    if (!choice) return;
+    setLines((rows) => {
+      const same = rows.findIndex(
+        (row) => row.menu_item_id === choice.menu_item_id && row.name === choice.name
+      );
+      if (same >= 0) {
+        return rows.map((row, i) =>
+          i === same ? { ...row, quantity: (Number(row.quantity) || 0) + 1 } : row
+        );
+      }
+      return [
+        ...rows,
+        {
+          menu_item_id: choice.menu_item_id,
+          name: choice.name,
+          unit_price: choice.unit_price,
+          quantity: choice.min_quantity,
+          unit: choice.unit,
+        },
+      ];
+    });
+    setPickKey("");
+  }
 
   const depositPreview = detail?.quote
     ? fromCents(percentCents(Math.round(preview.total * 100), detail.quote.deposit_percent))
@@ -220,7 +268,8 @@ export function BookingDetailDrawer(props: {
   async function save() {
     if (!form || !detail) return;
     const patch: BookingDetailPatch = { booking: form };
-    if (detail.order) {
+    const startsOrder = !detail.order && !detail.quote && lines.length > 0;
+    if (detail.order || startsOrder) {
       patch.order = {
         items: lines,
         delivery_fee: Number(deliveryFee) || 0,
@@ -230,7 +279,9 @@ export function BookingDetailDrawer(props: {
     } else if (detail.quote) {
       patch.quote_items = lines;
     }
-    if (await send("PATCH", patch, "save")) setNotice("Saved.");
+    if (await send("PATCH", patch, "save")) {
+      setNotice(startsOrder ? "Order created for this event. Saved." : "Saved.");
+    }
   }
 
   async function recordPayment() {
@@ -390,8 +441,16 @@ export function BookingDetailDrawer(props: {
               <h4 className="font-display text-xl text-foreground">
                 {detail.order ? "Order" : detail.quote ? "Quote menu" : "Menu"}
               </h4>
-              {detail.order || detail.quote ? (
-                <>
+              <>
+                {!detail.order && !detail.quote ? (
+                  <p className="mt-2 text-sm text-muted">
+                    {lines.length
+                      ? "Save changes to create an order and invoice for this event."
+                      : "No menu yet. Pick dishes below to start an order for this event."}
+                    {b?.items_summary ? ` Requested: ${b.items_summary}` : ""}
+                  </p>
+                ) : null}
+                {lines.length ? (
                   <div className="mt-3 overflow-x-auto">
                     <table className="w-full min-w-[560px] text-left text-sm">
                       <thead>
@@ -451,21 +510,52 @@ export function BookingDetailDrawer(props: {
                       </tbody>
                     </table>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLines((rows) => [
-                        ...rows,
-                        { menu_item_id: "custom", name: "New item", unit_price: 0, quantity: 1 },
-                      ])
-                    }
-                    className="mt-3 border border-line px-3 py-1.5 text-sm font-semibold"
-                  >
-                    Add line
-                  </button>
+                ) : null}
+
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <label className="block min-w-[16rem] flex-1 text-sm">
+                      <span className="font-semibold">Add from menu</span>
+                      <select
+                        value={pickKey}
+                        onChange={(e) => setPickKey(e.target.value)}
+                        className="mt-1 w-full border border-line bg-white px-3 py-2"
+                      >
+                        <option value="">Choose a dish…</option>
+                        {menuGroups.map(([category, choices]) => (
+                          <optgroup key={category} label={category}>
+                            {choices.map((choice) => (
+                              <option key={choice.key} value={choice.key}>
+                                {choice.name} · {formatMoney(choice.unit_price)} / {choice.unit}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!pickKey}
+                      onClick={addFromMenu}
+                      className="bg-accent-deep px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      Add dish
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLines((rows) => [
+                          ...rows,
+                          { menu_item_id: "custom", name: "Custom item", unit_price: 0, quantity: 1 },
+                        ])
+                      }
+                      className="border border-line px-3 py-2 text-sm font-semibold"
+                    >
+                      Add custom line
+                    </button>
+                  </div>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {detail.order ? (
+                    {orderMode ? (
                       <>
                         <Field label="Delivery fee" type="number" value={deliveryFee} onChange={setDeliveryFee} />
                         <Field label="Discount" type="number" value={discount} onChange={setDiscount} />
@@ -478,7 +568,7 @@ export function BookingDetailDrawer(props: {
                       <dt>Subtotal</dt>
                       <dd>{formatMoney(preview.subtotal)}</dd>
                     </div>
-                    {detail.order ? (
+                    {orderMode ? (
                       <>
                         <div className="flex justify-between">
                           <dt>Delivery</dt>
@@ -507,12 +597,7 @@ export function BookingDetailDrawer(props: {
                       </div>
                     ) : null}
                   </dl>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-muted">
-                  {b?.items_summary || "No order or quote is linked to this event yet."}
-                </p>
-              )}
+              </>
             </section>
 
             <section className="mt-8">
