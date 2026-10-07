@@ -21,11 +21,13 @@ export function CheckoutForm() {
     couponCode,
     setCouponCode,
     clear,
+    contact,
+    setContact,
   } = useCartStore();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(contact.name);
+  const [email, setEmail] = useState(contact.email);
+  const [phone, setPhone] = useState(contact.phone);
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("CA");
@@ -84,6 +86,7 @@ export function CheckoutForm() {
     }
     setLoading(true);
     setError("");
+    setContact({ name, email, phone });
     try {
       if (!quote) await refreshQuote();
       const res = await fetch("/api/checkout", {

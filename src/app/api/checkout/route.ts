@@ -3,6 +3,7 @@ import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import { quoteDelivery } from "@/lib/delivery";
 import { findCoupon, fulfillPaidOrder } from "@/lib/orders";
 import { calcOrderTotals, cartSubtotal } from "@/lib/pricing";
+import { repriceCart } from "@/lib/reprice-cart";
 import { stripeConfigured } from "@/lib/stripe";
 import { createCateringPaymentLink } from "@/lib/stripe-checkout";
 import { siteUrl } from "@/lib/site";
@@ -13,8 +14,8 @@ import type { CartLine, DietTag } from "@/lib/types";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const items = (body.items || []) as CartLine[];
-    if (!items.length) {
+    const requested = (body.items || []) as CartLine[];
+    if (!requested.length) {
       return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
     }
     if (!body.diet_profile || !body.event_date) {
@@ -25,6 +26,12 @@ export async function POST(req: Request) {
     }
 
     const db = await getDb();
+    let items: CartLine[];
+    try {
+      items = repriceCart(db, requested);
+    } catch (err) {
+      return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+    }
     const quote = await quoteDelivery({
       address: body.delivery_address,
       city: body.delivery_city,

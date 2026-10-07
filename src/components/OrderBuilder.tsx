@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { DIET_DETAILS, DIET_LABELS, PRIMARY_DIETS } from "@/lib/data/menu-seed";
+import { EmailInvoiceOption } from "@/components/EmailInvoiceOption";
 import { useCartStore } from "@/lib/cart-store";
 import { notesForActiveDiet } from "@/lib/notes-for-diet";
 import { cartSubtotal, formatMoney, lineTotal } from "@/lib/pricing";
@@ -162,6 +163,7 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
   } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
+  const [invoiceNotice, setInvoiceNotice] = useState("");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -500,9 +502,18 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
           >
             Continue to checkout
           </Link>
+          <EmailInvoiceOption
+            disabled={!(items.length && activeDiet && eventDate)}
+            onSent={setInvoiceNotice}
+          />
           {(!eventDate || !activeDiet) && items.length > 0 ? (
             <p className="mt-2 text-xs text-accent">
               Select diet and event date to continue.
+            </p>
+          ) : null}
+          {invoiceNotice ? (
+            <p className="mt-3 border border-accent/30 bg-accent-soft p-3 text-sm font-medium text-accent-deep">
+              {invoiceNotice}
             </p>
           ) : null}
         </div>

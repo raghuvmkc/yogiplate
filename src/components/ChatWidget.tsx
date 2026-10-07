@@ -125,6 +125,7 @@ export function ChatWidget() {
   const notes = useCartStore((s) => s.notes);
   const items = useCartStore((s) => s.items);
   const applyProposal = useCartStore((s) => s.applyProposal);
+  const setContact = useCartStore((s) => s.setContact);
 
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -407,6 +408,7 @@ export function ChatWidget() {
       notes: activeOrder ? orderContext.notes || "" : "",
     };
     setLead(nextLead);
+    setContact(contact);
     setOrderDraft({
       ...EMPTY_ORDER_DRAFT,
       diet: activeOrder ? orderContext.diet || "" : "",

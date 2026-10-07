@@ -22,7 +22,14 @@ const DIET_TAGS = new Set<DietTag>([
   "italian",
 ]);
 
+export type GuestContact = { name: string; email: string; phone: string };
+
+const EMPTY_CONTACT: GuestContact = { name: "", email: "", phone: "" };
+
 interface CartStore {
+  /** Last contact the guest gave (chat, checkout, or invoice form). Survives clear(). */
+  contact: GuestContact;
+  setContact: (patch: Partial<GuestContact>) => void;
   diet: DietTag | null;
   guestCount: number;
   eventDate: string;
@@ -48,6 +55,15 @@ interface CartStore {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
+      contact: EMPTY_CONTACT,
+      setContact: (patch) => {
+        const next = { ...get().contact };
+        for (const key of ["name", "email", "phone"] as const) {
+          const value = patch[key]?.trim();
+          if (value) next[key] = value;
+        }
+        set({ contact: next });
+      },
       diet: null,
       guestCount: 0,
       eventDate: "",
@@ -192,6 +208,7 @@ export const useCartStore = create<CartStore>()(
           line_id: i.line_id || i.menu_item_id,
         }));
         return {
+          contact: state.contact || EMPTY_CONTACT,
           diet: null,
           guestCount: 0,
           eventDate: "",

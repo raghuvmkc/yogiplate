@@ -104,6 +104,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
     customer_phone: input.customer_phone.trim(),
     diet_profile: input.diet_profile,
     event_date: input.event_date,
+    event_time: input.event_time || null,
     guest_count: input.guest_count,
     delivery_address: pickup ? input.address || "Pickup" : input.address,
     delivery_city: input.city,
