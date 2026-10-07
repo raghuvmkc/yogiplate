@@ -152,6 +152,8 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
     setGuestCount,
     eventDate,
     setEventDate,
+    eventTime,
+    setEventTime,
     notes,
     setNotes,
     items,
@@ -349,12 +351,21 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
               className="mt-1.5 w-full border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
           </label>
-          <label className="block text-sm sm:col-span-2">
+          <label className="block text-sm">
             <span className="font-medium text-foreground">Event date</span>
             <input
               type="date"
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
+              className="mt-1.5 w-full border border-line bg-white px-3 py-2 outline-none focus:border-accent"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="font-medium text-foreground">Event time</span>
+            <input
+              type="time"
+              value={eventTime}
+              onChange={(e) => setEventTime(e.target.value)}
               className="mt-1.5 w-full border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
           </label>

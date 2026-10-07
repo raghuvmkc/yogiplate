@@ -26,12 +26,15 @@ interface CartStore {
   diet: DietTag | null;
   guestCount: number;
   eventDate: string;
+  /** HH:mm (24h), from the time input. */
+  eventTime: string;
   notes: string;
   items: CartLine[];
   couponCode: string;
   setDiet: (diet: DietTag) => void;
   setGuestCount: (n: number) => void;
   setEventDate: (d: string) => void;
+  setEventTime: (t: string) => void;
   setNotes: (n: string) => void;
   setCouponCode: (c: string) => void;
   addItem: (item: MenuItem, quantity?: number, variant?: MenuVariant) => void;
@@ -48,6 +51,7 @@ export const useCartStore = create<CartStore>()(
       diet: null,
       guestCount: 0,
       eventDate: "",
+      eventTime: "",
       notes: "",
       items: [],
       couponCode: "",
@@ -55,6 +59,7 @@ export const useCartStore = create<CartStore>()(
       setGuestCount: (guestCount) =>
         set({ guestCount: Math.max(0, Math.floor(guestCount) || 0) }),
       setEventDate: (eventDate) => set({ eventDate }),
+      setEventTime: (eventTime) => set({ eventTime }),
       setNotes: (notes) => set({ notes }),
       setCouponCode: (couponCode) => set({ couponCode }),
       addItem: (item, quantity = 1, variant) => {
@@ -118,6 +123,7 @@ export const useCartStore = create<CartStore>()(
           notes: "",
           guestCount: 0,
           eventDate: "",
+          eventTime: "",
           diet: null,
         }),
       applyProposal: (proposal) => {
@@ -163,6 +169,9 @@ export const useCartStore = create<CartStore>()(
           next.guestCount = proposal.guest_count;
         }
         if (proposal.event_date) next.eventDate = proposal.event_date;
+        if (proposal.event_time && /^\d{2}:\d{2}$/.test(proposal.event_time)) {
+          next.eventTime = proposal.event_time;
+        }
         if (proposal.notes) {
           next.notes = get().notes
             ? `${get().notes}\n${proposal.notes}`
@@ -186,6 +195,7 @@ export const useCartStore = create<CartStore>()(
           diet: null,
           guestCount: 0,
           eventDate: "",
+          eventTime: "",
           notes: "",
           couponCode: "",
           items,

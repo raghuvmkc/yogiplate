@@ -260,6 +260,8 @@ export interface Order {
   customer_phone: string;
   diet_profile: DietTag;
   event_date: string;
+  /** HH:mm (24h), when the guest gave one. */
+  event_time?: string | null;
   guest_count: number;
   delivery_address: string;
   delivery_city: string;

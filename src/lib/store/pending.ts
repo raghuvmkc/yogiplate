@@ -1,9 +1,7 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { getDb, updateDb } from "@/lib/store/local-db";
 import type { CartLine, DietTag } from "@/lib/types";
 
-const FILE = path.join(process.cwd(), ".data", "pending.json");
-
+/** Carts waiting on Stripe. Kept in the shared database because Netlify's disk is read-only. */
 export interface PendingCheckout {
   id: string;
   customer_name: string;
@@ -11,6 +9,7 @@ export interface PendingCheckout {
   customer_phone: string;
   diet_profile: DietTag;
   event_date: string;
+  event_time?: string | null;
   guest_count: number;
   delivery_address: string;
   delivery_city: string;
@@ -26,36 +25,32 @@ export interface PendingCheckout {
   invoice_number?: string;
 }
 
-async function readAll(): Promise<Record<string, PendingCheckout>> {
-  try {
-    return JSON.parse(await fs.readFile(FILE, "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-async function writeAll(data: Record<string, PendingCheckout>) {
-  await fs.mkdir(path.dirname(FILE), { recursive: true });
-  await fs.writeFile(FILE, JSON.stringify(data, null, 2));
-}
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function savePending(pending: PendingCheckout) {
-  const all = await readAll();
-  all[pending.id] = pending;
-  await writeAll(all);
+  await updateDb((db) => {
+    const all = db.pending_checkouts || {};
+    const cutoff = Date.now() - MAX_AGE_MS;
+    for (const [id, row] of Object.entries(all)) {
+      if (Date.parse(row.created_at) < cutoff) delete all[id];
+    }
+    all[pending.id] = pending;
+    db.pending_checkouts = all;
+  });
 }
 
 export async function takePending(id: string) {
-  const all = await readAll();
-  const item = all[id];
-  if (item) {
-    delete all[id];
-    await writeAll(all);
-  }
-  return item || null;
+  let taken: PendingCheckout | null = null;
+  await updateDb((db) => {
+    const all = db.pending_checkouts || {};
+    taken = all[id] || null;
+    if (taken) delete all[id];
+    db.pending_checkouts = all;
+  });
+  return taken as PendingCheckout | null;
 }
 
 export async function getPending(id: string) {
-  const all = await readAll();
-  return all[id] || null;
+  const db = await getDb();
+  return db.pending_checkouts?.[id] || null;
 }

@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { formatMoney } from "@/lib/pricing";
+import { prettyTime as formatEventTime } from "@/lib/quote-format";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
 import { getDb, updateDb } from "@/lib/store/local-db";
 import type { Order, OrderItem, SiteSettings } from "@/lib/types";
@@ -34,7 +35,7 @@ export function buildInvoiceHtml(
     <p style="font-family:Arial,sans-serif;font-size:14px;color:#555;margin:0 0 24px;">
       Order ${order.order_number}<br/>
       ${order.customer_name} · ${order.customer_email}<br/>
-      Event: ${order.event_date} · ${order.guest_count} guests · ${order.diet_profile}<br/>
+      Event: ${order.event_date}${order.event_time ? ` at ${formatEventTime(order.event_time)}` : ""} · ${order.guest_count} guests · ${order.diet_profile}<br/>
       Deliver to: ${order.delivery_address}, ${order.delivery_city}, ${order.delivery_state} ${order.delivery_zip}
     </p>
     <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;">
@@ -154,7 +155,9 @@ export async function emailPaymentReceived(
       name: order.customer_name || "Guest",
       orderNumber: order.order_number,
       invoiceNumber: invoice?.invoice_number || "",
-      eventDate: order.event_date,
+      eventDate: order.event_time
+        ? `${order.event_date} at ${formatEventTime(order.event_time)}`
+        : order.event_date,
       amountLabel,
       deposit,
     });

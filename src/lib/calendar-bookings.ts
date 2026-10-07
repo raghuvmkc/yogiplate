@@ -141,7 +141,7 @@ export async function upsertCateringBooking(
       id: prev?.id || uid("cbk"),
       event_date: input.event_date,
       event_time:
-        input.event_time ?? draft.event_time ?? prev?.event_time ?? null,
+        input.event_time || draft.event_time || prev?.event_time || null,
       status: statusFromMoney(prev?.status, input.status, amount_paid, amount_due),
       customer_name: input.customer_name || prev?.customer_name || "",
       customer_email: input.customer_email || prev?.customer_email || "",

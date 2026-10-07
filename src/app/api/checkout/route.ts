@@ -53,6 +53,9 @@ export async function POST(req: Request) {
       settings: db.settings,
     });
 
+    const eventTime = /^\d{2}:\d{2}$/.test(String(body.event_time || ""))
+      ? String(body.event_time)
+      : "";
     const site = siteUrl();
     const orderId = uid("ord");
     const ordNum = orderNumber();
@@ -60,6 +63,7 @@ export async function POST(req: Request) {
 
     await upsertCateringBooking({
       event_date: String(body.event_date),
+      event_time: eventTime || null,
       customer_name: String(body.customer_name || "Guest"),
       customer_email: String(body.customer_email || ""),
       customer_phone: String(body.customer_phone || ""),
@@ -72,7 +76,7 @@ export async function POST(req: Request) {
       status: "order_placed",
       draft: {
         event_date: String(body.event_date),
-        event_time: "",
+        event_time: eventTime,
         diet: String(body.diet_profile || ""),
         adults: Number(body.guest_count) || null,
         kids: null,
@@ -101,6 +105,7 @@ export async function POST(req: Request) {
       customer_phone: body.customer_phone,
       diet_profile: body.diet_profile as DietTag,
       event_date: body.event_date,
+      event_time: eventTime || null,
       guest_count: Number(body.guest_count) || 0,
       delivery_address: body.delivery_address,
       delivery_city: body.delivery_city,
@@ -150,7 +155,18 @@ export async function POST(req: Request) {
       demo: true,
     });
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Checkout failed." }, { status: 500 });
+    console.error("[checkout]", err);
+    const stripeMessage =
+      err && typeof err === "object" && "type" in err && String(err.type).startsWith("Stripe")
+        ? (err as { message?: string }).message
+        : null;
+    return NextResponse.json(
+      {
+        error: stripeMessage
+          ? `Payment could not start: ${stripeMessage}`
+          : "Checkout failed. Please try again, or call us to place the order.",
+      },
+      { status: 500 }
+    );
   }
 }

@@ -26,6 +26,7 @@ import type {
   SiteSettings,
 } from "@/lib/types";
 import type { GuestEventMemory } from "@/lib/planning/guest-memory";
+import type { PendingCheckout } from "@/lib/store/pending";
 
 export interface LocalDatabase {
   seed_version?: string;
@@ -45,6 +46,7 @@ export interface LocalDatabase {
   channel_threads?: ChannelThread[];
   guest_events?: GuestEventMemory[];
   call_tickets?: CallTicket[];
+  pending_checkouts?: Record<string, PendingCheckout>;
   admin: { email: string; password_hash: string };
 }
 

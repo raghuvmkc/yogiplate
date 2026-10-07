@@ -129,6 +129,7 @@ export async function fulfillPaidOrder(input: {
   customer_phone: string;
   diet_profile: DietTag;
   event_date: string;
+  event_time?: string | null;
   guest_count: number;
   delivery_address: string;
   delivery_city: string;
@@ -174,6 +175,7 @@ export async function fulfillPaidOrder(input: {
     customer_phone: input.customer_phone,
     diet_profile: input.diet_profile,
     event_date: input.event_date,
+    event_time: input.event_time || null,
     guest_count: input.guest_count,
     delivery_address: input.delivery_address,
     delivery_city: input.delivery_city,
@@ -257,13 +259,14 @@ export async function fulfillPaidOrder(input: {
   if (order.event_date) {
     await upsertCateringBooking({
       event_date: order.event_date,
+      event_time: order.event_time || null,
       customer_name: order.customer_name,
       customer_email: order.customer_email,
       customer_phone: order.customer_phone,
       order_id: order.id,
       draft: {
         event_date: order.event_date,
-        event_time: "",
+        event_time: order.event_time || "",
         diet: order.diet_profile,
         adults: order.guest_count,
         kids: null,

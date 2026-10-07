@@ -5,11 +5,23 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/cart-store";
 import { cartSubtotal, chargeTotals, formatMoney, lineTotal } from "@/lib/pricing";
 import { DIET_LABELS } from "@/lib/data/menu-seed";
+import { prettyTime } from "@/lib/quote-format";
 
 export function CheckoutForm() {
   const router = useRouter();
-  const { diet, items, guestCount, eventDate, notes, couponCode, setCouponCode, clear } =
-    useCartStore();
+  const {
+    diet,
+    items,
+    guestCount,
+    eventDate,
+    setEventDate,
+    eventTime,
+    setEventTime,
+    notes,
+    couponCode,
+    setCouponCode,
+    clear,
+  } = useCartStore();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -87,6 +99,7 @@ export function CheckoutForm() {
           delivery_zip: zip,
           diet_profile: diet,
           event_date: eventDate,
+          event_time: eventTime,
           guest_count: guestCount,
           notes,
           coupon_code: couponCode || null,
@@ -145,10 +158,31 @@ export function CheckoutForm() {
           Delivery & payment
         </h1>
         <p className="mt-4 text-lg font-medium text-muted">
-          {DIET_LABELS[diet]} · {guestCount} guests · {eventDate}
+          {DIET_LABELS[diet]} · {guestCount} guests · {eventDate || "date not set"}
+          {eventTime ? ` at ${prettyTime(eventTime)}` : ""}
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          <label className="text-sm">
+            <span className="font-medium">Event date</span>
+            <input
+              required
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className="mt-1.5 w-full border border-line px-3 py-2 outline-none focus:border-accent"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="font-medium">Event time</span>
+            <input
+              required
+              type="time"
+              value={eventTime}
+              onChange={(e) => setEventTime(e.target.value)}
+              className="mt-1.5 w-full border border-line px-3 py-2 outline-none focus:border-accent"
+            />
+          </label>
           <label className="text-base sm:col-span-2">
             <span className="font-semibold">Full name</span>
             <input
@@ -297,8 +331,8 @@ export function CheckoutForm() {
           {loading ? "Processing…" : "Pay with Stripe"}
         </button>
         <p className="mt-3 text-xs text-muted">
-          Invoice emails automatically after payment. Demo mode completes
-          instantly if Stripe keys are not set.
+          Secure card payment through Stripe. Your invoice is emailed right
+          after payment.
         </p>
       </aside>
     </form>

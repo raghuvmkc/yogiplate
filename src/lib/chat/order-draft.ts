@@ -47,6 +47,7 @@ export type CartProposal = {
   diet?: DietTag | string;
   guest_count?: number;
   event_date?: string;
+  event_time?: string;
   notes?: string;
   replace: boolean;
   items: CartProposalLine[];
@@ -237,6 +238,7 @@ export function buildCartProposalFromPackage(
     diet: draft.diet || undefined,
     guest_count,
     event_date: draft.event_date || undefined,
+    event_time: draft.event_time || undefined,
     notes: [
       draft.occasion && `Occasion: ${draft.occasion}`,
       draft.meal && `Meal: ${draft.meal}`,
