@@ -5,7 +5,7 @@ const NAMES = [
   "Uber",
   "Adobe",
   "Applied Materials",
-  "illumina",
+  "illumino",
 ];
 
 function NameSequence({ copy }: { copy: string }) {

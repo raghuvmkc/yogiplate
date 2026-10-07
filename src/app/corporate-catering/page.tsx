@@ -45,7 +45,7 @@ export default function CorporateCateringPage() {
             From all-hands lunches to executive offsites, Yogiplate brings pure
             vegetarian hospitality to technology campuses across Silicon Valley.
             We are a proud corporate caterer for Google, LinkedIn, SanDisk,
-            Uber, Adobe, Applied Materials, and Illumina — teams that expect
+            Uber, Adobe, Applied Materials, and Illumino — teams that expect
             flavor, freshness, and respect for every dietary tradition at the
             table.
           </p>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { FeatureFade } from "@/components/FeatureFade";
 import { HeroMotion } from "@/components/HeroMotion";
@@ -8,19 +9,45 @@ export default function HomePage() {
     <div className="bg-white">
       <HeroMotion />
 
-      <section className="border-t border-line bg-white px-4 py-20 sm:px-6 lg:py-24">
+      <section
+        id="dietary-paths"
+        className="border-t border-line bg-white px-4 py-20 sm:px-6 lg:py-24"
+      >
         <div className="mx-auto max-w-6xl">
-          <p className="eyebrow">Dietary paths</p>
-          <h2 className="font-display mt-4 text-4xl text-foreground sm:text-5xl lg:text-[3.25rem]">
-            Every tradition, one kitchen.
-          </h2>
-      <p className="lede mt-5 max-w-2xl">
-            No celebration is complete without food that is pure — and
-            irresistibly delicious. Our kitchen never uses onion, garlic, or
-            mushrooms. Jain, Swaminarayan, Pushtimarg, Pure Vegetarian, Vegan,
-            or Italian — we open only the dishes that belong on your table.
-            Pure Vegetarian shows everything. Other paths filter by tradition.
-          </p>
+          <div className="grid items-center gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
+            <div>
+              <p className="eyebrow">Dietary paths</p>
+              <h2 className="font-display mt-4 text-4xl text-foreground sm:text-5xl lg:text-[3.25rem]">
+                Every tradition, one kitchen.
+              </h2>
+              <p className="lede mt-5 max-w-2xl">
+                No celebration is complete without food that is pure — and
+                irresistibly delicious. Our kitchen never uses onion, garlic, or
+                mushrooms. Jain, Swaminarayan, Pushtimarg, Pure Vegetarian, Vegan,
+                or Italian — we open only the dishes that belong on your table.
+                Pure Vegetarian shows everything. Other paths filter by tradition.
+              </p>
+            </div>
+            <div className="relative mx-auto aspect-square w-64 sm:w-80 lg:w-[22rem]">
+              <div
+                aria-hidden
+                className="absolute -inset-4 rounded-full border border-logo-gold/50"
+              />
+              <div
+                aria-hidden
+                className="absolute inset-0 translate-x-4 translate-y-4 rounded-full bg-accent-soft"
+              />
+              <div className="group relative h-full w-full overflow-hidden rounded-full shadow-[0_24px_60px_-24px_rgba(47,74,58,0.55)] ring-[6px] ring-white">
+                <Image
+                  src="/images/catering-buffet.jpg"
+                  alt="A Yogiplate catering buffet with gold chafing dishes and marigold garlands"
+                  fill
+                  sizes="(min-width: 1024px) 22rem, (min-width: 640px) 20rem, 16rem"
+                  className="object-cover object-[50%_58%] transition duration-700 ease-out group-hover:scale-105"
+                />
+              </div>
+            </div>
+          </div>
           <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {PRIMARY_DIETS.map((diet) => (
               <Link

@@ -17,11 +17,31 @@ const REVIEWS = [
 ];
 
 const QUOTES = [
+  "We count protein, fiber, and carbs. The Vedas count prana (प्राण) — the life force in fresh, pure food that nourishes body and mind.",
   "Food made in purity carries a flavor no shortcut can imitate.",
   "We believe what enters the body shapes the mind and soul — so we cook only what is pure, fresh, and true.",
   "Some cook to fill the stomach. We cook to honor it. That is the difference you taste.",
   "One unforgettable bite does what a thousand invitations cannot — it makes them wait for your next celebration.",
 ];
+
+/** Reserves the hero's quote height so a long quote never spills over the header or photos. */
+const LONGEST_QUOTE = QUOTES.reduce((a, b) => (b.length > a.length ? b : a));
+
+function QuoteBlock(props: { quote: string; className?: string; ariaHidden?: boolean }) {
+  return (
+    <div
+      aria-hidden={props.ariaHidden || undefined}
+      className={`w-full text-center [grid-area:1/1] ${props.className || ""}`}
+    >
+      <p className="font-display text-[clamp(1.15rem,4.2vw,1.9rem)] font-semibold italic leading-snug tracking-wide text-accent-deep">
+        “{props.quote}”
+      </p>
+      <p className="mt-2 text-sm font-semibold tracking-wide text-accent-deep sm:text-lg">
+        — Radhavallabh (Chef and Founder)
+      </p>
+    </div>
+  );
+}
 
 const REVIEW_INTERVAL_MS = 5500;
 const QUOTE_INTERVAL_MS = 6500;
@@ -77,10 +97,13 @@ export function HeroMotion() {
   }, []);
 
   useEffect(() => {
-    const tick = () => setQuoteIndex((i) => (i + 1) % QUOTES.length);
-    const id = window.setInterval(tick, QUOTE_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, []);
+    const readMs = Math.max(QUOTE_INTERVAL_MS, QUOTES[quoteIndex].length * 60);
+    const id = window.setTimeout(
+      () => setQuoteIndex((i) => (i + 1) % QUOTES.length),
+      readMs
+    );
+    return () => window.clearTimeout(id);
+  }, [quoteIndex]);
 
   useEffect(() => {
     const tick = () => setBrandIndex((i) => (i + 1) % BRAND_IMAGES.length);
@@ -102,7 +125,8 @@ export function HeroMotion() {
     <section className="relative overflow-hidden bg-white">
       <div className="mx-auto flex w-full max-w-[1800px] flex-col px-3 py-4 sm:px-5 sm:py-5 lg:h-[calc(100svh-8rem)] lg:px-6 lg:py-3">
         <div className="mx-auto w-full max-w-5xl shrink-0 px-1">
-          <div className="relative flex min-h-[5.5rem] items-center justify-center sm:min-h-[5.25rem] lg:min-h-[5.75rem]">
+          <div className="grid place-items-center">
+            <QuoteBlock quote={LONGEST_QUOTE} className="invisible" ariaHidden />
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={quoteIndex}
@@ -110,14 +134,9 @@ export function HeroMotion() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-x-0 text-center"
+                className="w-full [grid-area:1/1]"
               >
-                <p className="font-display text-[clamp(1.15rem,4.2vw,1.9rem)] font-semibold italic leading-snug tracking-wide text-accent-deep">
-                  “{QUOTES[quoteIndex]}”
-                </p>
-                <p className="mt-2 text-sm font-semibold tracking-wide text-accent-deep sm:text-lg">
-                  — Radhavallabh (Chef and Founder)
-                </p>
+                <QuoteBlock quote={QUOTES[quoteIndex]} />
               </motion.div>
             </AnimatePresence>
           </div>
