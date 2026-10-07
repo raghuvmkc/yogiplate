@@ -17,7 +17,7 @@ const REVIEWS = [
 ];
 
 const QUOTES = [
-  "We count protein, fiber, and carbs. The Vedas count prana (प्राण) — the life force in fresh, pure food that nourishes body and mind.",
+  "Protein, fiber, and carbs all matter. But the Vedas name prāṇa — the freshness and life in food — as its most important ingredient.",
   "Food made in purity carries a flavor no shortcut can imitate.",
   "We believe what enters the body shapes the mind and soul — so we cook only what is pure, fresh, and true.",
   "Some cook to fill the stomach. We cook to honor it. That is the difference you taste.",
