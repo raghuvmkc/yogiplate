@@ -145,6 +145,7 @@ function addLine(
   coverageFor: string
 ) {
   if (qty <= 0) return;
+  qty = Math.max(qty, item.min_quantity || 1);
   const v = pickVariantServes(item);
   const name = v.variant_id ? `${item.name} (${v.label})` : item.name;
   const existing = lines.find(

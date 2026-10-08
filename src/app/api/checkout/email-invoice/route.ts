@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDeskInvoice } from "@/lib/desk-invoice";
+import { guestPaymentErrorMessage } from "@/lib/payment-errors";
 import { repriceCart } from "@/lib/reprice-cart";
 import { getDb } from "@/lib/store/local-db";
 import type { CartLine, DietTag } from "@/lib/types";
@@ -80,6 +81,8 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("[email-invoice]", err);
+    const guestMessage = guestPaymentErrorMessage(err);
+    if (guestMessage) return NextResponse.json({ error: guestMessage }, { status: 502 });
     const message = err instanceof Error ? err.message : "Could not send the invoice.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

@@ -1,5 +1,5 @@
 {
-  "seedVersion": "catering-v13-signature-chefs-special",
+  "seedVersion": "catering-v14-pdf-prices",
   "categories": [
     {
       "id": "cat-appetizers",
@@ -52,14 +52,19 @@
       "sort_order": 10
     },
     {
+      "id": "cat-drinks",
+      "name": "Drinks",
+      "sort_order": 11
+    },
+    {
       "id": "cat-pizzas",
       "name": "Pizzas (Stone Craft)",
-      "sort_order": 11
+      "sort_order": 12
     },
     {
       "id": "cat-packages",
       "name": "Catering Packages",
-      "sort_order": 12
+      "sort_order": 13
     }
   ],
   "items": [
@@ -68,8 +73,8 @@
       "category_id": "cat-appetizers",
       "name": "Mix Veg Pakoras",
       "description": "Chef’s special pakoras — shatter-crisp, spice-fragrant, pure.",
-      "price": 120,
-      "unit": "tray",
+      "price": 80,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -80,34 +85,38 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 120,
+          "price": 80,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 150,
+          "price": 120,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 122.5,
+          "price": 160,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/mix-veg-pakoras.jpeg"
+      "image": "/images/menu/mix-veg-pakoras.jpeg",
+      "fresh_note": "Made fresh for your event with fresh-cut seasonal vegetables, gram flour and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-chili-paneer",
       "category_id": "cat-appetizers",
       "name": "Chili Paneer",
       "description": "House signature chili paneer — fire-kissed and boldly glazed.",
-      "price": 135,
-      "unit": "tray",
+      "price": 95,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "italian"
@@ -117,26 +126,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 135,
+          "price": 95,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 180,
+          "price": 142.5,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220.5,
+          "price": 190,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/chili-paneer.webp"
+      "image": "/images/menu/chili-paneer.webp",
+      "fresh_note": "Made fresh for your event with house-made paneer, crisp bell peppers and fresh green chilies. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-pani-pooris",
@@ -157,32 +170,36 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 127,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/pani-pooris.jpeg"
+      "image": "/images/menu/pani-pooris.jpeg",
+      "fresh_note": "Made fresh for your event with crisp pooris, fresh mint, cilantro and tangy tamarind water. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-dahi-vada",
       "category_id": "cat-appetizers",
       "name": "Dahi Vada",
       "description": "Chef’s special — soft lentil rounds in whipped yogurt and spice.",
-      "price": 120,
-      "unit": "tray",
+      "price": 2.5,
+      "unit": "piece",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -192,28 +209,16 @@
       "is_available": true,
       "variants": [
         {
-          "id": "half",
-          "label": "Half tray",
-          "price": 120,
-          "unit": "half tray",
-          "serves": 20
-        },
-        {
-          "id": "medium",
-          "label": "Medium tray",
-          "price": 160,
-          "unit": "medium tray",
-          "serves": 30
-        },
-        {
-          "id": "full",
-          "label": "Full tray",
-          "price": 127,
-          "unit": "full tray",
-          "serves": 40
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2.5,
+          "unit": "piece",
+          "serves": 1
         }
       ],
-      "image": "/images/menu/dahi-vada.png"
+      "image": "/images/menu/dahi-vada.png",
+      "min_quantity": 30,
+      "fresh_note": "Made fresh for your event with freshly ground urad dal and thick, creamy yogurt. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-mumbai-bhaji",
@@ -232,24 +237,28 @@
           "label": "Half tray",
           "price": 110,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 441,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/mumbai-bhaji.jpeg"
+      "image": "/images/menu/mumbai-bhaji.jpeg",
+      "fresh_note": " potatoes, ripe tomatoes, peas and butter. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-urad-vadas",
@@ -272,24 +281,28 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/urad-vadas.jpeg"
+      "image": "/images/menu/urad-vadas.jpeg",
+      "fresh_note": "Made fresh for your event with freshly ground urad dal, curry leaves and green chilies. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-idlis",
@@ -312,32 +325,36 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/idlis.jpeg"
+      "image": "/images/menu/idlis.jpeg",
+      "fresh_note": "Made fresh for your event with freshly soaked and ground rice and urad dal. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-cauliflower-manchurian",
       "category_id": "cat-appetizers",
       "name": "Cauliflower Manchurian",
       "description": "Chef’s special Manchurian — crisp florets in sweet-heat glaze.",
-      "price": 130,
-      "unit": "tray",
+      "price": 87.5,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian"
       ],
@@ -346,26 +363,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 130,
+          "price": 87.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 175,
+          "price": 131.25,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220,
+          "price": 175,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/cauliflower-manchurian.png"
+      "image": "/images/menu/cauliflower-manchurian.png",
+      "fresh_note": " cauliflower florets, bell peppers and ginger. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-paneer-tikka-skewers",
@@ -387,32 +408,60 @@
           "label": "Half tray",
           "price": 150,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 200,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 225,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/paneer-tikka-skewers.png"
+      "image": "/images/menu/paneer-tikka-skewers.png",
+      "fresh_note": "Made fresh for your event with house-made paneer, bell peppers and a fresh yogurt marinade. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-samosa",
       "category_id": "cat-appetizers",
       "name": "1 Samosa w Chutney",
       "description": "Signature hand-sealed samosas — flaky pastry, spiced potato heart.",
-      "price": 60,
-      "unit": "tray",
+      "price": 2.5,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2.5,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "image": "/images/menu/samosa.png",
+      "min_quantity": 30,
+      "fresh_note": "Made fresh for your event with hand-rolled pastry, fresh potatoes, green peas and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-vegetable-manchurian",
+      "category_id": "cat-appetizers",
+      "name": "Vegetable Manchurian",
+      "description": "Vegetable dumplings finished in savory Manchurian sauce.",
+      "price": 85,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian"
       ],
@@ -421,26 +470,121 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 60,
+          "price": 85,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 80,
+          "price": 127.5,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 100,
+          "price": 170,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/samosa.png"
+      "fresh_note": " cabbage, carrots, bell peppers and ginger. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-palak-aloo-pakora",
+      "category_id": "cat-appetizers",
+      "name": "Palak Aloo Pakora",
+      "description": "Spinach and potato fritters, crisp and warmly spiced.",
+      "price": 80,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 80,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 160,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " spinach, potatoes and gram flour. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-vegetable-cutlet",
+      "category_id": "cat-appetizers",
+      "name": "Vegetable Cutlet",
+      "description": "Seasoned vegetable patty with a crisp exterior.",
+      "price": 3,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 3,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 30,
+      "fresh_note": " potatoes, carrots, peas and beans. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-batata-vada",
+      "category_id": "cat-appetizers",
+      "name": "Batata Vada / Aloo Vada",
+      "description": "Spiced potato fritter in a gram-flour coating.",
+      "price": 2.5,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2.5,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 30,
+      "fresh_note": " potatoes, gram flour and curry leaves. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-italian-green-salad-with-dressing",
@@ -464,24 +608,28 @@
           "label": "Half tray",
           "price": 100,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 120,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 220.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/italian-green-salad-with-dressing.jpeg"
+      "image": "/images/menu/italian-green-salad-with-dressing.jpeg",
+      "fresh_note": "Made fresh for your event with crisp garden greens, cucumber and a house herb dressing. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-greek-salad",
@@ -503,24 +651,28 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 220.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/greek-salad.jpeg"
+      "image": "/images/menu/greek-salad.jpeg",
+      "fresh_note": "Made fresh for your event with ripe tomatoes, cucumber, olives and feta. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-mozzarella-caprese",
@@ -543,24 +695,28 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 245,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/mozzarella-caprese.jpeg"
+      "image": "/images/menu/mozzarella-caprese.jpeg",
+      "fresh_note": " mozzarella, ripe tomatoes and basil leaves. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-lemon-orzo-pasta-salad-with-peas-and-mint",
@@ -584,24 +740,28 @@
           "label": "Half tray",
           "price": 108,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 144,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/lemon-orzo-pasta-salad-with-peas-and-mint.jpeg"
+      "image": "/images/menu/lemon-orzo-pasta-salad-with-peas-and-mint.jpeg",
+      "fresh_note": "Made fresh for your event with orzo, sweet peas, fresh mint and lemon. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-arugula-and-tomatoes-salad",
@@ -625,32 +785,36 @@
           "label": "Half tray",
           "price": 108,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 144,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/arugula-and-tomatoes-salad.webp"
+      "image": "/images/menu/arugula-and-tomatoes-salad.webp",
+      "fresh_note": "Made fresh for your event with peppery arugula, ripe tomatoes and extra-virgin olive oil. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-alu-gobi",
       "category_id": "cat-vegetable-dishes",
       "name": "Alu Gobi",
       "description": "House signature alu gobi — dry-roasted in peanut oil and spice.",
-      "price": 115,
-      "unit": "tray",
+      "price": 75,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -661,26 +825,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 115,
+          "price": 75,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 150,
+          "price": 112.5,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 150,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/alu-gobi.png"
+      "image": "/images/menu/alu-gobi.png",
+      "fresh_note": " cauliflower, potatoes and ginger. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-okra-stir-fry",
@@ -703,32 +871,36 @@
           "label": "Half tray",
           "price": 149.99,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 199.99,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 249.99,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/okra-stir-fry.jpeg"
+      "image": "/images/menu/okra-stir-fry.jpeg",
+      "fresh_note": "Made fresh for your event with tender fresh okra and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-smoky-paneer-makhni",
       "category_id": "cat-vegetable-dishes",
       "name": "Smoky Paneer Makhni",
       "description": "Signature makhni — wood-smoked paneer in silky tomato-cashew gravy.",
-      "price": 135,
-      "unit": "tray",
+      "price": 95,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -739,34 +911,38 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 135,
+          "price": 95,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 175,
+          "price": 142.5,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 125,
+          "price": 190,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/smoky-paneer-makhni.png"
+      "image": "/images/menu/smoky-paneer-makhni.png",
+      "fresh_note": "Made fresh for your event with house-made paneer, ripe tomatoes, cashews and butter. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-paneer-tikka-masala-gravy",
       "category_id": "cat-vegetable-dishes",
       "name": "Paneer Tikka Masala gravy",
       "description": "Chef’s special tikka masala — cream tomato curry, pure and lush.",
-      "price": 135,
-      "unit": "tray",
+      "price": 87.5,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -777,26 +953,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 135,
+          "price": 87.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 175,
+          "price": 131.25,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 175,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/paneer-tikka-masala-gravy.jpeg"
+      "image": "/images/menu/paneer-tikka-masala-gravy.jpeg",
+      "fresh_note": "Made fresh for your event with house-made paneer, bell peppers, ripe tomatoes and cream. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-chili-paneer-gravy",
@@ -815,24 +995,28 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 269.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/chili-paneer-gravy.jpeg"
+      "image": "/images/menu/chili-paneer-gravy.jpeg",
+      "fresh_note": "Made fresh for your event with house-made paneer, bell peppers and fresh green chilies. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-methi-malai-matar",
@@ -854,24 +1038,28 @@
           "label": "Half tray",
           "price": 140,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 180,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 269.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/methi-malai-matar.png"
+      "image": "/images/menu/methi-malai-matar.png",
+      "fresh_note": " fenugreek leaves, green peas and cream. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-alu-methi",
@@ -892,32 +1080,36 @@
           "label": "Half tray",
           "price": 110,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 220.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/alu-methi.jpeg"
+      "image": "/images/menu/alu-methi.jpeg",
+      "fresh_note": " potatoes and fenugreek leaves. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-navaratna-koorma",
       "category_id": "cat-vegetable-dishes",
       "name": "Navaratna Koorma",
       "description": "House signature koorma — nine jewels in cashew velvet gravy.",
-      "price": 144,
-      "unit": "tray",
+      "price": 100,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -928,34 +1120,38 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 144,
+          "price": 100,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 150,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 200,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/navaratna-koorma.jpeg"
+      "image": "/images/menu/navaratna-koorma.jpeg",
+      "fresh_note": "Made fresh for your event with nine fresh vegetables and fruits, cashews and cream. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-palak-paneer",
       "category_id": "cat-vegetable-dishes",
       "name": "Palak Paneer",
       "description": "Chef’s palak paneer — spinach purée cradling soft paneer cubes.",
-      "price": 130,
-      "unit": "tray",
+      "price": 87.5,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -967,26 +1163,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 130,
+          "price": 87.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 175,
+          "price": 131.25,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 245,
+          "price": 175,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/palak-paneer.jpg"
+      "image": "/images/menu/palak-paneer.jpg",
+      "fresh_note": " spinach and house-made paneer. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-eggplants-and-paneer-in-fresh-tomato-sauce",
@@ -1009,32 +1209,36 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 269.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/eggplants-and-paneer-in-fresh-tomato-sauce.webp"
+      "image": "/images/menu/eggplants-and-paneer-in-fresh-tomato-sauce.webp",
+      "fresh_note": "Made fresh for your event with roasted eggplant, house-made paneer and ripe tomatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-veg-pahadi",
       "category_id": "cat-vegetable-dishes",
       "name": "Veg Pahadi",
       "description": "Signature pahadi veg — hill spices, high flame, clean finish.",
-      "price": 135,
-      "unit": "tray",
+      "price": 90,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -1046,26 +1250,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 135,
+          "price": 90,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 180,
+          "price": 135,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 245,
+          "price": 180,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/veg-pahadi.jpeg"
+      "image": "/images/menu/veg-pahadi.jpeg",
+      "fresh_note": " mixed vegetables, cilantro and mint. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-thai-green-curry",
@@ -1085,32 +1293,36 @@
           "label": "Half tray",
           "price": 162,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 216,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 294,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/thai-green-curry.png"
+      "image": "/images/menu/thai-green-curry.png",
+      "fresh_note": " vegetables, coconut milk, Thai basil and lemongrass. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-malai-kofta",
       "category_id": "cat-vegetable-dishes",
       "name": "Malai Kofta",
       "description": "House signature kofta — hand-shaped dumplings in lush cream gravy.",
-      "price": 162,
-      "unit": "tray",
+      "price": 90,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -1121,34 +1333,38 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 162,
+          "price": 90,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 216,
+          "price": 135,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 180,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/malai-kofta.jpeg"
+      "image": "/images/menu/malai-kofta.jpeg",
+      "fresh_note": "Made fresh for your event with hand-shaped paneer and vegetable koftas, cashews and cream. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-amritsari-chole",
       "category_id": "cat-vegetable-dishes",
       "name": "Chole Amritsari",
       "description": "Signature Amritsari chole — chickpeas slow-stewed deep and bold.",
-      "price": 125,
-      "unit": "tray",
+      "price": 80,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -1159,26 +1375,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 125,
+          "price": 80,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 120,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 160,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/amritsari-chole.jpeg"
+      "image": "/images/menu/amritsari-chole.jpeg",
+      "fresh_note": "Made fresh for your event with slow-soaked chickpeas, ripe tomatoes and ginger. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-chickpeas-with-spinach",
@@ -1201,24 +1421,28 @@
           "label": "Half tray",
           "price": 130,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 220.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/chickpeas-with-spinach.png"
+      "image": "/images/menu/chickpeas-with-spinach.png",
+      "fresh_note": "Made fresh for your event with slow-soaked chickpeas and fresh spinach. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-tofu-crumbles-with-veggies",
@@ -1242,32 +1466,119 @@
           "label": "Half tray",
           "price": 150,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 245,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/tofu-crumbles-with-veggies.jpeg"
+      "image": "/images/menu/tofu-crumbles-with-veggies.jpeg",
+      "fresh_note": " tofu and garden vegetables. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
-      "id": "item-toordal-tadka",
-      "category_id": "cat-dal-soups",
-      "name": "Toordal Tadka",
-      "description": "Chef’s toor tadka — lentils finished with a fragrant pure tempering.",
-      "price": 97.5,
-      "unit": "tray",
+      "id": "item-vegetable-kofta-curry",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Vegetable Kofta Curry",
+      "description": "House-made vegetable koftas in a savory curry.",
+      "price": 80,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 80,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 160,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with hand-shaped vegetable koftas and ripe tomatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-shahi-paneer",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Shahi Paneer",
+      "description": "Paneer in a fragrant, gently spiced royal sauce.",
+      "price": 87.5,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 87.5,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 131.25,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 175,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with house-made paneer, cashews and cream. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-zucchini-palak-moong-vadi",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Zucchini Palak Moong Vadi",
+      "description": "Zucchini, spinach and moong vadi in a homestyle preparation.",
+      "price": 80,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -1280,26 +1591,326 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 97.5,
+          "price": 80,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 130,
+          "price": 120,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 171.5,
+          "price": 160,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/toordal-tadka.jpg"
+      "fresh_note": " zucchini, spinach and moong vadi. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-bhindi-aloo-masala",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Bhindi Aloo Masala",
+      "description": "Okra and potatoes cooked with a dry aromatic masala.",
+      "price": 80,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 80,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 160,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with tender fresh okra and potatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-green-beans-potato-charchari",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Green Beans Potato Charchari",
+      "description": "Bengali-style green beans and potatoes with gentle spices.",
+      "price": 75,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 75,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 112.5,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 150,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " green beans and potatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-lauki-tamatar",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Lauki Tamatar",
+      "description": "Bottle gourd simmered in a light tomato preparation.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " bottle gourd and ripe tomatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-aloo-palak",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Aloo Palak",
+      "description": "Potatoes and spinach in a comforting homestyle masala.",
+      "price": 75,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 75,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 112.5,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 150,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " potatoes and spinach. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-dahi-baingan",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Dahi Baingan",
+      "description": "Eggplant complemented by seasoned yogurt and spices.",
+      "price": 80,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 80,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 160,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " eggplant and seasoned yogurt. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-okra-masala",
+      "category_id": "cat-vegetable-dishes",
+      "name": "Okra Masala",
+      "description": "Premium okra preparation with house-blended masala.",
+      "price": 100,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 100,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 150,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 200,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with tender fresh okra and house-ground masala. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-toordal-tadka",
+      "category_id": "cat-dal-soups",
+      "name": "Toordal Tadka",
+      "description": "Chef’s toor tadka — lentils finished with a fragrant pure tempering.",
+      "price": 65,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 65,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 97.5,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 130,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "image": "/images/menu/toordal-tadka.jpg",
+      "fresh_note": "Made fresh for your event with toor dal, ripe tomatoes, cumin and curry leaves. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-whole-moongdal-with-moringa",
@@ -1322,24 +1933,28 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 150,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/whole-moongdal-with-moringa.jpeg"
+      "image": "/images/menu/whole-moongdal-with-moringa.jpeg",
+      "fresh_note": "Made fresh for your event with whole moong and fresh moringa. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-roasted-moonddal-with-fried-potatoes",
@@ -1361,32 +1976,36 @@
           "label": "Half tray",
           "price": 101.25,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 135,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/roasted-moonddal-with-fried-potatoes.jpeg"
+      "image": "/images/menu/roasted-moonddal-with-fried-potatoes.jpeg",
+      "fresh_note": "Made fresh for your event with roasted moong dal and fresh potatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-dal-makhni",
       "category_id": "cat-dal-soups",
       "name": "Dal Makhni",
       "description": "House signature dal makhni — overnight lentils, spoon-silky butter.",
-      "price": 120,
-      "unit": "tray",
+      "price": 70,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "swaminarayan",
@@ -1397,34 +2016,38 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 120,
+          "price": 70,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 105,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220.5,
+          "price": 140,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/dal-makhni.jpeg"
+      "image": "/images/menu/dal-makhni.jpeg",
+      "fresh_note": "Made fresh for your event with slow-cooked black lentils, ripe tomatoes and butter. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-rajma",
       "category_id": "cat-dal-soups",
       "name": "Rajma",
       "description": "Signature rajma — kidney beans braised long in rich tomato masala.",
-      "price": 105,
-      "unit": "tray",
+      "price": 70,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -1437,26 +2060,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 105,
+          "price": 70,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 105,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 140,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/rajma.webp"
+      "image": "/images/menu/rajma.webp",
+      "fresh_note": "Made fresh for your event with slow-soaked kidney beans and ripe tomatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-veg-manchow-soup",
@@ -1476,24 +2103,28 @@
           "label": "Half tray",
           "price": 97.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 130,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/veg-manchow-soup.jpeg"
+      "image": "/images/menu/veg-manchow-soup.jpeg",
+      "fresh_note": " cabbage, carrots, beans and ginger. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-wanton-soup",
@@ -1513,24 +2144,28 @@
           "label": "Half tray",
           "price": 105,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/wanton-soup.webp"
+      "image": "/images/menu/wanton-soup.webp",
+      "fresh_note": "Made fresh for your event with hand-folded vegetable wontons and a fresh vegetable broth. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-tuardal-khatta-mitha",
@@ -1553,70 +2188,36 @@
           "label": "Half tray",
           "price": 97.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 130,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 171.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/tuardal-khatta-mitha.jpeg"
+      "image": "/images/menu/tuardal-khatta-mitha.jpeg",
+      "fresh_note": "Made fresh for your event with toor dal, kokum, jaggery and curry leaves. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
-      "id": "item-vegetable-biryani",
-      "category_id": "cat-rice-noodles",
-      "name": "Vegetable Biryani",
-      "description": "House signature biryani — dum-sealed basmati, perfume in every layer.",
-      "price": 120,
-      "unit": "tray",
-      "diet_tags": [
-        "pure_vegetarian",
-        "swaminarayan",
-        "pushtimarg"
-      ],
-      "is_available": true,
-      "variants": [
-        {
-          "id": "half",
-          "label": "Half tray",
-          "price": 120,
-          "unit": "half tray",
-          "serves": 20
-        },
-        {
-          "id": "medium",
-          "label": "Medium tray",
-          "price": 160,
-          "unit": "medium tray",
-          "serves": 30
-        },
-        {
-          "id": "full",
-          "label": "Full tray",
-          "price": 196,
-          "unit": "full tray",
-          "serves": 40
-        }
-      ],
-      "image": "/images/menu/vegetable-biryani.png"
-    },
-    {
-      "id": "item-vegetable-pulao",
-      "category_id": "cat-rice-noodles",
-      "name": "Vegetable Pulao",
-      "description": "Chef’s special pulao — ghee-kissed basmati with garden vegetables.",
-      "price": 115,
-      "unit": "tray",
+      "id": "item-roasted-moong-dal-zucchini",
+      "category_id": "cat-dal-soups",
+      "name": "Roasted Moong Dal with Zucchini",
+      "description": "Nutty roasted moong dal with tender zucchini.",
+      "price": 70,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -1629,26 +2230,327 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 115,
+          "price": 70,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 150,
+          "price": 105,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 171.5,
+          "price": 140,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/vegetable-pulao.png"
+      "fresh_note": "Made fresh for your event with roasted moong dal and fresh zucchini. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-toor-dal-palak",
+      "category_id": "cat-dal-soups",
+      "name": "Toor Dal Palak",
+      "description": "Toor dal enriched with fresh spinach.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with toor dal and fresh spinach. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-lauki-chana-dal",
+      "category_id": "cat-dal-soups",
+      "name": "Lauki Chana Dal",
+      "description": "Bottle gourd and chana dal in a homestyle preparation.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " bottle gourd and chana dal. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-green-moong-makhani",
+      "category_id": "cat-dal-soups",
+      "name": "Green Moong Makhani",
+      "description": "Whole green moong in a rich makhani-style sauce.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with whole green moong, ripe tomatoes and butter. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-vegetable-sambar",
+      "category_id": "cat-dal-soups",
+      "name": "Vegetable Sambar",
+      "description": "South Indian lentil stew with vegetables and aromatic spices.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with toor dal, fresh vegetables, tamarind and curry leaves. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-dalma",
+      "category_id": "cat-dal-soups",
+      "name": "Dalma",
+      "description": "Odisha-style lentils cooked with vegetables and traditional seasoning.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with toor dal and fresh seasonal vegetables. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-vegetable-biryani",
+      "category_id": "cat-rice-noodles",
+      "name": "Vegetable Biryani",
+      "description": "House signature biryani — dum-sealed basmati, perfume in every layer.",
+      "price": 80,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 80,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 160,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "image": "/images/menu/vegetable-biryani.png",
+      "fresh_note": "Made fresh for your event with aged basmati rice, fresh vegetables, saffron and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-vegetable-pulao",
+      "category_id": "cat-rice-noodles",
+      "name": "Vegetable Pulao",
+      "description": "Chef’s special pulao — ghee-kissed basmati with garden vegetables.",
+      "price": 70,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 70,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 105,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 140,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "image": "/images/menu/vegetable-pulao.png",
+      "fresh_note": "Made fresh for your event with basmati rice, fresh vegetables and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-peas-pulao",
@@ -1671,24 +2573,28 @@
           "label": "Half tray",
           "price": 112.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/peas-pulao.jpeg"
+      "image": "/images/menu/peas-pulao.jpeg",
+      "fresh_note": "Made fresh for your event with basmati rice and sweet green peas. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-cumin-cilantro-rice",
@@ -1712,24 +2618,28 @@
           "label": "Half tray",
           "price": 90,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 120,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/cumin-cilantro-rice.webp"
+      "image": "/images/menu/cumin-cilantro-rice.webp",
+      "fresh_note": "Made fresh for your event with basmati rice, cumin and fresh cilantro. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-risotto",
@@ -1751,24 +2661,28 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/risotto.jpeg"
+      "image": "/images/menu/risotto.jpeg",
+      "fresh_note": "Made fresh for your event with Arborio rice, fresh vegetables and parmesan. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-chinese-fried-rice",
@@ -1788,24 +2702,28 @@
           "label": "Half tray",
           "price": 112.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 150,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 171.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/chinese-fried-rice.webp"
+      "image": "/images/menu/chinese-fried-rice.webp",
+      "fresh_note": " cabbage, carrots, beans and bell peppers. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-thai-jasmine-rice",
@@ -1828,24 +2746,28 @@
           "label": "Half tray",
           "price": 81,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 108,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/thai-jasmine-rice.jpeg"
+      "image": "/images/menu/thai-jasmine-rice.jpeg",
+      "fresh_note": "Made fresh for your event with fragrant jasmine rice. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-italian-vegetable-rice",
@@ -1869,32 +2791,36 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 171.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/italian-vegetable-rice.jpeg"
+      "image": "/images/menu/italian-vegetable-rice.jpeg",
+      "fresh_note": " Mediterranean vegetables and herbs. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-vegetable-khichri",
       "category_id": "cat-rice-noodles",
       "name": "Vegetable Khichri",
       "description": "Signature khichri — rice and lentils cooked soft and sattvic.",
-      "price": 105,
-      "unit": "tray",
+      "price": 75,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -1907,26 +2833,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 105,
+          "price": 75,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 112.5,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 150,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/vegetable-khichri.jpeg"
+      "image": "/images/menu/vegetable-khichri.jpeg",
+      "fresh_note": "Made fresh for your event with rice, moong dal and fresh vegetables. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-chowmein-chinese-fried-noodles",
@@ -1946,24 +2876,28 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 171.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/chowmein-chinese-fried-noodles.jpeg"
+      "image": "/images/menu/chowmein-chinese-fried-noodles.jpeg",
+      "fresh_note": "Made fresh for your event with noodles, fresh cabbage, carrots and bell peppers. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-thai-pad-noodles",
@@ -1983,71 +2917,79 @@
           "label": "Half tray",
           "price": 120,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 160,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 196,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/thai-pad-noodles.jpeg"
+      "image": "/images/menu/thai-pad-noodles.jpeg",
+      "fresh_note": "Made fresh for your event with rice noodles, fresh vegetables, peanuts and lime. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
-      "id": "item-whole-wheat-rotis-with-ghee",
-      "category_id": "cat-breads-rotis",
-      "name": "Whole wheat rotis with ghee",
-      "description": "Chef’s rotis — soft whole wheat brushed warm with pure ghee.",
-      "price": 60,
-      "unit": "tray",
+      "id": "item-basmati-rice",
+      "category_id": "cat-rice-noodles",
+      "name": "Basmati Rice",
+      "description": "Fragrant, fluffy long-grain rice.",
+      "price": 50,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
         "swaminarayan",
-        "pushtimarg"
+        "pushtimarg",
+        "vegan"
       ],
       "is_available": true,
       "variants": [
         {
           "id": "half",
           "label": "Half tray",
-          "price": 60,
+          "price": 50,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 75,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 85.75,
+          "price": 100,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/whole-wheat-rotis-with-ghee.jpeg"
+      "fresh_note": "Made fresh for your event with aged long-grain basmati rice. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
-      "id": "item-pineapple-halwa",
-      "category_id": "cat-desserts",
-      "name": "Pineapple Halwa",
-      "description": "Signature pineapple halwa — slow-stirred, ghee-glossed, fragrant.",
-      "price": 153.75,
-      "unit": "tray",
+      "id": "item-jagannath-sukhi-khichdi",
+      "category_id": "cat-rice-noodles",
+      "name": "Jagannath Puri Sukhi Khichdi",
+      "description": "Temple-inspired dry khichdi with gentle, sattvic seasoning.",
+      "price": 70,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -2059,26 +3001,149 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 153.75,
+          "price": 70,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 206.25,
+          "price": 105,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 245,
+          "price": 140,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/pineapple-halwa.jpeg"
+      "fresh_note": "Made fresh for your event with rice, moong dal, ghee and gentle whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-whole-wheat-rotis-with-ghee",
+      "category_id": "cat-breads-rotis",
+      "name": "Whole wheat rotis with ghee",
+      "description": "Chef’s rotis — soft whole wheat brushed warm with pure ghee. Plain vegan roti on request at the same price.",
+      "price": 2,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "image": "/images/menu/whole-wheat-rotis-with-ghee.jpeg",
+      "min_quantity": 25,
+      "fresh_note": "Made fresh for your event with whole-wheat dough kneaded the same day and pure ghee. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-aloo-paratha",
+      "category_id": "cat-breads-rotis",
+      "name": "Aloo Paratha",
+      "description": "Stuffed whole-wheat bread with seasoned potato.",
+      "price": 7,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 7,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 10,
+      "fresh_note": "Made fresh for your event with whole-wheat dough kneaded the same day and spiced potatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-gobi-paratha",
+      "category_id": "cat-breads-rotis",
+      "name": "Gobi Paratha",
+      "description": "Stuffed whole-wheat bread with seasoned cauliflower.",
+      "price": 10,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 10,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 10,
+      "fresh_note": "Made fresh for your event with whole-wheat dough kneaded the same day and fresh grated cauliflower. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-pineapple-halwa",
+      "category_id": "cat-desserts",
+      "name": "Pineapple Halwa",
+      "description": "Signature pineapple halwa — slow-stirred, ghee-glossed, fragrant.",
+      "price": 80,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 80,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 120,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 160,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "image": "/images/menu/pineapple-halwa.jpeg",
+      "fresh_note": "Made fresh for your event with ripe pineapple, semolina and ghee. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-brown-rassogullas",
@@ -2100,24 +3165,28 @@
           "label": "Half tray",
           "price": 187.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 250,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 214.38,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/brown-rassogullas.png"
+      "image": "/images/menu/brown-rassogullas.png",
+      "fresh_note": " chena made from whole milk. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-malai-chum-chum",
@@ -2139,32 +3208,36 @@
           "label": "Half tray",
           "price": 180,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 240,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 183.75,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/malai-chum-chum.jpeg"
+      "image": "/images/menu/malai-chum-chum.jpeg",
+      "fresh_note": " chena and malai. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-ras-malai",
       "category_id": "cat-desserts",
       "name": "Ras Malai",
       "description": "Chef’s special ras malai — soft discs in saffron chilled milk.",
-      "price": 150,
-      "unit": "tray",
+      "price": 3,
+      "unit": "piece",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -2174,36 +3247,24 @@
       "is_available": true,
       "variants": [
         {
-          "id": "half",
-          "label": "Half tray",
-          "price": 150,
-          "unit": "half tray",
-          "serves": 20
-        },
-        {
-          "id": "medium",
-          "label": "Medium tray",
-          "price": 187.5,
-          "unit": "medium tray",
-          "serves": 30
-        },
-        {
-          "id": "full",
-          "label": "Full tray",
-          "price": 214.38,
-          "unit": "full tray",
-          "serves": 40
+          "id": "piece",
+          "label": "Per piece",
+          "price": 3,
+          "unit": "piece",
+          "serves": 1
         }
       ],
-      "image": "/images/menu/ras-malai.webp"
+      "image": "/images/menu/ras-malai.webp",
+      "min_quantity": 30,
+      "fresh_note": " chena, whole milk and saffron. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-chena-rabri",
       "category_id": "cat-desserts",
       "name": "Chena Rabri",
       "description": "Signature chena rabri — reduced milk, fresh chenna, cardamom.",
-      "price": 187.5,
-      "unit": "tray",
+      "price": 95,
+      "unit": "half tray",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -2215,26 +3276,30 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 187.5,
+          "price": 95,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 248.75,
+          "price": 142.5,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
-          "price": 214.38,
+          "price": 190,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/chena-rabri.jpeg"
+      "image": "/images/menu/chena-rabri.jpeg",
+      "fresh_note": " chena, slow-reduced whole milk and cardamom. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-srikhand",
@@ -2256,24 +3321,28 @@
           "label": "Half tray",
           "price": 150,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 200,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 153.12,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/srikhand.webp"
+      "image": "/images/menu/srikhand.webp",
+      "fresh_note": "Made fresh for your event with strained yogurt, saffron and cardamom. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-kesari-sweet-rice",
@@ -2295,32 +3364,36 @@
           "label": "Half tray",
           "price": 150,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 200,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 153.12,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/kesari-sweet-rice.jpeg"
+      "image": "/images/menu/kesari-sweet-rice.jpeg",
+      "fresh_note": "Made fresh for your event with basmati rice, saffron, ghee and nuts. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-gulabjamun",
       "category_id": "cat-desserts",
       "name": "Gulab Jamun",
       "description": "House signature gulab jamun — warm dumplings in rose syrup.",
-      "price": 150,
-      "unit": "tray",
+      "price": 2,
+      "unit": "piece",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -2330,28 +3403,16 @@
       "is_available": true,
       "variants": [
         {
-          "id": "half",
-          "label": "Half tray",
-          "price": 150,
-          "unit": "half tray",
-          "serves": 20
-        },
-        {
-          "id": "medium",
-          "label": "Medium tray",
-          "price": 200,
-          "unit": "medium tray",
-          "serves": 30
-        },
-        {
-          "id": "full",
-          "label": "Full tray",
-          "price": 183.75,
-          "unit": "full tray",
-          "serves": 40
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2,
+          "unit": "piece",
+          "serves": 1
         }
       ],
-      "image": "/images/menu/gulabjamun.webp"
+      "image": "/images/menu/gulabjamun.webp",
+      "min_quantity": 30,
+      "fresh_note": "Made fresh for your event with milk solids, ghee and rose-cardamom syrup. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-kalajamun",
@@ -2373,24 +3434,28 @@
           "label": "Half tray",
           "price": 180,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 240,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 214.38,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/kalajamun.jpeg"
+      "image": "/images/menu/kalajamun.jpeg",
+      "fresh_note": "Made fresh for your event with milk solids, ghee and cardamom syrup. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-fruit-custard",
@@ -2412,24 +3477,189 @@
           "label": "Half tray",
           "price": 150,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 200,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 183.75,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/fruit-custard.jpeg"
+      "image": "/images/menu/fruit-custard.jpeg",
+      "fresh_note": " seasonal fruit and milk custard. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-moong-dal-halwa",
+      "category_id": "cat-desserts",
+      "name": "Moong Dal Halwa",
+      "description": "Slow-cooked moong dal, ghee and nuts.",
+      "price": 90,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 90,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 135,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 180,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with moong dal, pure ghee and nuts. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-gajar-halwa",
+      "category_id": "cat-desserts",
+      "name": "Gajar Halwa",
+      "description": "Carrots cooked slowly with milk, ghee and warming aromatics.",
+      "price": 90,
+      "unit": "half tray",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "half",
+          "label": "Half tray",
+          "price": 90,
+          "unit": "half tray",
+          "serves": 15,
+          "serves_label": "15–18"
+        },
+        {
+          "id": "medium",
+          "label": "Medium tray",
+          "price": 135,
+          "unit": "medium tray",
+          "serves": 26,
+          "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 180,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
+        }
+      ],
+      "fresh_note": " carrots, whole milk and ghee. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-rasgulla",
+      "category_id": "cat-desserts",
+      "name": "Rasgulla",
+      "description": "Soft chena dumplings in light sugar syrup.",
+      "price": 2.5,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2.5,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 30,
+      "fresh_note": " chena made from whole milk. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-malpua",
+      "category_id": "cat-desserts",
+      "name": "Malpua",
+      "description": "Traditional lightly crisp Indian sweet pancake.",
+      "price": 3,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 3,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 30,
+      "fresh_note": "Made fresh for your event with a fresh batter of flour, milk and cardamom. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-malpua-condensed-milk",
+      "category_id": "cat-desserts",
+      "name": "Malpua in Condensed Milk",
+      "description": "Malpua served with rich condensed milk.",
+      "price": 3.5,
+      "unit": "piece",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "piece",
+          "label": "Per piece",
+          "price": 3.5,
+          "unit": "piece",
+          "serves": 1
+        }
+      ],
+      "min_quantity": 30,
+      "fresh_note": "Made fresh for your event with a fresh batter of flour, milk and cardamom. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-coconut-celey-chutney",
@@ -2452,24 +3682,28 @@
           "label": "Half tray",
           "price": 81,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 109,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 98,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/coconut-celey-chutney.jpeg"
+      "image": "/images/menu/coconut-celey-chutney.jpeg",
+      "fresh_note": " coconut and celery. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-pineapple-chutney",
@@ -2492,32 +3726,36 @@
           "label": "Half tray",
           "price": 30,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 58,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 98,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/pineapple-chutney.jpeg"
+      "image": "/images/menu/pineapple-chutney.jpeg",
+      "fresh_note": "Made fresh for your event with ripe pineapple and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-dates-raisin-chutney",
       "category_id": "cat-condiments",
       "name": "Dates Raisin chutney",
       "description": "Chef’s date-raisin chutney — sticky, rich, slow-simmered.",
-      "price": 37.5,
-      "unit": "tray",
+      "price": 15,
+      "unit": "16 oz",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -2528,28 +3766,141 @@
       "is_available": true,
       "variants": [
         {
-          "id": "half",
-          "label": "Half tray",
-          "price": 37.5,
-          "unit": "half tray",
-          "serves": 20
+          "id": "16oz",
+          "label": "16 oz",
+          "price": 15,
+          "unit": "16 oz"
         },
         {
-          "id": "medium",
-          "label": "Medium tray",
-          "price": 72.5,
-          "unit": "medium tray",
-          "serves": 30
-        },
-        {
-          "id": "full",
-          "label": "Full tray",
-          "price": 122.5,
-          "unit": "full tray",
-          "serves": 40
+          "id": "32oz",
+          "label": "32 oz",
+          "price": 28,
+          "unit": "32 oz"
         }
       ],
-      "image": "/images/menu/dates-raisin-chutney.jpeg"
+      "image": "/images/menu/dates-raisin-chutney.jpeg",
+      "fresh_note": "Made fresh for your event with dates, raisins and whole spices. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-raita",
+      "category_id": "cat-condiments",
+      "name": "Raita",
+      "description": "Seasoned yogurt accompaniment.",
+      "price": 15,
+      "unit": "16 oz",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "16oz",
+          "label": "16 oz",
+          "price": 15,
+          "unit": "16 oz"
+        },
+        {
+          "id": "32oz",
+          "label": "32 oz",
+          "price": 28,
+          "unit": "32 oz"
+        }
+      ],
+      "fresh_note": " yogurt and cucumber. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-pudina-mint-chutney",
+      "category_id": "cat-condiments",
+      "name": "Pudina Mint Chutney",
+      "description": "Fresh mint and herb chutney.",
+      "price": 12,
+      "unit": "16 oz",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "16oz",
+          "label": "16 oz",
+          "price": 12,
+          "unit": "16 oz"
+        },
+        {
+          "id": "32oz",
+          "label": "32 oz",
+          "price": 22,
+          "unit": "32 oz"
+        }
+      ],
+      "fresh_note": " mint, cilantro and green chilies. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-date-tamarind-chutney",
+      "category_id": "cat-condiments",
+      "name": "Date Tamarind Chutney",
+      "description": "Sweet-tangy date and tamarind chutney.",
+      "price": 14,
+      "unit": "16 oz",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "16oz",
+          "label": "16 oz",
+          "price": 14,
+          "unit": "16 oz"
+        },
+        {
+          "id": "32oz",
+          "label": "32 oz",
+          "price": 25,
+          "unit": "32 oz"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with dates, tamarind and jaggery. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-indian-pickle",
+      "category_id": "cat-condiments",
+      "name": "Indian Pickle",
+      "description": "Traditional intensely flavored accompaniment.",
+      "price": 12,
+      "unit": "16 oz",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "16oz",
+          "label": "16 oz",
+          "price": 12,
+          "unit": "16 oz"
+        },
+        {
+          "id": "32oz",
+          "label": "32 oz",
+          "price": 22,
+          "unit": "32 oz"
+        }
+      ],
+      "fresh_note": " produce, mustard seed and cold-pressed oil. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-vegatable-lasanga",
@@ -2569,17 +3920,20 @@
           "label": "Half tray",
           "price": 146.25,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 195,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         }
       ],
-      "image": "/images/menu/vegatable-lasanga.png"
+      "image": "/images/menu/vegatable-lasanga.png",
+      "fresh_note": " vegetables, ripe tomatoes and mozzarella. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-pasta-in-marinara-sauce",
@@ -2603,17 +3957,20 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         }
       ],
-      "image": "/images/menu/pasta-in-marinara-sauce.jpeg"
+      "image": "/images/menu/pasta-in-marinara-sauce.jpeg",
+      "fresh_note": "Made fresh for your event with ripe tomatoes, basil and olive oil. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-eggplants-and-tofu-in-fresh-basil-tomato-sauce",
@@ -2637,24 +3994,28 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 269.5,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/eggplants-and-tofu-in-fresh-basil-tomato-sauce.jpeg"
+      "image": "/images/menu/eggplants-and-tofu-in-fresh-basil-tomato-sauce.jpeg",
+      "fresh_note": "Made fresh for your event with roasted eggplant, fresh tofu, basil and ripe tomatoes. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-minestrone-soup",
@@ -2677,17 +4038,20 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         }
       ],
-      "image": "/images/menu/minestrone-soup.jpeg"
+      "image": "/images/menu/minestrone-soup.jpeg",
+      "fresh_note": " Italian vegetables, beans and herbs. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-yogiplate-special-pumpkin-basil-soup",
@@ -2711,25 +4075,28 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         }
       ],
-      "image": "/images/menu/yogiplate-special-pumpkin-basil-soup.jpeg"
+      "image": "/images/menu/yogiplate-special-pumpkin-basil-soup.jpeg",
+      "fresh_note": " pumpkin and basil. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-poori",
       "category_id": "cat-sides",
       "name": "Poori",
       "description": "Chef’s pooris — puffed golden discs, fried hot and airy.",
-      "price": 90,
-      "unit": "tray",
+      "price": 2,
+      "unit": "piece",
       "diet_tags": [
         "pure_vegetarian",
         "jain",
@@ -2740,28 +4107,16 @@
       "is_available": true,
       "variants": [
         {
-          "id": "half",
-          "label": "Half tray",
-          "price": 90,
-          "unit": "half tray",
-          "serves": 20
-        },
-        {
-          "id": "medium",
-          "label": "Medium tray",
-          "price": 120,
-          "unit": "medium tray",
-          "serves": 30
-        },
-        {
-          "id": "full",
-          "label": "Full tray",
-          "price": 98,
-          "unit": "full tray",
-          "serves": 40
+          "id": "piece",
+          "label": "Per piece",
+          "price": 2,
+          "unit": "piece",
+          "serves": 1
         }
       ],
-      "image": "/images/menu/poori.webp"
+      "image": "/images/menu/poori.webp",
+      "min_quantity": 25,
+      "fresh_note": "Made fresh for your event with whole-wheat dough kneaded the same day. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-bhatura",
@@ -2782,24 +4137,28 @@
           "label": "Half tray",
           "price": 90,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 120,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 98,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/bhatura.jpeg"
+      "image": "/images/menu/bhatura.jpeg",
+      "fresh_note": "Made fresh for your event with dough kneaded and rested the same day. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-focaccia-bread",
@@ -2823,24 +4182,28 @@
           "label": "Half tray",
           "price": 112.5,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 150,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 98,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/focaccia-bread.png"
+      "image": "/images/menu/focaccia-bread.png",
+      "fresh_note": "Made fresh for your event with dough kneaded the same day, olive oil and herbs. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-pav",
@@ -2862,24 +4225,28 @@
           "label": "Half tray",
           "price": 105,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 140,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 98,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/pav.jpeg"
+      "image": "/images/menu/pav.jpeg",
+      "fresh_note": "Made fresh for your event with soft rolls and butter. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "item-buttered-masala-pav",
@@ -2898,24 +4265,160 @@
           "label": "Half tray",
           "price": 144,
           "unit": "half tray",
-          "serves": 20
+          "serves": 15,
+          "serves_label": "15–18"
         },
         {
           "id": "medium",
           "label": "Medium tray",
           "price": 192,
           "unit": "medium tray",
-          "serves": 30
+          "serves": 26,
+          "serves_label": "26–30"
         },
         {
           "id": "full",
           "label": "Full tray",
           "price": 147,
           "unit": "full tray",
-          "serves": 40
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
-      "image": "/images/menu/buttered-masala-pav.webp"
+      "image": "/images/menu/buttered-masala-pav.webp",
+      "fresh_note": "Made fresh for your event with soft rolls, butter and fresh cilantro. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-herbal-tea",
+      "category_id": "cat-drinks",
+      "name": "Herbal Tea",
+      "description": "A soothing caffeine-free herbal infusion.",
+      "price": 4,
+      "unit": "cup",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "12oz",
+          "label": "12 oz cup",
+          "price": 4,
+          "unit": "cup",
+          "serves": 1
+        },
+        {
+          "id": "gallon",
+          "label": "One gallon",
+          "price": 40,
+          "unit": "gallon",
+          "serves": 12,
+          "serves_label": "12–16"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with whole herbs steeped on the day. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-fennel-ginger-tea",
+      "category_id": "cat-drinks",
+      "name": "Fennel Ginger Tea",
+      "description": "A warming infusion of fennel and fresh ginger.",
+      "price": 4,
+      "unit": "cup",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg",
+        "vegan"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "12oz",
+          "label": "12 oz cup",
+          "price": 4,
+          "unit": "cup",
+          "serves": 1
+        },
+        {
+          "id": "gallon",
+          "label": "One gallon",
+          "price": 45,
+          "unit": "gallon",
+          "serves": 12,
+          "serves_label": "12–16"
+        }
+      ],
+      "fresh_note": "Made fresh for your event with fennel seed and fresh ginger. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-malai-lassi",
+      "category_id": "cat-drinks",
+      "name": "Malai Lassi",
+      "description": "Rich, creamy yogurt drink.",
+      "price": 6,
+      "unit": "cup",
+      "diet_tags": [
+        "pure_vegetarian",
+        "jain",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "12oz",
+          "label": "12 oz cup",
+          "price": 6,
+          "unit": "cup",
+          "serves": 1
+        },
+        {
+          "id": "gallon",
+          "label": "One gallon",
+          "price": 55,
+          "unit": "gallon",
+          "serves": 12,
+          "serves_label": "12–16"
+        }
+      ],
+      "fresh_note": " yogurt and malai. Never made ahead or frozen. No onion, garlic or mushrooms."
+    },
+    {
+      "id": "item-masala-chaas",
+      "category_id": "cat-drinks",
+      "name": "Masala Chaas",
+      "description": "Light, refreshing spiced buttermilk.",
+      "price": 5,
+      "unit": "cup",
+      "diet_tags": [
+        "pure_vegetarian",
+        "swaminarayan",
+        "pushtimarg"
+      ],
+      "is_available": true,
+      "variants": [
+        {
+          "id": "12oz",
+          "label": "12 oz cup",
+          "price": 5,
+          "unit": "cup",
+          "serves": 1
+        },
+        {
+          "id": "gallon",
+          "label": "One gallon",
+          "price": 45,
+          "unit": "gallon",
+          "serves": 12,
+          "serves_label": "12–16"
+        }
+      ],
+      "fresh_note": " yogurt, roasted cumin and fresh cilantro. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-margherita",
@@ -2953,7 +4456,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/margherita.jpg"
+      "image": "/images/menu/pizzas/margherita.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, fresh mozzarella, tomato and basil. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-cheese",
@@ -2991,7 +4495,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/cheese.jpg"
+      "image": "/images/menu/pizzas/cheese.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day and fresh mozzarella. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-smoked_veggie",
@@ -3028,7 +4533,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/smoked_veggie.jpg"
+      "image": "/images/menu/pizzas/smoked_veggie.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day and fresh garden vegetables. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-artichoke_heart",
@@ -3066,7 +4572,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/artichoke_heart.jpg"
+      "image": "/images/menu/pizzas/artichoke_heart.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, artichoke hearts and herbs. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-spinach_ricotta_stuffed",
@@ -3104,7 +4611,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/spinach_ricotta_stuffed.jpg"
+      "image": "/images/menu/pizzas/spinach_ricotta_stuffed.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, fresh spinach and ricotta. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-chilli_paneer",
@@ -3141,7 +4649,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/chilli_paneer.jpg"
+      "image": "/images/menu/pizzas/chilli_paneer.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, house-made paneer and bell peppers. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-butter_corn",
@@ -3179,7 +4688,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/butter_corn.jpg"
+      "image": "/images/menu/pizzas/butter_corn.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, sweet corn and butter. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-pineapple_jalapeno",
@@ -3217,7 +4727,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/pineapple_jalapeno.jpg"
+      "image": "/images/menu/pizzas/pineapple_jalapeno.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, pineapple and jalapeños. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pizza-soya_chilli",
@@ -3256,7 +4767,8 @@
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
-      "image": "/images/menu/pizzas/soya_chilli.jpg"
+      "image": "/images/menu/pizzas/soya_chilli.jpg",
+      "fresh_note": "Stone-baked to order with dough made the same day, soy protein and bell peppers. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pkg-jain-25",
@@ -3269,7 +4781,8 @@
         "jain"
       ],
       "is_available": true,
-      "min_quantity": 25
+      "min_quantity": 25,
+      "fresh_note": " seasonal produce chosen for Jain guidelines. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pkg-swami-25",
@@ -3282,7 +4795,8 @@
         "swaminarayan"
       ],
       "is_available": true,
-      "min_quantity": 25
+      "min_quantity": 25,
+      "fresh_note": " seasonal vegetables, lentils and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pkg-pushti-25",
@@ -3295,7 +4809,8 @@
         "pushtimarg"
       ],
       "is_available": true,
-      "min_quantity": 25
+      "min_quantity": 25,
+      "fresh_note": " seasonal vegetables, lentils and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pkg-vegan-25",
@@ -3308,7 +4823,8 @@
         "vegan"
       ],
       "is_available": true,
-      "min_quantity": 25
+      "min_quantity": 25,
+      "fresh_note": " vegetables, legumes and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pkg-pureveg-25",
@@ -3321,7 +4837,8 @@
         "pure_vegetarian"
       ],
       "is_available": true,
-      "min_quantity": 25
+      "min_quantity": 25,
+      "fresh_note": " vegetables, house-made paneer, lentils and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
     },
     {
       "id": "pkg-italian-25",
@@ -3334,7 +4851,8 @@
         "italian"
       ],
       "is_available": true,
-      "min_quantity": 25
+      "min_quantity": 25,
+      "fresh_note": " vegetables, ripe tomatoes, herbs and cheese. Never made ahead or frozen. No onion, garlic or mushrooms."
     }
   ]
 }

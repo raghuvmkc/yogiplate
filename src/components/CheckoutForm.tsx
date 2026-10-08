@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/cart-store";
 import { cartSubtotal, chargeTotals, formatMoney, lineTotal } from "@/lib/pricing";
 import { DIET_LABELS } from "@/lib/data/menu-seed";
+import { STATEMENT_NOTE } from "@/lib/pay-email";
 import { prettyTime } from "@/lib/quote-format";
 
 export function CheckoutForm() {
@@ -334,9 +335,10 @@ export function CheckoutForm() {
           {loading ? "Processing…" : "Pay with Stripe"}
         </button>
         <p className="mt-3 text-xs text-muted">
-          Secure card payment through Stripe. Your invoice is emailed right
-          after payment.
+          Pay securely by card, Apple Pay, or Link. Your invoice is emailed
+          right after payment.
         </p>
+        <p className="mt-2 text-xs text-muted">{STATEMENT_NOTE}</p>
       </aside>
     </form>
   );

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useCartStore } from "@/lib/cart-store";
+import { STATEMENT_NAME } from "@/lib/pay-email";
 
 const inputClass =
   "mt-1 w-full border border-line bg-white px-3 py-2 text-sm outline-none focus:border-accent";
@@ -101,7 +102,7 @@ export function EmailInvoiceOption(props: {
     <form onSubmit={send} className="mt-3 space-y-3 border border-line bg-warm p-3 text-sm">
       <p className="font-semibold text-foreground">Send the invoice to your email</p>
       <p className="text-xs text-muted">
-        We&apos;ll email an itemized invoice with a secure Stripe pay link. Pay when you&apos;re ready.
+        We&apos;ll email an itemized invoice with a secure pay button (card, Apple Pay, or Link). Pay when you&apos;re ready. The charge will appear on your statement as {STATEMENT_NAME}.
       </p>
       <label className="block">
         <span className="font-medium">Name</span>

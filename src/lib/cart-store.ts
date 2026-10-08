@@ -110,6 +110,7 @@ export const useCartStore = create<CartStore>()(
                 price,
                 quantity: qty,
                 unit,
+                min_quantity: item.min_quantity,
               },
             ],
           });
@@ -124,7 +125,9 @@ export const useCartStore = create<CartStore>()(
         }
         set({
           items: get().items.map((i) =>
-            i.line_id === lineId ? { ...i, quantity } : i
+            i.line_id === lineId
+              ? { ...i, quantity: Math.max(quantity, i.min_quantity || 1) }
+              : i
           ),
         });
       },

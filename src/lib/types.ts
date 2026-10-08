@@ -28,6 +28,8 @@ export interface MenuVariant {
   unit?: string;
   /** How many guests this tray size feeds (from YogiplateKT CateringPricing). */
   serves?: number;
+  /** Shown instead of `serves` when the kitchen quotes a range, e.g. "15–18". */
+  serves_label?: string;
 }
 
 export interface MenuItem {
@@ -42,6 +44,8 @@ export interface MenuItem {
   image?: string;
   image_hint?: string;
   notes?: string;
+  /** Fresh-ingredient line shown under the description. */
+  fresh_note?: string;
   min_quantity?: number;
   /** Tray or pizza size options; when present, cart lines use a selected variant. */
   variants?: MenuVariant[];
@@ -239,6 +243,7 @@ export interface CartLine {
   price: number;
   quantity: number;
   unit: string;
+  min_quantity?: number;
 }
 
 export interface OrderItem {

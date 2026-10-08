@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import { quoteDelivery } from "@/lib/delivery";
 import { findCoupon, fulfillPaidOrder } from "@/lib/orders";
+import { guestPaymentErrorMessage } from "@/lib/payment-errors";
 import { calcOrderTotals, cartSubtotal } from "@/lib/pricing";
 import { repriceCart } from "@/lib/reprice-cart";
 import { stripeConfigured } from "@/lib/stripe";
@@ -163,15 +164,11 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("[checkout]", err);
-    const stripeMessage =
-      err && typeof err === "object" && "type" in err && String(err.type).startsWith("Stripe")
-        ? (err as { message?: string }).message
-        : null;
     return NextResponse.json(
       {
-        error: stripeMessage
-          ? `Payment could not start: ${stripeMessage}`
-          : "Checkout failed. Please try again, or call us to place the order.",
+        error:
+          guestPaymentErrorMessage(err) ||
+          "Checkout failed. Please try again, or call us to place the order.",
       },
       { status: 500 }
     );

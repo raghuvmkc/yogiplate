@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { STATEMENT_NOTE } from "@/lib/pay-email";
 import { toCents } from "@/lib/pricing";
 import { getStripe } from "@/lib/stripe";
 
@@ -6,7 +7,7 @@ export type PaymentKind = "desk_invoice" | "quote_deposit" | "checkout";
 
 /**
  * Hosted pay link on the Stone Craft Stripe account.
- * Card only, matching Stone Craft's payment intent, with the catering order tagged
+ * Card (with Apple Pay / Google Pay wallets) and Link, with the catering order tagged
  * on the Checkout Session and on the charge.
  */
 export async function createCateringPaymentLink(input: {
@@ -40,7 +41,10 @@ export async function createCateringPaymentLink(input: {
     client_reference_id: input.order_number,
     success_url: input.success_url,
     cancel_url: input.cancel_url,
-    payment_method_types: ["card"],
+    payment_method_types: ["card", "link"],
+    custom_text: {
+      submit: { message: STATEMENT_NOTE },
+    },
     line_items: [
       {
         quantity: 1,

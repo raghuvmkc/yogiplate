@@ -54,6 +54,11 @@ function MenuItemRow({
           <p className="mt-1.5 text-base font-medium text-muted">
             {item.description}
           </p>
+          {item.fresh_note ? (
+            <p className="mt-1.5 text-sm italic text-muted">
+              {item.fresh_note}
+            </p>
+          ) : null}
           {notes ? (
             <p className="mt-1.5 text-sm font-medium text-accent">{notes}</p>
           ) : null}
@@ -73,7 +78,7 @@ function MenuItemRow({
                   <span className="block text-sm font-semibold">
                     {v.label} · {formatMoney(v.price)}
                   </span>
-                  {v.serves ? (
+                  {v.serves && v.serves > 1 ? (
                     <span
                       className={`mt-0.5 block text-[10px] font-normal leading-tight ${
                         selectedVariantId === v.id
@@ -81,7 +86,7 @@ function MenuItemRow({
                           : "text-muted"
                       }`}
                     >
-                      Serves {v.serves}
+                      Serves {v.serves_label || v.serves}
                     </span>
                   ) : null}
                 </button>
@@ -96,9 +101,14 @@ function MenuItemRow({
           {variants.length > 0 ? (
             <p className="mt-2 text-sm font-medium text-muted">
               Selected: {formatMoney(displayPrice)} / {displayUnit}
-              {selectedVariant?.serves
-                ? ` · Serves ${selectedVariant.serves}`
+              {selectedVariant?.serves && selectedVariant.serves > 1
+                ? ` · Serves ${selectedVariant.serves_label || selectedVariant.serves}`
                 : ""}
+            </p>
+          ) : null}
+          {item.min_quantity && item.min_quantity > 1 ? (
+            <p className="mt-1 text-sm font-medium text-muted">
+              Minimum order: {item.min_quantity}
             </p>
           ) : null}
         </div>

@@ -23,7 +23,14 @@ type CatalogItem = {
   unit: string;
   diet_tags: string[];
   is_available: boolean;
-  variants?: { label: string; price: number; serves?: number }[];
+  min_quantity?: number;
+  fresh_note?: string;
+  variants?: {
+    label: string;
+    price: number;
+    serves?: number;
+    serves_label?: string;
+  }[];
 };
 
 type CatalogCategory = { id: string; name: string; sort_order: number };
@@ -44,6 +51,7 @@ export type ChatSkillId =
   | "menu-condiments"
   | "menu-pastas"
   | "menu-sides"
+  | "menu-drinks"
   | "menu-pizzas"
   | "menu-packages"
   | "menu-recommend";
@@ -59,6 +67,7 @@ const CATEGORY_SKILL: Record<string, ChatSkillId> = {
   "cat-condiments": "menu-condiments",
   "cat-pastas": "menu-pastas",
   "cat-sides": "menu-sides",
+  "cat-drinks": "menu-drinks",
   "cat-pizzas": "menu-pizzas",
   "cat-packages": "menu-packages",
 };
@@ -70,11 +79,15 @@ function formatItem(item: CatalogItem): string {
     price = item.variants
       .map(
         (v) =>
-          `${v.label} $${v.price}${v.serves ? ` (serves ~${v.serves})` : ""}`
+          `${v.label} $${v.price}${v.serves ? ` (serves ${v.serves_label || `~${v.serves}`})` : ""}`
       )
       .join("; ");
   }
-  return `- ${item.name}: ${item.description} | ${price} | diets: ${diets || "n/a"}`;
+  if (item.min_quantity && item.min_quantity > 1) {
+    price += ` | minimum ${item.min_quantity}`;
+  }
+  const fresh = item.fresh_note ? ` ${item.fresh_note}` : "";
+  return `- ${item.name}: ${item.description}${fresh} | ${price} | diets: ${diets || "n/a"}`;
 }
 
 function menuCategorySection(categoryId: string): string {
@@ -184,6 +197,11 @@ export const CHAT_SKILL_CATALOG: {
   { id: "menu-pastas", title: "Pastas", when: "Italian pasta dishes" },
   { id: "menu-sides", title: "Sides", when: "Side breads and extras" },
   {
+    id: "menu-drinks",
+    title: "Drinks",
+    when: "Lassi, chaas, herbal and fennel-ginger tea, by cup or gallon",
+  },
+  {
     id: "menu-pizzas",
     title: "Pizzas (Stone Craft)",
     when: "Stone Craft pizzas",
@@ -248,6 +266,7 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
   "menu-condiments": () => menuCategorySection("cat-condiments"),
   "menu-pastas": () => menuCategorySection("cat-pastas"),
   "menu-sides": () => menuCategorySection("cat-sides"),
+  "menu-drinks": () => menuCategorySection("cat-drinks"),
   "menu-pizzas": () => menuCategorySection("cat-pizzas"),
   "menu-packages": () => menuCategorySection("cat-packages"),
   "menu-recommend": () =>

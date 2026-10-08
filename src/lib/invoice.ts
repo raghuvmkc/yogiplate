@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { STATEMENT_NOTE, payBlockHtml } from "@/lib/pay-email";
 import { formatMoney } from "@/lib/pricing";
 import { prettyTime as formatEventTime } from "@/lib/quote-format";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
@@ -11,7 +12,7 @@ export function buildInvoiceHtml(
   settings: SiteSettings,
   invoiceNumber: string,
   payUrl?: string | null,
-  opts?: { paidLabel?: string | null }
+  opts?: { paidLabel?: string | null; amountDue?: number; payCaption?: string }
 ) {
   const rows = items
     .map(
@@ -62,8 +63,15 @@ export function buildInvoiceHtml(
         : ""
     }
     ${
-      payUrl && !opts?.paidLabel
-        ? `<p style="margin-top:28px;font-family:Arial,sans-serif;font-size:15px;"><a href="${payUrl}" style="display:inline-block;background:#2a4a36;color:#ffffff;text-decoration:none;padding:12px 18px;">Pay this invoice</a></p><p style="font-family:Arial,sans-serif;font-size:13px;color:#555;">Order ${order.order_number}</p>`
+      payUrl && opts?.paidLabel !== "Paid in full"
+        ? payBlockHtml({
+            url: payUrl,
+            amountLabel: formatMoney(
+              opts?.amountDue ?? Math.max(0, order.total - (order.amount_paid || 0))
+            ),
+            caption: opts?.payCaption,
+            reference: `Invoice ${invoiceNumber} · Order ${order.order_number}`,
+          })
         : ""
     }
     <p style="margin-top:36px;font-family:Arial,sans-serif;font-size:13px;color:#777;">
@@ -132,6 +140,7 @@ export function buildPaymentConfirmationHtml(input: {
       Event: ${input.eventDate || "to be confirmed"}
     </p>
     <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">${next}</p>
+    <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.5;color:#555;">${STATEMENT_NOTE}</p>
     <p style="margin-top:28px;font-family:Arial,sans-serif;font-size:14px;color:#555;">Thank you for choosing Yogiplate.</p>
   </div>
 </body>

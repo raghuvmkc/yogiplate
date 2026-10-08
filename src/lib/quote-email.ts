@@ -1,3 +1,4 @@
+import { STATEMENT_NOTE, payBlockHtml } from "@/lib/pay-email";
 import { formatMoney, lineTotal } from "@/lib/pricing";
 import { chefWithTitle, getYogiPeople } from "@/lib/people";
 import {
@@ -147,10 +148,13 @@ export function buildQuoteEmailHtml(quote: Quote, ctx: QuoteEmailContext) {
             Delivery and tax are confirmed when the order is finalized.
           </div>
         </td></tr>
-        <tr><td align="center" style="padding:22px 32px 8px;">
-          <a href="${url}" style="display:inline-block;background:#1e3d2f;color:#fffdf8;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:14px 26px;">
-            View quotation &amp; pay deposit
-          </a>
+        <tr><td style="padding:6px 32px 8px;">
+          ${payBlockHtml({
+            url,
+            amountLabel: formatMoney(quote.deposit_amount),
+            caption: `Deposit to reserve your date (${quote.deposit_percent}%)`,
+            reference: `Quotation ${escHtml(quote.quote_number)}`,
+          })}
         </td></tr>
         <tr><td style="padding:18px 32px 0;">
           <div style="height:1px;background:#e6dcc6;">&nbsp;</div>
@@ -212,6 +216,7 @@ export function buildQuoteEmailText(quote: Quote, ctx: QuoteEmailContext) {
     `Deposit (${quote.deposit_percent}%): ${formatMoney(quote.deposit_amount)}`,
     "",
     `View quotation & pay deposit: ${url}`,
+    STATEMENT_NOTE,
     "",
     ctx.closing,
     "",

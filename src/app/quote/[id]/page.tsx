@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { STATEMENT_NOTE } from "@/lib/pay-email";
 import { formatMoney, lineTotal } from "@/lib/pricing";
 import {
   prettyDate,
@@ -265,6 +266,9 @@ export default function PublicQuotePage() {
                 >
                   {busy ? "Starting checkout…" : "Pay deposit"}
                 </button>
+              )}
+              {quote.status === "deposit_paid" || quote.status === "accepted" ? null : (
+                <p className="mt-2 text-center text-xs text-muted">{STATEMENT_NOTE}</p>
               )}
 
               <p className="mt-4 text-center text-xs text-muted">

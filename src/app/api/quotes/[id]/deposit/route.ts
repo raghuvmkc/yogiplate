@@ -61,7 +61,11 @@ export async function POST(
       items,
       db.settings,
       linked.invoice.invoice_number,
-      session.url
+      session.url,
+      {
+        amountDue: quote.deposit_amount,
+        payCaption: `Deposit due (${quote.deposit_percent}%)`,
+      }
     );
     await updateDb((d) => {
       const q = (d.quotes || []).find((x) => x.id === quote.id);
