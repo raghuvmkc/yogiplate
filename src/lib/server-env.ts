@@ -6,7 +6,8 @@ export function serverEnv(name: string, fallback = "") {
   const raw = process.env[name];
   if (typeof raw !== "string") return fallback;
   let value = raw.trim();
-  if (value.startsWith(`${name}=`)) value = value.slice(name.length + 1).trim();
+  const prefix = new RegExp(`^(?:export\\s+)?${name}\\s*[=:]\\s*`);
+  value = value.replace(prefix, "");
   value = value.replace(/^(["'])(.*)\1$/, "$2").trim();
   return value || fallback;
 }
