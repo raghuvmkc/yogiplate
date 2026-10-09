@@ -26,7 +26,7 @@ export const DIET_BLURBS: Record<DietTag, string> = {
   pushtimarg:
     "Shuddha vegetarian offerings, suitable for seva, bhog, and celebration.",
   pure_vegetarian:
-    "Classic Indian vegetarian — full flavor without onion, garlic, or mushrooms.",
+    "Classic Indian vegetarian — full of flavor, made fresh for every event.",
   vegan: "Fully plant-based — no dairy, eggs, honey, or animal products.",
   italian:
     "Vegetarian Italian craft — pastas, salads, and Stone Craft pizzas.",
@@ -89,12 +89,11 @@ export const DIET_DETAILS: Record<
   pure_vegetarian: {
     headline: "Full-flavored Indian vegetarian",
     body: [
-      "Pure vegetarian cooking here means a completely meatless kitchen — no eggs, fish, or meat — with classic Indian spice built without onion, garlic, or mushrooms. Our whole kitchen keeps those three out.",
+      "Pure vegetarian cooking here means a completely meatless kitchen — no eggs, fish, or meat — with the warmth and depth of classic Indian spice.",
       "This is the everyday celebration menu for guests who want traditional vegetarian taste with Yogiplate’s purity standard across every tray.",
     ],
     principles: [
       "No meat, fish, or eggs",
-      "No onion, garlic, or mushrooms — kitchen-wide",
       "Dairy and traditional sweets included",
     ],
   },

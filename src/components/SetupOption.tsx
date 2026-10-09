@@ -26,7 +26,8 @@ export function SetupOption(props: {
           Add full on-site setup (+{formatMoney(fee)})
         </span>
         <span className="mt-0.5 block text-muted">
-          Our team sets up the buffet at your venue so it is ready to serve.
+          Our team sets up the buffet at your venue with elegant serving
+          utensils and food warmers that keep every dish hot, ready to serve.
           Delivery orders only.
         </span>
       </span>

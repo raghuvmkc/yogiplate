@@ -60,7 +60,7 @@ export function buildInvoiceHtml(
     <div style="margin-top:24px;font-family:Arial,sans-serif;font-size:14px;text-align:right;">
       <p>Subtotal: ${formatMoney(order.subtotal)}</p>
       <p>Delivery (${order.delivery_miles} mi): ${formatMoney(order.delivery_fee)}</p>
-      ${order.setup_fee ? `<p>Full on-site setup: ${formatMoney(order.setup_fee)}</p>` : ""}
+      ${order.setup_fee ? `<p>Full on-site setup (serving utensils &amp; food warmers): ${formatMoney(order.setup_fee)}</p>` : ""}
       ${order.discount > 0 ? `<p>Discount${order.coupon_code ? ` (${order.coupon_code})` : ""}: −${formatMoney(order.discount)}</p>` : ""}
       <p>Tax: ${formatMoney(order.tax)}</p>
       <p style="font-size:18px;font-weight:700;margin-top:12px;">Total: ${formatMoney(order.total)}</p>

@@ -6,6 +6,7 @@ const NAMES = [
   "Adobe",
   "Applied Materials",
   "illumino",
+  "Upscale AI",
 ];
 
 function NameSequence({ copy }: { copy: string }) {
