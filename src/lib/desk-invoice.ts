@@ -2,7 +2,8 @@ import {
   appendPaymentRecord,
   upsertCateringBooking,
 } from "@/lib/calendar-bookings";
-import { quoteDelivery } from "@/lib/delivery";
+import { deliveryProblem, quoteDelivery } from "@/lib/delivery";
+import { GuestInputError } from "@/lib/guest-error";
 import { buildInvoiceHtml, emailPaymentReceived, sendInvoiceEmail } from "@/lib/invoice";
 import {
   calcOrderTotals,
@@ -12,6 +13,7 @@ import {
   fromCents,
   isPaidInFull,
   lineTotal,
+  setupNeedsLabel,
   toCents,
 } from "@/lib/pricing";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
@@ -36,14 +38,16 @@ export type DeskBillInput = {
   zip: string;
   items: CartLine[];
   notes: string;
+  /** Full on-site setup (delivery only). */
+  setup_service?: boolean;
 };
 
 export async function createDeskInvoice(input: DeskBillInput) {
-  if (!input.items.length) throw new Error("Add at least one menu item.");
+  if (!input.items.length) throw new GuestInputError("Add at least one menu item.");
   if (!input.customer_name.trim() || !input.customer_email.trim()) {
-    throw new Error("Name and email are required.");
+    throw new GuestInputError("Name and email are required.");
   }
-  if (!input.event_date) throw new Error("Event date is required.");
+  if (!input.event_date) throw new GuestInputError("Event date is required.");
   if (!stripeConfigured()) {
     throw new Error("Stripe is not configured, so a pay link cannot be sent.");
   }
@@ -60,19 +64,18 @@ export async function createDeskInvoice(input: DeskBillInput) {
       subtotal: cartSubtotal(input.items),
       settings: db.settings,
     });
-    if (!quote.in_service) {
-      throw new Error(
-        `Outside the service area (${quote.miles} mi). Delivery is within ${db.settings.service_radius_miles} miles.`
-      );
-    }
+    const problem = deliveryProblem(quote);
+    if (problem) throw new GuestInputError(problem);
     miles = quote.miles;
   }
 
+  const setup = !pickup && input.setup_service === true;
   const totals = calcOrderTotals({
     items: input.items,
     miles,
     coupon: null,
     settings: db.settings,
+    setup,
   });
   if (pickup) {
     Object.assign(
@@ -113,6 +116,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
     delivery_miles: miles,
     subtotal: totals.subtotal,
     delivery_fee: totals.delivery_fee,
+    setup_fee: totals.setup_fee,
     discount: totals.discount,
     tax: totals.tax,
     total: totals.total,
@@ -204,7 +208,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
         occasion: "",
         meal: "",
         budget: "",
-        setup_needs: "",
+        setup_needs: order.setup_fee ? setupNeedsLabel(order.setup_fee) : "",
         special_requirements: "",
         package_tier: "",
         confirmed: false,

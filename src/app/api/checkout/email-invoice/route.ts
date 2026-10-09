@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createDeskInvoice } from "@/lib/desk-invoice";
+import { isGuestInputError } from "@/lib/guest-error";
+import { reportError } from "@/lib/monitor";
 import { guestPaymentErrorMessage } from "@/lib/payment-errors";
 import { repriceCart } from "@/lib/reprice-cart";
 import { getDb } from "@/lib/store/local-db";
@@ -69,9 +71,13 @@ export async function POST(req: Request) {
       zip: String(body.zip || ""),
       items,
       notes: String(body.notes || ""),
+      setup_service: body.setup_service === true,
     });
     if (!result.email_sent) {
-      console.error("[email-invoice] email not sent:", result.email_reason);
+      await reportError("invoice-email", result.email_reason || "Invoice email was not sent", {
+        invoice: result.invoice_number,
+        customer: email,
+      });
     }
     return NextResponse.json({
       order_number: result.order_number,
@@ -80,7 +86,7 @@ export async function POST(req: Request) {
       pay_url: result.pay_url,
     });
   } catch (err) {
-    console.error("[email-invoice]", err);
+    if (!isGuestInputError(err)) await reportError("email-invoice", err);
     const guestMessage = guestPaymentErrorMessage(err);
     if (guestMessage) return NextResponse.json({ error: guestMessage }, { status: 502 });
     const message = err instanceof Error ? err.message : "Could not send the invoice.";

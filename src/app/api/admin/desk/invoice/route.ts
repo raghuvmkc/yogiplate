@@ -25,6 +25,7 @@ export async function POST(req: Request) {
       zip: String(body.zip || ""),
       items,
       notes: String(body.notes || ""),
+      setup_service: body.setup_service === true,
     });
     return NextResponse.json(result);
   } catch (err) {

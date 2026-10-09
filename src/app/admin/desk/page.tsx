@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ManagerDesk } from "@/components/ManagerDesk";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { DEFAULT_SETUP_FEE } from "@/lib/pricing";
 import { getDb } from "@/lib/store/local-db";
 
 export default async function AdminDeskPage() {
@@ -21,5 +22,11 @@ export default async function AdminDeskPage() {
         unit: variant.unit,
       })),
     }));
-  return <ManagerDesk items={items} categories={db.categories} />;
+  return (
+    <ManagerDesk
+      items={items}
+      categories={db.categories}
+      setupFee={db.settings.setup_fee ?? DEFAULT_SETUP_FEE}
+    />
+  );
 }

@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { STATEMENT_NOTE, payBlockHtml } from "@/lib/pay-email";
+import { STATEMENT_NOTE, emailLogoHtml, payBlockHtml } from "@/lib/pay-email";
 import { formatMoney } from "@/lib/pricing";
 import { prettyTime as formatEventTime } from "@/lib/quote-format";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
@@ -30,8 +30,15 @@ export function buildInvoiceHtml(
 <html>
 <body style="margin:0;padding:0;background:#ffffff;color:#1c1c1c;font-family:Georgia,serif;">
   <div style="max-width:640px;margin:0 auto;padding:40px 24px;">
-    <h1 style="font-size:32px;margin:0 0 4px;letter-spacing:-0.02em;">Yogiplate</h1>
-    <p style="margin:0 0 28px;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Pure vegetarian catering · Bay Area</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+      <tr>
+        <td style="padding-right:16px;vertical-align:middle;">${emailLogoHtml(88)}</td>
+        <td style="vertical-align:middle;">
+          <h1 style="font-size:32px;margin:0 0 4px;letter-spacing:-0.02em;">Yogiplate</h1>
+          <p style="margin:0;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Pure vegetarian catering · Bay Area</p>
+        </td>
+      </tr>
+    </table>
     <h2 style="font-size:20px;margin:0 0 8px;">Invoice ${invoiceNumber}</h2>
     <p style="font-family:Arial,sans-serif;font-size:14px;color:#555;margin:0 0 24px;">
       Order ${order.order_number}<br/>
@@ -53,6 +60,7 @@ export function buildInvoiceHtml(
     <div style="margin-top:24px;font-family:Arial,sans-serif;font-size:14px;text-align:right;">
       <p>Subtotal: ${formatMoney(order.subtotal)}</p>
       <p>Delivery (${order.delivery_miles} mi): ${formatMoney(order.delivery_fee)}</p>
+      ${order.setup_fee ? `<p>Full on-site setup: ${formatMoney(order.setup_fee)}</p>` : ""}
       ${order.discount > 0 ? `<p>Discount${order.coupon_code ? ` (${order.coupon_code})` : ""}: −${formatMoney(order.discount)}</p>` : ""}
       <p>Tax: ${formatMoney(order.tax)}</p>
       <p style="font-size:18px;font-weight:700;margin-top:12px;">Total: ${formatMoney(order.total)}</p>
@@ -131,8 +139,15 @@ export function buildPaymentConfirmationHtml(input: {
 <html>
 <body style="margin:0;padding:0;background:#ffffff;color:#1c1c1c;font-family:Georgia,serif;">
   <div style="max-width:640px;margin:0 auto;padding:40px 24px;">
-    <h1 style="font-size:32px;margin:0 0 4px;">Yogiplate</h1>
-    <p style="margin:0 0 28px;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Payment confirmation</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+      <tr>
+        <td style="padding-right:16px;vertical-align:middle;">${emailLogoHtml(72)}</td>
+        <td style="vertical-align:middle;">
+          <h1 style="font-size:32px;margin:0 0 4px;">Yogiplate</h1>
+          <p style="margin:0;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Payment confirmation</p>
+        </td>
+      </tr>
+    </table>
     <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">Dear ${safeName},</p>
     <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">${lead}</p>
     <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;">

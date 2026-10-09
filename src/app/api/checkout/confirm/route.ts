@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { applyPaidCheckout } from "@/lib/apply-payment";
+import { reportError } from "@/lib/monitor";
 import { getStripe } from "@/lib/stripe";
 
 export async function POST(req: Request) {
@@ -18,6 +19,11 @@ export async function POST(req: Request) {
     const result = await applyPaidCheckout(session);
     return NextResponse.json(result);
   } catch (err) {
+    await reportError("checkout-confirm", err, {
+      session: session.id,
+      paid: session.payment_status,
+      customer: session.customer_details?.email || session.customer_email,
+    });
     const message = err instanceof Error ? err.message : "Could not confirm payment";
     return NextResponse.json({ error: message }, { status: 400 });
   }

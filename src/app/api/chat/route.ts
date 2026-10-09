@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { agentErrorCode, runFrontDeskTurn } from "@/lib/chat/agent";
+import { reportError } from "@/lib/monitor";
 import { serverEnv } from "@/lib/server-env";
 
 export const runtime = "nodejs";
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
-    console.error("[chat]", detail);
+    await reportError("chat", detail, { code: agentErrorCode(detail) });
     const safeDetail = detail.replace(/key=[^&\s]+/gi, "key=***").slice(0, 240);
     return NextResponse.json(
       {

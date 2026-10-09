@@ -40,14 +40,29 @@ export function applyCoupon(subtotal: number, coupon: Coupon | null) {
   return fromCents(Math.min(toCents(coupon.value), subtotalCents));
 }
 
+/** Distance tier fee (under 8 mi, 8–15, 15–25 by default), plus the large-order extra. */
 export function calcDeliveryFee(
   miles: number,
   subtotal: number,
   settings: SiteSettings
 ) {
-  if (subtotal >= settings.free_delivery_threshold) return 0;
-  const distanceCents = Math.round(miles * toCents(settings.rate_per_mile));
-  return fromCents(Math.max(toCents(settings.base_delivery_fee), distanceCents));
+  const tiers = [...(settings.delivery_tiers || [])].sort(
+    (a, b) => a.max_miles - b.max_miles
+  );
+  let feeCents = toCents(settings.base_delivery_fee);
+  if (tiers.length) {
+    const tier =
+      tiers.find((t) => miles < t.max_miles) || tiers[tiers.length - 1];
+    feeCents = toCents(tier.fee);
+  }
+  if (
+    settings.large_order_threshold &&
+    settings.large_order_extra &&
+    subtotal > settings.large_order_threshold
+  ) {
+    feeCents += toCents(settings.large_order_extra);
+  }
+  return fromCents(feeCents);
 }
 
 export function calcTax(amount: number, settings: SiteSettings) {
@@ -58,20 +73,38 @@ export function chargeTotals(input: {
   subtotal: number;
   discount: number;
   deliveryFee: number;
+  setupFee?: number;
   taxRate: number;
 }) {
   const subtotalCents = toCents(input.subtotal);
   const discountCents = Math.min(toCents(input.discount), subtotalCents);
   const deliveryCents = toCents(input.deliveryFee);
-  const taxableCents = Math.max(0, subtotalCents - discountCents + deliveryCents);
+  const setupCents = toCents(input.setupFee || 0);
+  const taxableCents = Math.max(
+    0,
+    subtotalCents - discountCents + deliveryCents + setupCents
+  );
   const taxCents = Math.round(taxableCents * input.taxRate);
   return {
     subtotal: fromCents(subtotalCents),
     discount: fromCents(discountCents),
     delivery_fee: fromCents(deliveryCents),
+    setup_fee: fromCents(setupCents),
     tax: fromCents(taxCents),
     total: fromCents(taxableCents + taxCents),
   };
+}
+
+export const DEFAULT_SETUP_FEE = 200;
+
+/** On-site buffet setup charge; only applies to delivery orders. */
+export function setupFeeFor(settings: SiteSettings, wanted: boolean | undefined) {
+  return wanted ? settings.setup_fee ?? DEFAULT_SETUP_FEE : 0;
+}
+
+/** Calendar note so the kitchen sees setup was booked. */
+export function setupNeedsLabel(fee: number) {
+  return `Full on-site setup requested (${formatMoney(fee)})`;
 }
 
 export function calcOrderTotals(input: {
@@ -79,6 +112,7 @@ export function calcOrderTotals(input: {
   miles: number;
   coupon: Coupon | null;
   settings: SiteSettings;
+  setup?: boolean;
 }) {
   const subtotal = cartSubtotal(input.items);
   const discount = applyCoupon(subtotal, input.coupon);
@@ -87,6 +121,7 @@ export function calcOrderTotals(input: {
     subtotal,
     discount,
     deliveryFee: delivery_fee,
+    setupFee: setupFeeFor(input.settings, input.setup),
     taxRate: input.settings.tax_rate,
   });
 }

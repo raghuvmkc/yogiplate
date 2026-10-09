@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { DIET_DETAILS, DIET_LABELS, PRIMARY_DIETS } from "@/lib/data/menu-seed";
 import { EmailInvoiceOption } from "@/components/EmailInvoiceOption";
+import { SetupOption } from "@/components/SetupOption";
 import { useCartStore } from "@/lib/cart-store";
 import { notesForActiveDiet } from "@/lib/notes-for-diet";
 import { cartSubtotal, formatMoney, lineTotal } from "@/lib/pricing";
@@ -155,8 +156,16 @@ function MenuItemRow({
   );
 }
 
-export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
+export function OrderBuilder({
+  initialDiet,
+  setupFee,
+}: {
+  initialDiet?: DietTag;
+  setupFee: number;
+}) {
   const {
+    setupService,
+    setSetupService,
     diet,
     setDiet,
     guestCount,
@@ -435,7 +444,7 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
         )}
       </div>
 
-      <aside className="h-fit border-2 border-line bg-warm p-6 lg:sticky lg:top-28">
+      <aside className="h-fit border-2 border-line bg-warm p-6 lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:overscroll-contain">
         <h3 className="font-display text-3xl font-semibold">Your order</h3>
         {activeDiet ? (
           <p className="mt-1.5 text-base font-semibold text-accent">
@@ -500,8 +509,19 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
             <span className="font-semibold">{formatMoney(subtotal)}</span>
           </div>
           <p className="mt-2 text-xs text-muted">
-            Delivery fee calculated at checkout by distance.
+            Delivery from our San Jose kitchen: $49 under 8 mi, $79 for 8–15 mi,
+            $109 for 15–25 mi (+$15 on orders over $600). Pickup is free.
           </p>
+          {items.length ? (
+            <div className="mt-3">
+              <SetupOption
+                fee={setupFee}
+                checked={setupService}
+                onChange={setSetupService}
+                compact
+              />
+            </div>
+          ) : null}
           <Link
             href="/checkout"
             className={`mt-4 flex w-full items-center justify-center py-3 text-sm font-semibold text-white ${
@@ -513,6 +533,7 @@ export function OrderBuilder({ initialDiet }: { initialDiet?: DietTag }) {
             Continue to checkout
           </Link>
           <EmailInvoiceOption
+            setupFee={setupFee}
             disabled={!(items.length && activeDiet && eventDate)}
             onSent={setInvoiceNotice}
           />

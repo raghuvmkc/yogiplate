@@ -1,5 +1,5 @@
 import { buildInvoiceHtml, emailPaymentReceived, sendInvoiceEmail } from "@/lib/invoice";
-import { calcOrderTotals, lineTotal } from "@/lib/pricing";
+import { calcOrderTotals, lineTotal, setupNeedsLabel } from "@/lib/pricing";
 import { scheduleOrderDayBefore } from "@/lib/reminders";
 import { upsertCateringBooking } from "@/lib/calendar-bookings";
 import {
@@ -139,6 +139,7 @@ export async function fulfillPaidOrder(input: {
   items: CartLine[];
   coupon_code: string | null;
   notes: string | null;
+  setup_service?: boolean;
   stripe_session_id: string | null;
   /** Pre-tagged on the Stripe pay link so the saved order matches the charge. */
   order_id?: string;
@@ -154,6 +155,7 @@ export async function fulfillPaidOrder(input: {
     miles: input.delivery_miles,
     coupon,
     settings: db.settings,
+    setup: input.setup_service,
   });
 
   const now = new Date().toISOString();
@@ -184,6 +186,7 @@ export async function fulfillPaidOrder(input: {
     delivery_miles: input.delivery_miles,
     subtotal: totals.subtotal,
     delivery_fee: totals.delivery_fee,
+    setup_fee: totals.setup_fee,
     discount: totals.discount,
     tax: totals.tax,
     total: totals.total,
@@ -277,7 +280,7 @@ export async function fulfillPaidOrder(input: {
         occasion: "",
         meal: "",
         budget: "",
-        setup_needs: "",
+        setup_needs: order.setup_fee ? setupNeedsLabel(order.setup_fee) : "",
         special_requirements: "",
         package_tier: "",
         confirmed: true,

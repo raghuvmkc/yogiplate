@@ -14,6 +14,7 @@ const nav = [
   { href: "/admin/menus", label: "Menus" },
   { href: "/admin/coupons", label: "Coupons" },
   { href: "/admin/settings", label: "Settings" },
+  { href: "/admin/health", label: "Health" },
 ];
 
 export default async function AdminLayout({

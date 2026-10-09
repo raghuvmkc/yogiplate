@@ -48,7 +48,9 @@ export function Footer() {
         <div>
           <p className="text-base font-bold text-foreground">Service area</p>
           <p className="mt-4 text-base font-medium leading-relaxed text-muted">
-            Fremont kitchen · Delivery across the Bay Area
+            326 Commercial St, San Jose, CA 95112
+            <br />
+            Delivery within 25 miles
             <br />
             orders@yogiplate.com
           </p>

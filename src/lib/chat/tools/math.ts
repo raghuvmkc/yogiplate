@@ -21,6 +21,7 @@ export type MathInput = {
   variant_id?: string;
   items?: { menu_item_id: string; variant_id?: string; quantity: number }[];
   miles?: number;
+  setup?: boolean;
   buffer_percent?: number;
 };
 
@@ -148,14 +149,16 @@ export async function runCateringMath(input: MathInput) {
       miles: Number(input.miles ?? 10),
       coupon: null,
       settings,
+      setup: input.setup,
     });
+    const setupPart = totals.setup_fee ? ` + on-site setup $${totals.setup_fee}` : "";
     return {
       ok: true,
       tool: "catering_math",
       op: input.op,
       lines,
       totals,
-      summary: `Subtotal $${totals.subtotal} + delivery $${totals.delivery_fee} + tax $${totals.tax} = $${totals.total}.`,
+      summary: `Subtotal $${totals.subtotal} + delivery $${totals.delivery_fee}${setupPart} + tax $${totals.tax} = $${totals.total}.`,
     };
   }
 

@@ -1,8 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { useCartStore } from "@/lib/cart-store";
 import { STATEMENT_NAME } from "@/lib/pay-email";
+import { cartSubtotal } from "@/lib/pricing";
+import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
+import { SetupOption } from "@/components/SetupOption";
 
 const inputClass =
   "mt-1 w-full border border-line bg-white px-3 py-2 text-sm outline-none focus:border-accent";
@@ -10,9 +13,12 @@ const inputClass =
 /** Order builder option: email the guest an invoice with a pay link instead of paying now. */
 export function EmailInvoiceOption(props: {
   disabled: boolean;
+  setupFee: number;
   onSent: (message: string) => void;
 }) {
   const {
+    setupService,
+    setSetupService,
     contact,
     setContact,
     diet,
@@ -35,6 +41,17 @@ export function EmailInvoiceOption(props: {
   const [zip, setZip] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const addressCheck = useAddressCheck({
+    address,
+    city,
+    zip,
+    subtotal: cartSubtotal(items),
+    enabled: open && mode === "delivery",
+  });
+
+  const revealForm = useCallback((el: HTMLFormElement | null) => {
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
 
   function openForm() {
     setName((v) => v || contact.name);
@@ -45,6 +62,10 @@ export function EmailInvoiceOption(props: {
 
   async function send(e: FormEvent) {
     e.preventDefault();
+    if (mode === "delivery" && addressCheck.status === "problem") {
+      setError(addressCheck.message);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -65,6 +86,7 @@ export function EmailInvoiceOption(props: {
           state: "CA",
           zip,
           notes,
+          setup_service: mode === "delivery" && setupService,
           items,
         }),
       });
@@ -99,7 +121,7 @@ export function EmailInvoiceOption(props: {
   }
 
   return (
-    <form onSubmit={send} className="mt-3 space-y-3 border border-line bg-warm p-3 text-sm">
+    <form ref={revealForm} onSubmit={send} className="mt-3 space-y-3 border border-line bg-warm p-3 text-sm">
       <p className="font-semibold text-foreground">Send the invoice to your email</p>
       <p className="text-xs text-muted">
         We&apos;ll email an itemized invoice with a secure pay button (card, Apple Pay, or Link). Pay when you&apos;re ready. The charge will appear on your statement as {STATEMENT_NAME}.
@@ -168,9 +190,16 @@ export function EmailInvoiceOption(props: {
             </label>
             <label className="block">
               <span className="font-medium">ZIP</span>
-              <input required value={zip} onChange={(e) => setZip(e.target.value)} className={inputClass} autoComplete="postal-code" />
+              <input required value={zip} onChange={(e) => setZip(e.target.value)} className={inputClass} autoComplete="postal-code" inputMode="numeric" />
             </label>
           </div>
+          <AddressCheckNote check={addressCheck} />
+          <SetupOption
+            fee={props.setupFee}
+            checked={setupService}
+            onChange={setSetupService}
+            compact
+          />
         </>
       ) : null}
       {error ? <p className="text-xs font-medium text-red-700">{error}</p> : null}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { reportError } from "@/lib/monitor";
 import {
   sendCorporateInquiryEmail,
   smtpConfigured,
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
         "Thank you. Our team will get in touch with you shortly to confirm availability.",
     });
   } catch (err) {
-    console.error("corporate inquiry email failed", err);
+    await reportError("corporate-inquiry", err);
     return NextResponse.json(
       { error: "Could not send your request. Please try again shortly." },
       { status: 500 }

@@ -275,6 +275,8 @@ export interface Order {
   delivery_miles: number;
   subtotal: number;
   delivery_fee: number;
+  /** On-site setup charge, when the guest asked for setup. */
+  setup_fee?: number;
   discount: number;
   tax: number;
   total: number;
@@ -302,6 +304,11 @@ export interface Invoice {
   created_at: string;
 }
 
+export interface DeliveryTier {
+  max_miles: number;
+  fee: number;
+}
+
 export interface SiteSettings {
   kitchen_address: string;
   kitchen_lat: number;
@@ -311,6 +318,15 @@ export interface SiteSettings {
   free_delivery_threshold: number;
   tax_rate: number;
   service_radius_miles: number;
+  /** Flat delivery fee by driving distance; a tier applies while miles < max_miles. */
+  delivery_tiers?: DeliveryTier[];
+  /** Food subtotal above which `large_order_extra` is added to the delivery fee. */
+  large_order_threshold?: number;
+  large_order_extra?: number;
+  /** Flat charge when the guest asks us to set up the buffet on site (default 200). */
+  setup_fee?: number;
+  /** Bumped when the store address or delivery pricing defaults change. */
+  delivery_policy_version?: number;
   business_name: string;
   business_email: string;
   business_phone: string;

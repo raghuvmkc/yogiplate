@@ -130,6 +130,7 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session) {
     items,
     coupon_code: raw.coupon_code ? String(raw.coupon_code) : null,
     notes: raw.notes ? String(raw.notes) : null,
+    setup_service: raw.setup_service === "1",
     stripe_session_id: session.id,
     order_id: meta.order_id || undefined,
     order_number: meta.order_number || undefined,

@@ -16,6 +16,7 @@ import {
   percentCents,
 } from "@/lib/pricing";
 import type { CateringBooking, OrderStatus } from "@/lib/types";
+import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
 
 const STATUS_OPTIONS: { value: CateringBooking["status"]; label: string }[] = [
   { value: "unconfirmed", label: "Unconfirmed (amber)" },
@@ -122,9 +123,10 @@ export function BookingDetailDrawer(props: {
   const [form, setForm] = useState<BookingForm | null>(null);
   const [lines, setLines] = useState<EditableLine[]>([]);
   const [deliveryFee, setDeliveryFee] = useState("0");
+  const [setupFee, setSetupFee] = useState("0");
   const [discount, setDiscount] = useState("0");
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("pending");
-  const [pickKey, setPickKey] = useState("");
+  const [menuQuery, setMenuQuery] = useState("");
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export function BookingDetailDrawer(props: {
             (next.booking.delivery_or_pickup === "pickup" ? 0 : next.base_delivery_fee)
         )
       );
+      setSetupFee(String(next.order?.setup_fee ?? 0));
       setDiscount(String(next.order?.discount ?? 0));
       setOrderStatus(next.order?.status || "pending");
       onChanged(next.booking);
@@ -193,22 +196,34 @@ export function BookingDetailDrawer(props: {
         subtotal,
         discount: Number(discount) || 0,
         deliveryFee: Number(deliveryFee) || 0,
+        setupFee: Number(setupFee) || 0,
         taxRate: detail.tax_rate,
       });
     }
-    return { subtotal, discount: 0, delivery_fee: 0, tax: 0, total: subtotal };
-  }, [lines, discount, deliveryFee, detail, orderMode]);
+    return { subtotal, discount: 0, delivery_fee: 0, setup_fee: 0, tax: 0, total: subtotal };
+  }, [lines, discount, deliveryFee, setupFee, detail, orderMode]);
 
-  const menuGroups = useMemo(() => {
-    const groups = new Map<string, MenuChoice[]>();
-    for (const choice of detail?.menu || []) {
-      groups.set(choice.category, [...(groups.get(choice.category) || []), choice]);
-    }
-    return [...groups.entries()];
-  }, [detail]);
+  const addressCheck = useAddressCheck({
+    address: form?.address || "",
+    city: form?.city || "",
+    zip: "",
+    requireZip: false,
+    subtotal: preview.subtotal,
+    enabled: Boolean(form) && form?.delivery_or_pickup !== "pickup",
+  });
 
-  function addFromMenu() {
-    const choice = detail?.menu.find((c) => c.key === pickKey);
+  const menuMatches = useMemo(() => {
+    const words = menuQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return [];
+    return (detail?.menu || [])
+      .filter((choice) => {
+        const hay = `${choice.name} ${choice.category}`.toLowerCase();
+        return words.every((w) => hay.includes(w));
+      })
+      .slice(0, 30);
+  }, [detail, menuQuery]);
+
+  function addFromMenu(choice: MenuChoice | undefined) {
     if (!choice) return;
     setLines((rows) => {
       const same = rows.findIndex(
@@ -230,7 +245,7 @@ export function BookingDetailDrawer(props: {
         },
       ];
     });
-    setPickKey("");
+    setMenuQuery("");
   }
 
   const depositPreview = detail?.quote
@@ -273,6 +288,7 @@ export function BookingDetailDrawer(props: {
       patch.order = {
         items: lines,
         delivery_fee: Number(deliveryFee) || 0,
+        setup_fee: Number(setupFee) || 0,
         discount: Number(discount) || 0,
         status: orderStatus,
       };
@@ -430,6 +446,18 @@ export function BookingDetailDrawer(props: {
                 <Field label="Address" wide value={form.address || ""} onChange={(v) => update({ address: v })} />
                 <Field label="City" value={form.city || ""} onChange={(v) => update({ city: v })} />
                 <span />
+                <div className="space-y-2 sm:col-span-2">
+                  <AddressCheckNote check={addressCheck} />
+                  {addressCheck.status === "ok" && orderMode && Number(deliveryFee) !== addressCheck.fee ? (
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryFee(String(addressCheck.fee))}
+                      className="border border-accent-deep px-3 py-1.5 text-xs font-semibold text-accent-deep"
+                    >
+                      Use {formatMoney(addressCheck.fee)} delivery fee
+                    </button>
+                  ) : null}
+                </div>
                 <Area label="Special requirements" value={form.special_requirements || ""} onChange={(v) => update({ special_requirements: v })} />
                 <Area label="Setup needs" value={form.setup_needs || ""} onChange={(v) => update({ setup_needs: v })} />
                 <Area label="Guest notes" value={form.notes || ""} onChange={(v) => update({ notes: v })} />
@@ -513,33 +541,50 @@ export function BookingDetailDrawer(props: {
                 ) : null}
 
                   <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <label className="block min-w-[16rem] flex-1 text-sm">
-                      <span className="font-semibold">Add from menu</span>
-                      <select
-                        value={pickKey}
-                        onChange={(e) => setPickKey(e.target.value)}
-                        className="mt-1 w-full border border-line bg-white px-3 py-2"
-                      >
-                        <option value="">Choose a dish…</option>
-                        {menuGroups.map(([category, choices]) => (
-                          <optgroup key={category} label={category}>
-                            {choices.map((choice) => (
-                              <option key={choice.key} value={choice.key}>
-                                {choice.name} · {formatMoney(choice.unit_price)} / {choice.unit}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      disabled={!pickKey}
-                      onClick={addFromMenu}
-                      className="bg-accent-deep px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      Add dish
-                    </button>
+                    <div className="relative min-w-[16rem] flex-1 text-sm">
+                      <label className="block">
+                        <span className="font-semibold">Add from menu</span>
+                        <input
+                          type="search"
+                          value={menuQuery}
+                          onChange={(e) => setMenuQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addFromMenu(menuMatches[0]);
+                            }
+                            if (e.key === "Escape") setMenuQuery("");
+                          }}
+                          placeholder="Search dishes, e.g. paneer, dal, half tray, lassi"
+                          className="mt-1 w-full border border-line bg-white px-3 py-2"
+                        />
+                      </label>
+                      {menuQuery.trim() ? (
+                        <ul className="absolute left-0 right-0 z-10 mt-1 max-h-72 overflow-y-auto border border-line bg-white shadow-lg">
+                          {menuMatches.length ? (
+                            menuMatches.map((choice) => (
+                              <li key={choice.key}>
+                                <button
+                                  type="button"
+                                  onClick={() => addFromMenu(choice)}
+                                  className="flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left hover:bg-accent-soft"
+                                >
+                                  <span>
+                                    <span className="font-medium">{choice.name}</span>
+                                    <span className="ml-2 text-xs text-muted">{choice.category}</span>
+                                  </span>
+                                  <span className="shrink-0 text-xs font-semibold">
+                                    {formatMoney(choice.unit_price)} / {choice.unit}
+                                  </span>
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="px-3 py-2 text-muted">No dishes match “{menuQuery.trim()}”.</li>
+                          )}
+                        </ul>
+                      ) : null}
+                    </div>
                     <button
                       type="button"
                       onClick={() =>
@@ -559,6 +604,19 @@ export function BookingDetailDrawer(props: {
                       <>
                         <Field label="Delivery fee" type="number" value={deliveryFee} onChange={setDeliveryFee} />
                         <Field label="Discount" type="number" value={discount} onChange={setDiscount} />
+                        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                          <input
+                            type="checkbox"
+                            checked={Number(setupFee) > 0}
+                            onChange={(e) =>
+                              setSetupFee(e.target.checked ? String(detail.setup_fee) : "0")
+                            }
+                          />
+                          Full on-site setup ({formatMoney(detail.setup_fee)})
+                        </label>
+                        {Number(setupFee) > 0 ? (
+                          <Field label="Setup fee" type="number" value={setupFee} onChange={setSetupFee} />
+                        ) : null}
                       </>
                     ) : null}
                   </div>
@@ -574,6 +632,12 @@ export function BookingDetailDrawer(props: {
                           <dt>Delivery</dt>
                           <dd>{formatMoney(preview.delivery_fee)}</dd>
                         </div>
+                        {preview.setup_fee > 0 ? (
+                          <div className="flex justify-between">
+                            <dt>Setup</dt>
+                            <dd>{formatMoney(preview.setup_fee)}</dd>
+                          </div>
+                        ) : null}
                         {preview.discount > 0 ? (
                           <div className="flex justify-between">
                             <dt>Discount</dt>

@@ -6,11 +6,15 @@ import { useCartStore } from "@/lib/cart-store";
 import { cartSubtotal, chargeTotals, formatMoney, lineTotal } from "@/lib/pricing";
 import { DIET_LABELS } from "@/lib/data/menu-seed";
 import { STATEMENT_NOTE } from "@/lib/pay-email";
+import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
+import { SetupOption } from "@/components/SetupOption";
 import { prettyTime } from "@/lib/quote-format";
 
-export function CheckoutForm() {
+export function CheckoutForm({ setupFee }: { setupFee: number }) {
   const router = useRouter();
   const {
+    setupService,
+    setSetupService,
     diet,
     items,
     guestCount,
@@ -33,34 +37,20 @@ export function CheckoutForm() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("CA");
   const [zip, setZip] = useState("");
-  const [quote, setQuote] = useState<{
-    miles: number;
-    delivery_fee: number;
-    in_service: boolean;
-    tax_rate?: number;
-  } | null>(null);
   const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const subtotal = useMemo(() => cartSubtotal(items), [items]);
-
-  async function refreshQuote() {
-    if (!address || !city || !zip) return;
-    const res = await fetch("/api/delivery/quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address, city, state, zip, subtotal }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Could not quote delivery");
-      return;
-    }
-    setQuote(data);
-    setError("");
-  }
+  const addressCheck = useAddressCheck({
+    address,
+    city,
+    zip,
+    state,
+    subtotal,
+    enabled: true,
+  });
 
   async function applyCoupon() {
     if (!couponCode.trim()) return;
@@ -85,11 +75,14 @@ export function CheckoutForm() {
       setError("Your cart is empty.");
       return;
     }
+    if (addressCheck.status === "problem") {
+      setError(addressCheck.message);
+      return;
+    }
     setLoading(true);
     setError("");
     setContact({ name, email, phone });
     try {
-      if (!quote) await refreshQuote();
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,6 +100,7 @@ export function CheckoutForm() {
           guest_count: guestCount,
           notes,
           coupon_code: couponCode || null,
+          setup_service: setupService,
           items,
         }),
       });
@@ -144,8 +138,9 @@ export function CheckoutForm() {
   const priced = chargeTotals({
     subtotal,
     discount,
-    deliveryFee: quote?.delivery_fee ?? 0,
-    taxRate: quote?.tax_rate ?? 0,
+    deliveryFee: addressCheck.status === "ok" ? addressCheck.fee : 0,
+    setupFee: setupService ? setupFee : 0,
+    taxRate: addressCheck.status === "ok" ? addressCheck.taxRate : 0,
   });
   const deliveryFee = priced.delivery_fee;
   const tax = priced.tax;
@@ -221,7 +216,7 @@ export function CheckoutForm() {
               required
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              onBlur={refreshQuote}
+              autoComplete="street-address"
               className="mt-1.5 w-full border border-line px-3 py-2 outline-none focus:border-accent"
             />
           </label>
@@ -231,7 +226,7 @@ export function CheckoutForm() {
               required
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              onBlur={refreshQuote}
+              autoComplete="address-level2"
               className="mt-1.5 w-full border border-line px-3 py-2 outline-none focus:border-accent"
             />
           </label>
@@ -251,10 +246,17 @@ export function CheckoutForm() {
                 required
                 value={zip}
                 onChange={(e) => setZip(e.target.value)}
-                onBlur={refreshQuote}
+                autoComplete="postal-code"
+                inputMode="numeric"
                 className="mt-1.5 w-full border border-line px-3 py-2 outline-none focus:border-accent"
               />
             </label>
+          </div>
+          <div className="sm:col-span-2">
+            <AddressCheckNote check={addressCheck} />
+          </div>
+          <div className="sm:col-span-2">
+            <SetupOption fee={setupFee} checked={setupService} onChange={setSetupService} />
           </div>
         </div>
 
@@ -277,14 +279,9 @@ export function CheckoutForm() {
           <p className="mt-2 text-sm text-accent">{couponMsg}</p>
         ) : null}
         {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
-        {quote && !quote.in_service ? (
-          <p className="mt-4 text-sm text-red-700">
-            Address is outside our {quote.miles} mi quote / service radius.
-          </p>
-        ) : null}
       </div>
 
-      <aside className="h-fit border border-line p-5 lg:sticky lg:top-24">
+      <aside className="h-fit border border-line p-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
         <h3
           className="text-2xl"
           style={{ fontFamily: "var(--font-display), Georgia, serif" }}
@@ -308,10 +305,16 @@ export function CheckoutForm() {
           </div>
           <div className="flex justify-between">
             <span>
-              Delivery{quote ? ` (${quote.miles} mi)` : ""}
+              Delivery{addressCheck.status === "ok" ? ` (${addressCheck.miles} mi)` : ""}
             </span>
-            <span>{quote ? formatMoney(deliveryFee) : "—"}</span>
+            <span>{addressCheck.status === "ok" ? formatMoney(deliveryFee) : "—"}</span>
           </div>
+          {priced.setup_fee > 0 ? (
+            <div className="flex justify-between">
+              <span>On-site setup</span>
+              <span>{formatMoney(priced.setup_fee)}</span>
+            </div>
+          ) : null}
           {discount > 0 ? (
             <div className="flex justify-between text-accent">
               <span>Discount</span>
@@ -329,7 +332,7 @@ export function CheckoutForm() {
         </div>
         <button
           type="submit"
-          disabled={loading || (quote != null && !quote.in_service)}
+          disabled={loading || addressCheck.status === "problem"}
           className="mt-6 w-full bg-accent-deep py-3 text-sm font-semibold text-white hover:bg-accent disabled:opacity-50"
         >
           {loading ? "Processing…" : "Pay with Stripe"}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SiteSettings } from "@/lib/types";
+import type { DeliveryTier, SiteSettings } from "@/lib/types";
 
 export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
   const [settings, setSettings] = useState(initial);
@@ -21,6 +21,21 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
 
   function num(key: keyof SiteSettings, value: string) {
     setSettings({ ...settings, [key]: Number(value) });
+  }
+
+  const tiers: DeliveryTier[] = settings.delivery_tiers?.length
+    ? settings.delivery_tiers
+    : [
+        { max_miles: 8, fee: 49 },
+        { max_miles: 15, fee: 79 },
+        { max_miles: 25, fee: 109 },
+      ];
+
+  function setTier(index: number, patch: Partial<DeliveryTier>) {
+    setSettings({
+      ...settings,
+      delivery_tiers: tiers.map((t, i) => (i === index ? { ...t, ...patch } : t)),
+    });
   }
 
   return (
@@ -48,25 +63,52 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
           value={String(settings.kitchen_lng)}
           onChange={(v) => num("kitchen_lng", v)}
         />
+        <div className="sm:col-span-2">
+          <p className="text-sm font-semibold">Delivery fee by driving distance</p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-3">
+            {tiers.map((tier, i) => (
+              <div key={i} className="border border-line p-3 text-sm">
+                <p className="text-xs text-muted">
+                  {i === 0 ? "0" : tiers[i - 1].max_miles} to {tier.max_miles} mi
+                </p>
+                <Field
+                  label="Up to (mi)"
+                  value={String(tier.max_miles)}
+                  onChange={(v) => setTier(i, { max_miles: Number(v) })}
+                />
+                <Field
+                  label="Fee ($)"
+                  value={String(tier.fee)}
+                  onChange={(v) => setTier(i, { fee: Number(v) })}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
         <Field
-          label="Base delivery fee ($)"
-          value={String(settings.base_delivery_fee)}
-          onChange={(v) => num("base_delivery_fee", v)}
+          label="Large order above food subtotal ($)"
+          value={String(settings.large_order_threshold ?? 0)}
+          onChange={(v) => num("large_order_threshold", v)}
         />
         <Field
-          label="Rate per mile ($)"
-          value={String(settings.rate_per_mile)}
-          onChange={(v) => num("rate_per_mile", v)}
+          label="Extra delivery fee for large orders ($)"
+          value={String(settings.large_order_extra ?? 0)}
+          onChange={(v) => num("large_order_extra", v)}
         />
         <Field
-          label="Free delivery threshold ($)"
-          value={String(settings.free_delivery_threshold)}
-          onChange={(v) => num("free_delivery_threshold", v)}
+          label="Full on-site setup fee ($)"
+          value={String(settings.setup_fee ?? 200)}
+          onChange={(v) => num("setup_fee", v)}
         />
         <Field
-          label="Service radius (mi)"
+          label="Delivery radius (mi)"
           value={String(settings.service_radius_miles)}
           onChange={(v) => num("service_radius_miles", v)}
+        />
+        <Field
+          label="Default fee for manual bookings ($)"
+          value={String(settings.base_delivery_fee)}
+          onChange={(v) => num("base_delivery_fee", v)}
         />
         <Field
           label="Tax rate (e.g. 0.0975)"

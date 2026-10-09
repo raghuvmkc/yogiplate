@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { setupFeeFor, setupNeedsLabel } from "@/lib/pricing";
 import { createQuote } from "@/lib/quotes";
+import { getDb } from "@/lib/store/local-db";
 import type { CartProposalLine } from "@/lib/chat/order-draft";
 import type { DietTag } from "@/lib/types";
 
@@ -18,6 +20,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Add at least one menu item." }, { status: 400 });
     }
     const guests = Number(body.guest_count) || 0;
+    const setup =
+      body.setup_service === true && body.delivery_or_pickup !== "pickup"
+        ? setupNeedsLabel(setupFeeFor((await getDb()).settings, true))
+        : "";
     const { quote, email } = await createQuote({
       lead: {
         name: String(body.customer_name || "").trim(),
@@ -37,7 +43,7 @@ export async function POST(req: Request) {
         city: String(body.city || ""),
         address: String(body.address || ""),
         budget: "",
-        setup_needs: "",
+        setup_needs: setup,
         special_requirements: String(body.notes || ""),
         meal: "",
         package_tier: "",

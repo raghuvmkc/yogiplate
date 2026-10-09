@@ -1,7 +1,8 @@
 import type { SiteSettings } from "@/lib/types";
+import { geocodeDeliveryAddress } from "@/lib/geocode";
 import { calcDeliveryFee } from "@/lib/pricing";
 
-/** Approximate Bay Area city coordinates for demo distance when Maps API is unset. */
+/** Rough city centers, used only when the address lookup service is down. */
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   fremont: { lat: 37.5485, lng: -121.9886 },
   "san jose": { lat: 37.3382, lng: -121.8863 },
@@ -86,6 +87,26 @@ async function googleDistanceMiles(
   }
 }
 
+/** Driving miles from the free OSRM router when no Google key is set. */
+async function osrmDrivingMiles(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): Promise<number | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { routes?: { distance?: number }[] };
+    const meters = data.routes?.[0]?.distance;
+    return typeof meters === "number" ? meters / 1609.344 : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Straight-line miles times a typical Bay Area road factor. */
+const ROAD_FACTOR = 1.3;
+
 export async function quoteDelivery(input: {
   address: string;
   city: string;
@@ -94,30 +115,56 @@ export async function quoteDelivery(input: {
   subtotal: number;
   settings: SiteSettings;
 }) {
-  const dest = `${input.address}, ${input.city}, ${input.state} ${input.zip}`;
-  const origin = input.settings.kitchen_address;
+  const settings = input.settings;
+  const kitchen = { lat: settings.kitchen_lat, lng: settings.kitchen_lng };
+  const geo = await geocodeDeliveryAddress(input);
 
-  let miles =
-    (await googleDistanceMiles(origin, dest)) ??
-    haversineMiles(
-      input.settings.kitchen_lat,
-      input.settings.kitchen_lng,
-      guessCoords(input.city, input.zip).lat,
-      guessCoords(input.city, input.zip).lng
-    );
+  const base = {
+    service_radius_miles: settings.service_radius_miles,
+    tax_rate: settings.tax_rate,
+  };
+  if (geo.status === "not_found") {
+    return {
+      ...base,
+      miles: 0,
+      delivery_fee: 0,
+      in_service: false,
+      address_verified: false,
+      address_error: geo.error,
+      formatted_address: null,
+    };
+  }
+
+  const dest = `${input.address}, ${input.city}, ${input.state} ${input.zip}`;
+  let miles: number | null = await googleDistanceMiles(settings.kitchen_address, dest);
+  if (miles == null && geo.status === "ok") {
+    miles =
+      (await osrmDrivingMiles(kitchen, geo)) ??
+      haversineMiles(kitchen.lat, kitchen.lng, geo.lat, geo.lng) * ROAD_FACTOR;
+  }
+  if (miles == null) {
+    const guess = guessCoords(input.city, input.zip);
+    miles = haversineMiles(kitchen.lat, kitchen.lng, guess.lat, guess.lng) * ROAD_FACTOR;
+  }
 
   miles = Math.round(miles * 10) / 10;
-  const inService = miles <= input.settings.service_radius_miles;
-  const delivery_fee = inService
-    ? calcDeliveryFee(miles, input.subtotal, input.settings)
-    : 0;
-
+  const inService = miles <= settings.service_radius_miles;
   return {
+    ...base,
     miles,
-    delivery_fee,
+    delivery_fee: inService ? calcDeliveryFee(miles, input.subtotal, settings) : 0,
     in_service: inService,
-    service_radius_miles: input.settings.service_radius_miles,
-    free_delivery_threshold: input.settings.free_delivery_threshold,
-    tax_rate: input.settings.tax_rate,
+    address_verified: geo.status === "ok",
+    address_error: null as string | null,
+    formatted_address: geo.status === "ok" ? geo.formatted : null,
   };
+}
+
+/** Guest-facing reason a delivery address cannot be used, or null when it is fine. */
+export function deliveryProblem(quote: Awaited<ReturnType<typeof quoteDelivery>>) {
+  if (quote.address_error) return quote.address_error;
+  if (!quote.in_service) {
+    return `That address is ${quote.miles} miles from our San Jose kitchen. We deliver within ${quote.service_radius_miles} miles; pickup is available, or call us to arrange it.`;
+  }
+  return null;
 }

@@ -61,9 +61,11 @@ function when(value: string) {
 export function ManagerDesk({
   items,
   categories,
+  setupFee,
 }: {
   items: DeskMenuItem[];
   categories: MenuCategory[];
+  setupFee: number;
 }) {
   const deviceRef = useRef<{
     destroy: () => void;
@@ -89,6 +91,7 @@ export function ManagerDesk({
   const [guests, setGuests] = useState("");
   const [diet, setDiet] = useState<DietTag>("pure_vegetarian");
   const [service, setService] = useState<"delivery" | "pickup">("delivery");
+  const [setupService, setSetupService] = useState(false);
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
@@ -281,6 +284,7 @@ export function ManagerDesk({
       state: "CA",
       zip,
       notes,
+      setup_service: service === "delivery" && setupService,
       items: lines,
     };
   }
@@ -538,6 +542,16 @@ export function ManagerDesk({
                   className="mt-1 w-full border border-line px-3 py-2 font-medium"
                 />
               </label>
+              {service === "delivery" ? (
+                <label className="flex items-center gap-2 text-sm font-semibold text-foreground sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={setupService}
+                    onChange={(event) => setSetupService(event.target.checked)}
+                  />
+                  Full on-site setup (+${setupFee})
+                </label>
+              ) : null}
               <label className="text-sm font-semibold text-foreground sm:col-span-2">
                 Notes
                 <input

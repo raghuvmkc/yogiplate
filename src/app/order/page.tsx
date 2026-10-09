@@ -1,4 +1,6 @@
 import { OrderBuilder } from "@/components/OrderBuilder";
+import { DEFAULT_SETUP_FEE } from "@/lib/pricing";
+import { getDb } from "@/lib/store/local-db";
 import type { DietTag } from "@/lib/types";
 
 const diets: DietTag[] = [
@@ -20,9 +22,14 @@ export default async function OrderPage({
     ? (params.diet as DietTag)
     : undefined;
 
+  const db = await getDb();
+
   return (
     <div className="bg-white">
-      <OrderBuilder initialDiet={initialDiet} />
+      <OrderBuilder
+        initialDiet={initialDiet}
+        setupFee={db.settings.setup_fee ?? DEFAULT_SETUP_FEE}
+      />
     </div>
   );
 }

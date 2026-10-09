@@ -1,3 +1,4 @@
+import { GuestInputError } from "@/lib/guest-error";
 import type { LocalDatabase } from "@/lib/store/local-db";
 import type { CartLine } from "@/lib/types";
 
@@ -10,13 +11,13 @@ export function repriceCart(db: LocalDatabase, lines: CartLine[]): CartLine[] {
   return lines.map((line) => {
     const item = menu.get(line.menu_item_id);
     if (!item || !item.is_available) {
-      throw new Error(`${line.name || "A dish"} is no longer on the menu. Please remove it.`);
+      throw new GuestInputError(`${line.name || "A dish"} is no longer on the menu. Please remove it.`);
     }
     const variant = item.variants?.length
       ? item.variants.find((v) => v.id === line.variant_id)
       : undefined;
     if (item.variants?.length && !variant) {
-      throw new Error(`Please choose a tray size for ${item.name}.`);
+      throw new GuestInputError(`Please choose a tray size for ${item.name}.`);
     }
     const quantity = Math.max(item.min_quantity || 1, Math.floor(Number(line.quantity) || 0));
     return {

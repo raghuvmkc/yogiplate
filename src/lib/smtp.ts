@@ -368,6 +368,38 @@ export function managerNotifyEmails(): string[] {
   ];
 }
 
+/** Who gets "something broke" emails. Technical alerts, so not the chef by default. */
+export function alertNotifyEmails(): string[] {
+  const raw =
+    env("ALERT_NOTIFY_EMAILS") ||
+    env("CHAT_SUMMARY_NOTIFY_EMAILS") ||
+    "raghuvmkc@gmail.com";
+  return [
+    ...new Set(
+      raw
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+}
+
+export async function sendSystemAlertEmail(input: { subject: string; text: string }) {
+  if (!smtpConfigured()) throw new Error("SMTP is not configured");
+  const to = alertNotifyEmails();
+  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const raw = buildMime({
+    from: `Yogiplate Site Monitor <${fromEmail}>`,
+    to,
+    subject: input.subject,
+    text: input.text,
+    html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;white-space:pre-wrap">${input.text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")}</pre>`,
+  });
+  await smtpSend(raw, to);
+}
+
 /** Send a catering quote to the guest via Stone Craft SMTP (fallback when Resend is unset). */
 export async function sendGuestQuoteSmtp(input: {
   to: string;

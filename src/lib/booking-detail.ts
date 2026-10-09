@@ -2,6 +2,7 @@ import { appendPaymentRecord, upsertCateringBooking } from "@/lib/calendar-booki
 import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
 import {
   chargeTotals,
+  DEFAULT_SETUP_FEE,
   formatMoney,
   fromCents,
   isPaidInFull,
@@ -55,6 +56,7 @@ export type BookingDetail = {
   balance_due: number | null;
   tax_rate: number;
   base_delivery_fee: number;
+  setup_fee: number;
   menu: MenuChoice[];
 };
 
@@ -93,6 +95,7 @@ export type BookingDetailPatch = {
   order?: {
     status?: OrderStatus;
     delivery_fee?: number;
+    setup_fee?: number;
     discount?: number;
     notes?: string | null;
     items?: EditableLine[];
@@ -146,6 +149,7 @@ export async function getBookingDetail(id: string): Promise<BookingDetail | null
       amount_due == null ? null : fromCents(Math.max(0, toCents(amount_due) - toCents(amount_paid))),
     tax_rate: db.settings.tax_rate,
     base_delivery_fee: db.settings.base_delivery_fee,
+    setup_fee: db.settings.setup_fee ?? DEFAULT_SETUP_FEE,
     menu: menuChoices(db),
   };
 }
@@ -321,6 +325,7 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
         subtotal,
         discount: edit.discount ?? order.discount,
         deliveryFee: edit.delivery_fee ?? order.delivery_fee,
+        setupFee: edit.setup_fee ?? order.setup_fee ?? 0,
         taxRate: db.settings.tax_rate,
       });
       totalChanged = toCents(priced.total) !== toCents(order.total);
@@ -328,6 +333,7 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
         subtotal: priced.subtotal,
         discount: priced.discount,
         delivery_fee: priced.delivery_fee,
+        setup_fee: priced.setup_fee,
         tax: priced.tax,
         total: priced.total,
       });

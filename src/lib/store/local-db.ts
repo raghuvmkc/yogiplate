@@ -2,10 +2,12 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import {
+  DELIVERY_POLICY_VERSION,
   MENU_SEED_VERSION,
   categories,
   defaultCoupons,
   defaultSettings,
+  deliveryPolicyDefaults,
   menuItems,
 } from "@/lib/data/menu-seed";
 import { serverEnv } from "@/lib/server-env";
@@ -174,6 +176,14 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
       db.settings.quote_validity_days = 7;
       changed = true;
     }
+    if (db.settings.setup_fee == null) {
+      db.settings.setup_fee = 200;
+      changed = true;
+    }
+    if (db.settings.delivery_policy_version !== DELIVERY_POLICY_VERSION) {
+      db.settings = { ...db.settings, ...deliveryPolicyDefaults };
+      changed = true;
+    }
   }
   if (!db.calendar_blocks) {
     db.calendar_blocks = [];
@@ -215,7 +225,7 @@ const MAX_WRITE_ATTEMPTS = 6;
  * On Netlify every request can land on a different server, and the disk is not
  * shared, so the database lives in Netlify Blobs. Locally it is `.data/db.json`.
  */
-async function blobsStore(): Promise<BlobStore | null> {
+export async function blobsStore(): Promise<BlobStore | null> {
   const onNetlify =
     process.env.NETLIFY === "true" ||
     Boolean(process.env.NETLIFY_BLOBS_CONTEXT) ||

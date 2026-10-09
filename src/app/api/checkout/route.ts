@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { upsertCateringBooking } from "@/lib/calendar-bookings";
-import { quoteDelivery } from "@/lib/delivery";
+import { deliveryProblem, quoteDelivery } from "@/lib/delivery";
 import { findCoupon, fulfillPaidOrder } from "@/lib/orders";
+import { reportError } from "@/lib/monitor";
 import { guestPaymentErrorMessage } from "@/lib/payment-errors";
-import { calcOrderTotals, cartSubtotal } from "@/lib/pricing";
+import { calcOrderTotals, cartSubtotal, setupNeedsLabel } from "@/lib/pricing";
 import { repriceCart } from "@/lib/reprice-cart";
 import { stripeConfigured } from "@/lib/stripe";
 import { createCateringPaymentLink } from "@/lib/stripe-checkout";
@@ -42,23 +43,21 @@ export async function POST(req: Request) {
       settings: db.settings,
     });
 
-    if (!quote.in_service) {
-      return NextResponse.json(
-        {
-          error: `Outside service area (${quote.miles} mi). We deliver within ${db.settings.service_radius_miles} miles.`,
-        },
-        { status: 400 }
-      );
+    const problem = deliveryProblem(quote);
+    if (problem) {
+      return NextResponse.json({ error: problem }, { status: 400 });
     }
 
     const coupon = body.coupon_code
       ? await findCoupon(String(body.coupon_code))
       : null;
+    const setup = body.setup_service === true;
     const totals = calcOrderTotals({
       items,
       miles: quote.miles,
       coupon,
       settings: db.settings,
+      setup,
     });
 
     const eventTime = /^\d{2}:\d{2}$/.test(String(body.event_time || ""))
@@ -95,7 +94,7 @@ export async function POST(req: Request) {
         occasion: "",
         meal: "",
         budget: "",
-        setup_needs: "",
+        setup_needs: setup ? setupNeedsLabel(totals.setup_fee) : "",
         special_requirements: "",
         package_tier: "",
         confirmed: false,
@@ -123,6 +122,7 @@ export async function POST(req: Request) {
       items,
       coupon_code: coupon?.code || null,
       notes: body.notes || null,
+      setup_service: setup,
       created_at: new Date().toISOString(),
     });
 
@@ -140,7 +140,7 @@ export async function POST(req: Request) {
         order_number: ordNum,
         invoice_number: invNum,
         kind: "checkout",
-        extra: { pending_id: pendingId },
+        extra: { pending_id: pendingId, setup_service: setup ? "1" : "0" },
       });
       return NextResponse.json({ url: session.url });
     }
@@ -163,7 +163,7 @@ export async function POST(req: Request) {
       demo: true,
     });
   } catch (err) {
-    console.error("[checkout]", err);
+    await reportError("checkout", err);
     return NextResponse.json(
       {
         error:

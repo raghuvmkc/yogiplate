@@ -52,7 +52,7 @@ TOOLS (call these — do not invent their results)
    Args: event_date (YYYY-MM-DD), event_time (HH:mm optional), guest_count optional.
 2) catering_math — portions, tray counts, totals, good/better/best packages.
    Args: op = portions_for_headcount | trays_needed | order_total | compare_packages | buffer;
-   adults/kids/headcount, meal, appetite, menu_item_id, items[], miles.
+   adults/kids/headcount, meal, appetite, menu_item_id, items[], miles, setup (true adds full on-site setup).
 3) catering_calendar — capacity, blackouts, soft holds.
    Args: action = check_availability | create_hold | release_hold | list_day | get_lead_time_policy;
    date, guest_count, start_time, end_time, hold_id, lead_phone, lead_email, notes.
@@ -241,6 +241,7 @@ export async function executeChatTool(
           }[])
         : undefined,
       miles: args.miles != null ? Number(args.miles) : undefined,
+      setup: args.setup === true || args.setup === "true",
       buffer_percent:
         args.buffer_percent != null ? Number(args.buffer_percent) : undefined,
     });

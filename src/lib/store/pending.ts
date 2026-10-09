@@ -19,6 +19,7 @@ export interface PendingCheckout {
   items: CartLine[];
   coupon_code: string | null;
   notes: string | null;
+  setup_service?: boolean;
   created_at: string;
   order_id?: string;
   order_number?: string;

@@ -34,7 +34,7 @@ function detailRow(label: string, value: string) {
 
 export function buildQuoteEmailHtml(quote: Quote, ctx: QuoteEmailContext) {
   const url = `${siteUrl()}/quote/${quote.id}?t=${quote.public_token}`;
-  const logo = `${siteUrl()}/images/Yogiplate_Logo_transparent.png`;
+  const logo = `${siteUrl()}/images/yogiplate-logo-email.png`;
   const when = [prettyDate(quote.event_date), prettyTime(quote.event_time)]
     .filter(Boolean)
     .join(" · ");

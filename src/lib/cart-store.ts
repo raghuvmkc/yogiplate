@@ -36,6 +36,9 @@ interface CartStore {
   /** HH:mm (24h), from the time input. */
   eventTime: string;
   notes: string;
+  /** Guest wants us to set up the buffet on site (delivery only, flat fee). */
+  setupService: boolean;
+  setSetupService: (on: boolean) => void;
   items: CartLine[];
   couponCode: string;
   setDiet: (diet: DietTag) => void;
@@ -69,6 +72,8 @@ export const useCartStore = create<CartStore>()(
       eventDate: "",
       eventTime: "",
       notes: "",
+      setupService: false,
+      setSetupService: (setupService) => set({ setupService }),
       items: [],
       couponCode: "",
       setDiet: (diet) => set({ diet }),
@@ -140,6 +145,7 @@ export const useCartStore = create<CartStore>()(
           items: [],
           couponCode: "",
           notes: "",
+          setupService: false,
           guestCount: 0,
           eventDate: "",
           eventTime: "",
@@ -217,6 +223,7 @@ export const useCartStore = create<CartStore>()(
           eventDate: "",
           eventTime: "",
           notes: "",
+          setupService: false,
           couponCode: "",
           items,
         } as CartStore;

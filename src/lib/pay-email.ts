@@ -1,3 +1,10 @@
+import { siteUrl } from "@/lib/site";
+
+/** Logo for emails: absolute URL to a small PNG, since mail apps cannot load relative or SVG/WebP images. */
+export function emailLogoHtml(size = 96) {
+  return `<img src="${siteUrl()}/images/yogiplate-logo-email.png" width="${size}" height="${size}" alt="Yogiplate" style="display:block;width:${size}px;height:${size}px;border:0;outline:none;text-decoration:none;" />`;
+}
+
 /** Must match the statement descriptor on the Stone Craft Stripe account. */
 export const STATEMENT_NAME = "STONE CRAFT PIZZA";
 
