@@ -19,6 +19,7 @@ type DeskCall = {
   reject: () => void;
   disconnect: () => void;
   mute: (muted?: boolean) => void;
+  sendDigits: (digits: string) => void;
   on: (event: string, handler: () => void) => void;
   parameters: { From?: string; To?: string };
   customParameters?: Map<string, string>;
@@ -99,6 +100,7 @@ export function ManagerDesk({
   const [incoming, setIncoming] = useState<DeskCall | null>(null);
   const [active, setActive] = useState<DeskCall | null>(null);
   const [muted, setMuted] = useState(false);
+  const [tones, setTones] = useState("");
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [tab, setTab] = useState<"texts" | "calendar" | "menu" | "quote" | "invoice">("quote");
   const [unreadTexts, setUnreadTexts] = useState(0);
@@ -198,6 +200,7 @@ export function ManagerDesk({
           setActive((current) => (current === call ? null : current));
           setIncoming((current) => (current === call ? null : current));
           setMuted(false);
+          setTones("");
           setStatus("Ready for calls");
           void loadCalls();
         });
@@ -230,6 +233,7 @@ export function ManagerDesk({
     call.on("disconnect", () => {
       setActive((current) => (current === call ? null : current));
       setMuted(false);
+      setTones("");
       setStatus("Ready for calls");
       void loadCalls();
     });
@@ -270,6 +274,12 @@ export function ManagerDesk({
     incoming?.reject();
     setIncoming(null);
     setStatus("Ready for calls");
+  }
+
+  function sendTone(key: string) {
+    if (!active) return;
+    active.sendDigits(key);
+    setTones((current) => (current + key).slice(-32));
   }
 
   function hangUp() {
@@ -375,22 +385,43 @@ export function ManagerDesk({
           </div>
         ) : null}
 
-        <label className="mt-5 block text-sm font-semibold text-foreground">
-          Number
-          <input
-            value={number}
-            onChange={(event) => setNumber(event.target.value)}
-            placeholder="408 555 0100"
-            className="mt-1 w-full border border-line bg-white px-3 py-2 text-base"
-          />
-        </label>
+        {active ? (
+          <label className="mt-5 block text-sm font-semibold text-foreground">
+            Keypad tones
+            <span className="ml-1 font-normal text-muted">— for “press 1…”, extensions, or PINs</span>
+            <input
+              value={tones}
+              readOnly
+              onKeyDown={(event) => {
+                if (/^[0-9*#]$/.test(event.key)) {
+                  event.preventDefault();
+                  sendTone(event.key);
+                }
+              }}
+              placeholder="Tap keys or type digits"
+              className="mt-1 w-full border border-accent bg-white px-3 py-2 text-base tracking-[0.2em]"
+            />
+          </label>
+        ) : (
+          <label className="mt-5 block text-sm font-semibold text-foreground">
+            Number
+            <input
+              value={number}
+              onChange={(event) => setNumber(event.target.value)}
+              placeholder="408 555 0100"
+              className="mt-1 w-full border border-line bg-white px-3 py-2 text-base"
+            />
+          </label>
+        )}
         <div className="mt-3 grid grid-cols-3 gap-2">
           {KEYS.map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => setNumber((current) => current + key)}
-              className="border border-line bg-white py-3 text-lg font-semibold text-foreground"
+              onClick={() => (active ? sendTone(key) : setNumber((current) => current + key))}
+              className={`border bg-white py-3 text-lg font-semibold text-foreground active:bg-warm ${
+                active ? "border-accent" : "border-line"
+              }`}
             >
               {key}
             </button>
@@ -405,13 +436,15 @@ export function ManagerDesk({
           >
             Call
           </button>
-          <button
-            type="button"
-            onClick={() => setNumber((current) => current.slice(0, -1))}
-            className="border border-line bg-white px-4 py-2 text-sm font-semibold"
-          >
-            Delete
-          </button>
+          {active ? null : (
+            <button
+              type="button"
+              onClick={() => setNumber((current) => current.slice(0, -1))}
+              className="border border-line bg-white px-4 py-2 text-sm font-semibold"
+            >
+              Delete
+            </button>
+          )}
           {active ? (
             <>
               <button
