@@ -15,11 +15,15 @@ export default async function AdminDeskPage() {
       name: item.name,
       price: item.price,
       unit: item.unit,
+      diet_tags: item.diet_tags,
+      min_quantity: item.min_quantity,
       variants: item.variants?.map((variant) => ({
         id: variant.id,
         label: variant.label,
         price: variant.price,
         unit: variant.unit,
+        serves: variant.serves,
+        serves_label: variant.serves_label,
       })),
     }));
   return (

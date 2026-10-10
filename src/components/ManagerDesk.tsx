@@ -11,8 +11,21 @@ export type DeskMenuItem = {
   name: string;
   price: number;
   unit: string;
-  variants?: { id: string; label: string; price: number; unit?: string }[];
+  diet_tags?: DietTag[];
+  min_quantity?: number;
+  variants?: {
+    id: string;
+    label: string;
+    price: number;
+    unit?: string;
+    serves?: number;
+    serves_label?: string;
+  }[];
 };
+
+function money(value: number) {
+  return `$${value.toFixed(2).replace(/\.00$/, "")}`;
+}
 
 type DeskCall = {
   accept: () => void;
@@ -122,18 +135,31 @@ export function ManagerDesk({
   const [busy, setBusy] = useState<"quote" | "invoice" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const categoryName = useMemo(() => {
-    const map = new Map(categories.map((category) => [category.id, category.name]));
-    return (id: string) => map.get(id) || "";
-  }, [categories]);
+  const [allDiets, setAllDiets] = useState(false);
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  const [qtys, setQtys] = useState<Record<string, number>>({});
+  const [justAdded, setJustAdded] = useState<string | null>(null);
 
-  const visibleItems = useMemo(() => {
+  const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+
+  const menuGroups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items.slice(0, 24);
-    return items
-      .filter((item) => item.name.toLowerCase().includes(q))
-      .slice(0, 24);
-  }, [items, query]);
+    const shown = items.filter(
+      (item) =>
+        (allDiets || !item.diet_tags?.length || item.diet_tags.includes(diet)) &&
+        (!q || item.name.toLowerCase().includes(q))
+    );
+    return [...categories]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((category) => ({
+        category,
+        items: shown.filter((item) => item.category_id === category.id),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [items, categories, query, diet, allDiets]);
+
+  const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
 
   async function loadCalls() {
     const res = await fetch("/api/admin/voice/calls");
@@ -287,8 +313,14 @@ export function ManagerDesk({
     incoming?.reject();
   }
 
+  function minFor(item: DeskMenuItem | undefined) {
+    return Math.max(1, item?.min_quantity || 1);
+  }
+
   function addItem(item: DeskMenuItem) {
-    const variant = item.variants?.[0];
+    const variant =
+      item.variants?.find((v) => v.id === picks[item.id]) || item.variants?.[0];
+    const quantity = Math.max(minFor(item), qtys[item.id] || minFor(item));
     const lineId = variant ? `${item.id}:${variant.id}` : item.id;
     const line: CartLine = {
       menu_item_id: item.id,
@@ -296,16 +328,91 @@ export function ManagerDesk({
       variant_id: variant?.id,
       name: variant ? `${item.name} (${variant.label})` : item.name,
       price: variant?.price ?? item.price,
-      quantity: 1,
+      quantity,
       unit: variant?.unit || item.unit || "tray",
     };
     setLines((current) => {
       const found = current.find((row) => row.line_id === lineId);
       if (!found) return [...current, line];
       return current.map((row) =>
-        row.line_id === lineId ? { ...row, quantity: row.quantity + 1 } : row
+        row.line_id === lineId ? { ...row, quantity: row.quantity + quantity } : row
       );
     });
+    setJustAdded(lineId);
+    window.setTimeout(() => setJustAdded((current) => (current === lineId ? null : current)), 1500);
+  }
+
+  function changeLine(lineId: string, delta: number) {
+    setLines((current) =>
+      current
+        .map((row) => {
+          if (row.line_id !== lineId) return row;
+          const min = minFor(itemById.get(row.menu_item_id));
+          const next = row.quantity + delta;
+          return { ...row, quantity: next < min ? 0 : next };
+        })
+        .filter((row) => row.quantity > 0)
+    );
+  }
+
+  function renderOrderLines(compact: boolean) {
+    return (
+      <div>
+        <ul className="divide-y divide-line">
+          {lines.length === 0 ? (
+            <li className="py-3 text-sm text-muted">
+              No dishes yet. Pick a tray size and tap Add on the Menu tab.
+            </li>
+          ) : null}
+          {lines.map((line) => (
+            <li key={line.line_id} className="flex items-center justify-between gap-3 py-2">
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground">{line.name}</span>
+                <span className="text-xs text-muted">
+                  {money(line.price)} each · {money(line.price * line.quantity)}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label={`Fewer ${line.name}`}
+                  className="h-7 w-7 border border-line text-sm"
+                  onClick={() => changeLine(line.line_id, -1)}
+                >
+                  −
+                </button>
+                <span className="w-7 text-center text-sm font-semibold">{line.quantity}</span>
+                <button
+                  type="button"
+                  aria-label={`More ${line.name}`}
+                  className="h-7 w-7 border border-line text-sm"
+                  onClick={() => changeLine(line.line_id, 1)}
+                >
+                  +
+                </button>
+                {compact ? null : (
+                  <button
+                    type="button"
+                    className="ml-1 text-xs font-semibold text-muted hover:text-[#8d3b32]"
+                    onClick={() => changeLine(line.line_id, -line.quantity)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {lines.length ? (
+          <p className="mt-2 flex justify-between border-t border-line pt-2 text-sm font-semibold text-foreground">
+            <span>
+              Food subtotal · {itemCount} {itemCount === 1 ? "item" : "items"}
+            </span>
+            <span>{money(subtotal)}</span>
+          </p>
+        ) : null}
+      </div>
+    );
   }
 
   function payload() {
@@ -540,32 +647,163 @@ export function ManagerDesk({
         ) : null}
 
         {tab === "menu" ? (
-          <div className="mt-5">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search the menu"
-              className="w-full max-w-md border border-line px-3 py-2"
-            />
-            <ul className="mt-4 divide-y divide-line">
-              {visibleItems.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                  <span>
-                    <span className="block font-semibold text-foreground">{item.name}</span>
-                    <span className="text-sm text-muted">
-                      {categoryName(item.category_id)} · ${item.variants?.[0]?.price ?? item.price}
-                    </span>
-                  </span>
+          <div className="mt-5 grid gap-6 xl:grid-cols-[1fr_20rem]">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Dietary path</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {DIETS.map((option) => {
+                  const on = !allDiets && diet === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        setDiet(option.id);
+                        setAllDiets(false);
+                      }}
+                      className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                        on ? "bg-accent-deep text-white" : "border border-line text-foreground hover:bg-warm"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setAllDiets(true)}
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    allDiets ? "bg-accent-deep text-white" : "border border-line text-foreground hover:bg-warm"
+                  }`}
+                >
+                  All dishes
+                </button>
+              </div>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search the menu"
+                className="mt-4 w-full max-w-md border border-line px-3 py-2"
+              />
+
+              {menuGroups.length === 0 ? (
+                <p className="mt-6 text-sm text-muted">No dishes match.</p>
+              ) : null}
+              {menuGroups.map(({ category, items: groupItems }) => (
+                <section key={category.id} className="mt-6">
+                  <h3 className="border-b border-line pb-1 text-xs font-bold uppercase tracking-wider text-muted">
+                    {category.name}
+                  </h3>
+                  <ul className="divide-y divide-line">
+                    {groupItems.map((item) => {
+                      const variants = item.variants || [];
+                      const picked = variants.find((v) => v.id === picks[item.id]) || variants[0];
+                      const min = minFor(item);
+                      const qty = Math.max(min, qtys[item.id] || min);
+                      const lineId = picked ? `${item.id}:${picked.id}` : item.id;
+                      const inOrder = lines.find((line) => line.line_id === lineId)?.quantity || 0;
+                      return (
+                        <li key={item.id} className="py-3">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground">{item.name}</p>
+                              <p className="text-sm text-muted">
+                                {money(picked?.price ?? item.price)} / {picked?.unit || item.unit || "tray"}
+                                {min > 1 ? ` · minimum ${min}` : ""}
+                                {inOrder ? (
+                                  <span className="font-semibold text-accent-deep"> · {inOrder} in order</span>
+                                ) : null}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                aria-label={`Fewer ${item.name}`}
+                                className="h-8 w-8 border border-line"
+                                onClick={() => setQtys((c) => ({ ...c, [item.id]: Math.max(min, qty - 1) }))}
+                              >
+                                −
+                              </button>
+                              <span className="w-8 text-center text-sm font-semibold">{qty}</span>
+                              <button
+                                type="button"
+                                aria-label={`More ${item.name}`}
+                                className="h-8 w-8 border border-line"
+                                onClick={() => setQtys((c) => ({ ...c, [item.id]: qty + 1 }))}
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => addItem(item)}
+                                className={`ml-1 min-w-[5.5rem] px-3 py-1.5 text-sm font-semibold text-white transition ${
+                                  justAdded === lineId ? "bg-accent" : "bg-accent-deep hover:bg-accent"
+                                }`}
+                              >
+                                {justAdded === lineId ? "Added ✓" : "Add"}
+                              </button>
+                            </div>
+                          </div>
+                          {variants.length > 1 ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {variants.map((v) => {
+                                const on = picked?.id === v.id;
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    onClick={() => setPicks((c) => ({ ...c, [item.id]: v.id }))}
+                                    className={`border px-3 py-1.5 text-left text-xs ${
+                                      on
+                                        ? "border-accent-deep bg-accent-soft font-semibold text-accent-deep"
+                                        : "border-line text-foreground hover:bg-warm"
+                                    }`}
+                                  >
+                                    <span className="block font-semibold">
+                                      {v.label} · {money(v.price)}
+                                    </span>
+                                    {v.serves && v.serves > 1 ? (
+                                      <span className="text-muted">Serves {v.serves_label || v.serves}</span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
+
+            <aside className="xl:sticky xl:top-4 xl:self-start">
+              <div className="border border-line bg-warm p-4">
+                <p className="font-semibold text-foreground">
+                  Order · {DIETS.find((d) => d.id === diet)?.label}
+                </p>
+                <div className="mt-2">{renderOrderLines(true)}</div>
+                <div className="mt-4 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => addItem(item)}
-                    className="border border-line px-3 py-1.5 text-sm font-semibold"
+                    disabled={!lines.length}
+                    onClick={() => setTab("quote")}
+                    className="flex-1 bg-accent-deep px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
                   >
-                    Add
+                    Quote
                   </button>
-                </li>
-              ))}
-            </ul>
+                  <button
+                    type="button"
+                    disabled={!lines.length}
+                    onClick={() => setTab("invoice")}
+                    className="flex-1 border border-accent-deep bg-white px-3 py-2 text-sm font-semibold text-accent-deep disabled:opacity-40"
+                  >
+                    Invoice
+                  </button>
+                </div>
+              </div>
+            </aside>
           </div>
         ) : null}
 
@@ -633,53 +871,17 @@ export function ManagerDesk({
               </label>
             </div>
 
-            <ul className="mt-5 divide-y divide-line">
-              {lines.length === 0 ? (
-                <li className="py-3 text-sm text-muted">Add dishes from the Menu tab.</li>
-              ) : null}
-              {lines.map((line) => (
-                <li key={line.line_id} className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-sm font-semibold text-foreground">
-                    {line.name} · ${line.price}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="border border-line px-2"
-                      onClick={() =>
-                        setLines((current) =>
-                          current
-                            .map((row) =>
-                              row.line_id === line.line_id
-                                ? { ...row, quantity: row.quantity - 1 }
-                                : row
-                            )
-                            .filter((row) => row.quantity > 0)
-                        )
-                      }
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center text-sm">{line.quantity}</span>
-                    <button
-                      type="button"
-                      className="border border-line px-2"
-                      onClick={() =>
-                        setLines((current) =>
-                          current.map((row) =>
-                            row.line_id === line.line_id
-                              ? { ...row, quantity: row.quantity + 1 }
-                              : row
-                          )
-                        )
-                      }
-                    >
-                      +
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-6 flex items-baseline justify-between">
+              <p className="font-semibold text-foreground">Dishes</p>
+              <button
+                type="button"
+                onClick={() => setTab("menu")}
+                className="text-sm font-semibold text-accent-deep hover:underline"
+              >
+                + Add more dishes
+              </button>
+            </div>
+            <div className="mt-1">{renderOrderLines(false)}</div>
 
             {notice ? <p className="mt-4 text-sm text-accent-deep">{notice}</p> : null}
             <button
