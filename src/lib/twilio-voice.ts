@@ -33,6 +33,21 @@ function base64url(value: string | Buffer) {
 
 /** Twilio Voice access token for the single manager browser. */
 export function createManagerVoiceToken() {
+  return createVoiceToken(MANAGER_VOICE_IDENTITY, { incoming: true, ttlSeconds: 60 * 60 });
+}
+
+export const GUEST_IDENTITY_PREFIX = "guest_";
+
+/** Short-lived, outgoing-only token so a website guest can be transferred to the manager. */
+export function createGuestVoiceToken() {
+  const identity = `${GUEST_IDENTITY_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
+  return { identity, token: createVoiceToken(identity, { incoming: false, ttlSeconds: 10 * 60 }) };
+}
+
+function createVoiceToken(
+  identity: string,
+  opts: { incoming: boolean; ttlSeconds: number }
+) {
   const accountSid = env("TWILIO_ACCOUNT_SID");
   const apiKey = env("TWILIO_API_KEY");
   const apiSecret = env("TWILIO_API_SECRET");
@@ -47,11 +62,11 @@ export function createManagerVoiceToken() {
       iss: apiKey,
       sub: accountSid,
       nbf: now,
-      exp: now + 60 * 60,
+      exp: now + opts.ttlSeconds,
       grants: {
-        identity: MANAGER_VOICE_IDENTITY,
+        identity,
         voice: {
-          incoming: { allow: true },
+          incoming: { allow: opts.incoming },
           outgoing: { application_sid: appSid },
         },
       },

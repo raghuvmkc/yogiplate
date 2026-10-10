@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import {
   Maximize2,
   MessageCircle,
+  Mic,
+  MicOff,
   Minimize2,
   Phone,
   PhoneOff,
@@ -28,7 +30,6 @@ import {
 import { useCartStore } from "@/lib/cart-store";
 import { cartSubtotal } from "@/lib/pricing";
 import { ContinuousMic } from "@/lib/mic-recorder";
-import { playPhoneRing } from "@/lib/phone-ring";
 import { speakableForCall } from "@/lib/speakable";
 import type { DietTag } from "@/lib/types";
 
@@ -59,6 +60,14 @@ type ChatMessage = {
   cartProposal?: CartProposal | null;
   quoteUrl?: string | null;
   verifiedAddress?: VerifiedAddressCard | null;
+  transferCall?: boolean;
+};
+
+type TransferState = "connecting" | "live" | null;
+
+type GuestCall = {
+  disconnect: () => void;
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
 };
 
 type Lead = {
@@ -108,14 +117,13 @@ function welcomeFor(
   return OPENING_MESSAGE;
 }
 
-const CALL_SILENCE_MS = 60_000;
-const CALL_OFF_TOPIC_LIMIT = 4;
+const MIC_IDLE_MS = 60_000;
 
-const CALL_END_SILENCE =
-  "I haven't heard you for a minute, so I'll end the call here. Please redial when you're back and ready to discuss your catering.";
+const MIC_IDLE_NOTE =
+  "I turned the mic off after a quiet minute. Tap Talk whenever you're ready to continue — or just type.";
 
-const CALL_END_OFF_TOPIC =
-  "I'll end the call here. Please redial when you're ready to talk about your Yogiplate catering, and I'll be glad to help.";
+const MANAGER_CALLBACK_NOTE =
+  "If our store manager couldn't pick up, our store manager will call you as soon as he is available.";
 
 export function ChatWidget() {
   const pathname = usePathname();
@@ -172,7 +180,8 @@ export function ChatWidget() {
   const summarySentRef = useRef(false);
   const silenceTimerRef = useRef<number | null>(null);
   const endingCallRef = useRef(false);
-  const offTopicStreakRef = useRef(0);
+  const [transfer, setTransfer] = useState<TransferState>(null);
+  const transferRef = useRef<{ call: GuestCall | null; destroy: () => void } | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   const leadRef = useRef(lead);
   const orderDraftRef = useRef(orderDraft);
@@ -292,6 +301,10 @@ export function ChatWidget() {
   useEffect(() => {
     if (open) return;
     sendChatEndSummary();
+    if (transferRef.current) {
+      transferRef.current.call?.disconnect();
+      endTransfer(false);
+    }
     if (listeningRef.current) {
       clearSilenceTimer();
       continuousMicRef.current?.stop();
@@ -533,29 +546,75 @@ export function ChatWidget() {
         armSilenceTimer();
         return;
       }
-      void endVoiceCall(CALL_END_SILENCE);
-    }, CALL_SILENCE_MS);
+      stopListening();
+      addAssistantNote(MIC_IDLE_NOTE);
+    }, MIC_IDLE_MS);
   }
 
-  async function endVoiceCall(message: string) {
-    if (endingCallRef.current || !listeningRef.current) return;
-    endingCallRef.current = true;
-    clearSilenceTimer();
-    offTopicStreakRef.current = 0;
+  function addAssistantNote(content: string, extra?: Partial<ChatMessage>) {
     setMessages((prev) => {
-      const next = [...prev, { role: "assistant" as const, content: message }];
+      const next = [...prev, { role: "assistant" as const, content, ...extra }];
       messagesRef.current = next;
       return next;
     });
-    const prevSpeak = voiceSpeakRef.current;
-    voiceSpeakRef.current = true;
+  }
+
+  function endTransfer(note: boolean) {
+    const t = transferRef.current;
+    transferRef.current = null;
+    t?.destroy();
+    setTransfer(null);
+    if (note && t) addAssistantNote(`Call ended. ${MANAGER_CALLBACK_NOTE}`);
+  }
+
+  /** Ring the store manager's desk from the guest's browser (Twilio Voice). */
+  async function startTransfer() {
+    if (transferRef.current) return;
+    stopListening();
+    stopSpeaking();
+    setError(null);
+    setTransfer("connecting");
+    transferRef.current = { call: null, destroy: () => {} };
     try {
-      await speakReply(message);
-    } finally {
-      voiceSpeakRef.current = prevSpeak;
-      stopListening();
-      endingCallRef.current = false;
+      const res = await fetch("/api/voice/guest-token", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
+      if (!res.ok || !data.token) {
+        transferRef.current = null;
+        setTransfer(null);
+        addAssistantNote(data.error || `I couldn't place the call just now. Our store manager will call you as soon as he is available.`);
+        return;
+      }
+      const { Device } = await import("@twilio/voice-sdk");
+      if (!transferRef.current) return;
+      const device = new Device(data.token);
+      const current = leadRef.current;
+      const call = (await device.connect({
+        params: { GuestName: current.name.slice(0, 60), GuestPhone: current.phone.slice(0, 20) },
+      })) as unknown as GuestCall;
+      if (!transferRef.current) {
+        call.disconnect();
+        device.destroy();
+        return;
+      }
+      transferRef.current = { call, destroy: () => device.destroy() };
+      call.on("accept", () => setTransfer("live"));
+      call.on("disconnect", () => endTransfer(true));
+      call.on("cancel", () => endTransfer(true));
+      call.on("reject", () => endTransfer(true));
+      call.on("error", () => endTransfer(true));
+    } catch {
+      transferRef.current = null;
+      setTransfer(null);
+      addAssistantNote(
+        `I couldn't connect the call — please allow microphone access and try again. ${MANAGER_CALLBACK_NOTE}`
+      );
     }
+  }
+
+  function hangUpTransfer() {
+    const t = transferRef.current;
+    if (t?.call) t.call.disconnect();
+    else endTransfer(false);
   }
 
   function stopListening(updateState = true) {
@@ -733,15 +792,13 @@ export function ChatWidget() {
   }
 
   async function toggleListening() {
-    if (!voiceEnabled || !identified) return;
+    if (!voiceEnabled || !identified || transferRef.current) return;
     if (listening) {
       callConnectingRef.current = false;
-      offTopicStreakRef.current = 0;
       stopListening();
       stopSpeaking();
       return;
     }
-    offTopicStreakRef.current = 0;
     setError(null);
     stopSpeaking();
     try {
@@ -763,12 +820,13 @@ export function ChatWidget() {
       setListening(true);
       setCallConnecting(true);
 
-      // Short ring while greeting TTS prefetches — then AI Yogi speaks first.
+      // Mid-conversation: just start listening. Fresh chat: AI Yogi greets first.
       try {
+        if (messagesRef.current.some((m) => m.role === "user")) {
+          armSilenceTimer();
+          return;
+        }
         const greetingPrefetch = fetchTtsBlob(OPENING_MESSAGE, { full: true });
-        await playPhoneRing({ bursts: 1, volume: 0.11 });
-        if (!listeningRef.current) return;
-
         const greeting = welcomeFor();
         setMessages((prev) => {
           const last = prev[prev.length - 1];
@@ -808,7 +866,7 @@ export function ChatWidget() {
     } catch {
       callConnectingRef.current = false;
       setCallConnecting(false);
-      setError("Microphone access is needed to start a call.");
+      setError("Please allow microphone access to talk with AI Yogi.");
       stopListening();
     }
   }
@@ -885,7 +943,7 @@ export function ChatWidget() {
         whatsapp_url?: string | null;
         quote_url?: string | null;
         verified_address?: VerifiedAddressCard | null;
-        off_topic?: boolean;
+        transfer_call?: boolean;
       };
       let data: ChatApiPayload = {};
       try {
@@ -903,17 +961,9 @@ export function ChatWidget() {
         if (data.detail) bits.push(String(data.detail).slice(0, 160));
         throw new Error(bits.join(" "));
       }
-      let reply = String(data.reply || "");
-      let hangUpAfterReply = false;
-      if (listeningRef.current) {
-        if (data.off_topic) offTopicStreakRef.current += 1;
-        else offTopicStreakRef.current = 0;
-        if (offTopicStreakRef.current >= CALL_OFF_TOPIC_LIMIT) {
-          reply = CALL_END_OFF_TOPIC;
-          hangUpAfterReply = true;
-          offTopicStreakRef.current = 0;
-        }
-      }
+      const reply = String(data.reply || "");
+      const transferCall = data.transfer_call === true;
+      const autoTransfer = transferCall && listeningRef.current;
       // Overlap TTS with state updates so speech starts sooner on calls.
       const ttsPrefetch =
         listeningRef.current && reply.trim()
@@ -992,6 +1042,7 @@ export function ChatWidget() {
             quoteUrl:
               typeof data.quote_url === "string" ? data.quote_url : null,
             verifiedAddress: data.verified_address || null,
+            transferCall,
           },
         ];
         messagesRef.current = next;
@@ -1011,8 +1062,8 @@ export function ChatWidget() {
       } else {
         await speakReply(reply);
       }
-      if (hangUpAfterReply) {
-        stopListening();
+      if (autoTransfer) {
+        void startTransfer();
       } else if (listeningRef.current) {
         armSilenceTimer();
       }
@@ -1089,16 +1140,20 @@ export function ChatWidget() {
               <p className="mt-0.5 text-xs font-medium text-white/80">
                 {!identified
                   ? "Name, phone & email required to start"
+                  : transfer
+                    ? transfer === "live"
+                      ? "On the line with our store manager"
+                      : "Calling our store manager…"
                   : listening
                     ? voiceBusy
-                      ? "On a call · hearing you…"
+                      ? "Mic on · hearing you…"
                       : busy
-                        ? "On a call · AI Yogi is speaking soon"
-                        : "On a call with AI Yogi"
+                        ? "Mic on · AI Yogi is answering"
+                        : "Mic on · talk to AI Yogi"
                     : voiceEnabled
                       ? orderContext.item_count > 0
-                        ? `Call ready · cart (${orderContext.item_count})`
-                        : "Call or chat · menus & catering"
+                        ? `Talk or type · cart (${orderContext.item_count})`
+                        : "Talk or type · menus & catering"
                       : orderContext.item_count > 0
                         ? `Aware of your cart · ${orderContext.item_count} item${orderContext.item_count === 1 ? "" : "s"}`
                         : "Front desk · menus & catering only"}
@@ -1108,19 +1163,20 @@ export function ChatWidget() {
               {voiceEnabled ? (
                 <button
                   type="button"
-                  aria-label={listening ? "End call" : "Call AI Yogi"}
+                  aria-label={listening ? "Turn mic off" : "Talk to AI Yogi with your mic"}
                   title={
                     listening
-                      ? "End call"
-                      : "Call AI Yogi — stay on the line and talk naturally"
+                      ? "Turn mic off"
+                      : "Talk to AI Yogi with your mic — speak naturally, it listens and answers out loud"
                   }
-                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white transition hover:bg-white/10 ${
-                    listening ? "bg-red-700" : ""
+                  disabled={Boolean(transfer)}
+                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white transition hover:bg-white/10 disabled:opacity-40 ${
+                    listening ? "bg-white/20" : ""
                   }`}
                   onClick={() => {
                     if (!identified) {
                       setGateError(
-                        "Add your name, phone, and email, then you can call."
+                        "Add your name, phone, and email, then you can talk with AI Yogi."
                       );
                       return;
                     }
@@ -1128,11 +1184,11 @@ export function ChatWidget() {
                   }}
                 >
                   {listening ? (
-                    <PhoneOff className="h-4 w-4" />
+                    <MicOff className="h-4 w-4" />
                   ) : (
-                    <Phone className="h-4 w-4" />
+                    <Mic className="h-4 w-4" />
                   )}
-                  {listening ? "End" : "Call"}
+                  {listening ? "Stop" : "Talk"}
                 </button>
               ) : null}
               {voiceEnabled && identified && listening ? (
@@ -1202,7 +1258,7 @@ export function ChatWidget() {
                 Before we begin, please share your name, phone, and email so our
                 team can follow up if needed.
                 {voiceEnabled
-                  ? " Then tap Call to talk with AI Yogi."
+                  ? " Then type, or tap Talk to speak with AI Yogi using your mic."
                   : ""}
               </p>
               <label className="block text-xs font-semibold tracking-wide text-muted">
@@ -1262,6 +1318,29 @@ export function ChatWidget() {
                 <p className="text-[11px] font-medium text-muted">
                   Chatting as {lead.name} · {lead.email} · {lead.phone}
                 </p>
+                {transfer ? (
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border border-accent-deep bg-accent-deep px-3 py-2.5 text-white shadow-md">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="relative flex h-2.5 w-2.5 shrink-0">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-60" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                      </span>
+                      <p className="truncate text-xs font-semibold">
+                        {transfer === "live"
+                          ? "Connected · Yogiplate store manager"
+                          : "Calling our store manager…"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={hangUpTransfer}
+                      className="inline-flex shrink-0 items-center gap-1 bg-red-700 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-red-600"
+                    >
+                      <PhoneOff className="h-3 w-3" />
+                      Hang up
+                    </button>
+                  </div>
+                ) : null}
                 {listening ? (
                   <div className="flex items-center justify-between gap-2 border border-accent/30 bg-white px-3 py-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -1271,12 +1350,12 @@ export function ChatWidget() {
                       </span>
                       <p className="truncate text-xs font-semibold text-accent-deep">
                         {callConnecting
-                          ? "Ringing… AI Yogi will greet you first"
+                          ? "Mic on · AI Yogi will say hello first"
                           : voiceBusy
-                            ? "Call connected · listening…"
+                            ? "Listening…"
                             : busy
-                              ? "Call connected · AI Yogi responding…"
-                              : "Call connected — your turn to speak"}
+                              ? "AI Yogi is answering…"
+                              : "Mic on — go ahead and speak"}
                       </p>
                     </div>
                     <button
@@ -1285,10 +1364,10 @@ export function ChatWidget() {
                         stopListening();
                         stopSpeaking();
                       }}
-                      className="inline-flex shrink-0 items-center gap-1 bg-red-700 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-red-600"
+                      className="inline-flex shrink-0 items-center gap-1 border border-line bg-white px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-warm"
                     >
-                      <PhoneOff className="h-3 w-3" />
-                      End
+                      <MicOff className="h-3 w-3" />
+                      Mic off
                     </button>
                   </div>
                 ) : null}
@@ -1399,6 +1478,22 @@ export function ChatWidget() {
                           View quote & pay deposit
                         </a>
                       ) : null}
+                      {m.transferCall ? (
+                        <div className="mt-2 border-t border-line pt-2">
+                          <button
+                            type="button"
+                            disabled={Boolean(transfer)}
+                            onClick={() => void startTransfer()}
+                            className="inline-flex items-center gap-1.5 bg-accent-deep px-3 py-2 text-xs font-semibold text-white transition hover:bg-accent disabled:opacity-50"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            {transfer ? "Call in progress…" : "Call store manager"}
+                          </button>
+                          <p className="mt-1 text-[11px] text-muted">
+                            Uses your browser mic — no phone needed.
+                          </p>
+                        </div>
+                      ) : null}
                       {/* WhatsApp chat transfer — re-enable later with agent WHATSAPP_CHAT_TRANSFER_ENABLED
                       {m.offerWhatsApp && m.whatsappUrl ? (
                         <a
@@ -1417,9 +1512,9 @@ export function ChatWidget() {
                 {busy || voiceBusy ? (
                   <p className="text-xs font-medium text-muted">
                     {voiceBusy
-                      ? "Hearing you on the call…"
+                      ? "Hearing you…"
                       : listening
-                        ? "AI Yogi is responding on the call…"
+                        ? "AI Yogi is answering…"
                         : "Front desk is typing…"}
                   </p>
                 ) : null}
@@ -1436,27 +1531,28 @@ export function ChatWidget() {
                     <button
                       type="button"
                       onClick={() => void toggleListening()}
-                      aria-label={listening ? "End call" : "Call AI Yogi"}
+                      disabled={Boolean(transfer)}
+                      aria-label={listening ? "Turn mic off" : "Talk to AI Yogi with your mic"}
                       title={
                         listening
-                          ? "End call"
-                          : "Call AI Yogi — stay on the line and talk naturally"
+                          ? "Turn mic off"
+                          : "Talk to AI Yogi with your mic — speak naturally, it listens and answers out loud"
                       }
-                      className={`inline-flex h-11 shrink-0 items-center justify-center gap-1.5 px-3 text-sm font-semibold text-white transition ${
+                      className={`inline-flex h-11 shrink-0 items-center justify-center gap-1.5 px-3 text-sm font-semibold text-white transition disabled:opacity-40 ${
                         listening
-                          ? "bg-red-700 hover:bg-red-600"
+                          ? "animate-pulse bg-accent hover:bg-accent-deep"
                           : "bg-accent-deep hover:bg-accent"
                       }`}
                     >
                       {listening ? (
                         <>
-                          <PhoneOff className="h-4 w-4" />
-                          End
+                          <MicOff className="h-4 w-4" />
+                          Stop
                         </>
                       ) : (
                         <>
-                          <Phone className="h-4 w-4" />
-                          Call
+                          <Mic className="h-4 w-4" />
+                          Talk
                         </>
                       )}
                     </button>
@@ -1469,9 +1565,9 @@ export function ChatWidget() {
                     onKeyDown={onKeyDown}
                     placeholder={
                       listening
-                        ? "On a call… you can still type"
+                        ? "Listening… you can still type"
                         : voiceEnabled
-                          ? "Type a message or tap Call…"
+                          ? "Type a message or tap Talk…"
                           : "Ask about menus, diets, trays…"
                     }
                     className="min-h-[2.75rem] flex-1 resize-none border border-line bg-warm px-3 py-2 text-sm outline-none focus:border-accent"

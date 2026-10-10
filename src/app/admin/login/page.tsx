@@ -1,9 +1,20 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, use, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AdminLoginPage() {
+function safeNext(value: string | undefined) {
+  if (!value || !value.startsWith("/admin") || value.startsWith("//")) return "/admin";
+  if (value.startsWith("/admin/login")) return "/admin";
+  return value;
+}
+
+export default function AdminLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; locked?: string }>;
+}) {
+  const params = use(searchParams);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +32,7 @@ export default function AdminLoginPage() {
       setError("Invalid email or password.");
       return;
     }
-    router.push("/admin");
+    router.push(safeNext(params.next));
     router.refresh();
   }
 
@@ -33,6 +44,11 @@ export default function AdminLoginPage() {
       >
         Admin login
       </h1>
+      {params.locked ? (
+        <p className="mt-4 border border-line bg-warm px-3 py-2 text-sm text-foreground">
+          The admin locked after 30 minutes without activity. Enter the admin password to continue.
+        </p>
+      ) : null}
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <label className="block text-sm">
           Email

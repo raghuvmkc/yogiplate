@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return new Response("Forbidden", { status: 403 });
   }
   const xml = twiml(
-    `<Dial timeout="25"><Client>${xmlEscape(MANAGER_VOICE_IDENTITY)}</Client></Dial><Say voice="Polly.Joanna">Sorry, the manager is not available right now. Please call again in a few minutes.</Say>`
+    `<Dial timeout="25"><Client>${xmlEscape(MANAGER_VOICE_IDENTITY)}</Client></Dial><Say voice="Polly.Joanna">Sorry, our store manager couldn't pick up right now. Our store manager will call you as soon as he is available. Thank you for calling Yogiplate.</Say>`
   );
   return new Response(xml, { headers: { "Content-Type": "text/xml" } });
 }

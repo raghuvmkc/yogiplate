@@ -3,6 +3,7 @@ import {
   clearAdminSession,
   isAdminAuthenticated,
   setAdminSession,
+  touchAdminSession,
   verifyAdmin,
 } from "@/lib/auth";
 
@@ -20,6 +21,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
   await setAdminSession();
+  return NextResponse.json({ ok: true });
+}
+
+/** Activity ping from the admin idle lock. */
+export async function PATCH() {
+  if (!(await touchAdminSession())) {
+    return NextResponse.json({ error: "Session expired" }, { status: 401 });
+  }
   return NextResponse.json({ ok: true });
 }
 

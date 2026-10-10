@@ -12,19 +12,21 @@ export type InboundPayload = {
     email?: string;
     phone?: string;
   };
+  meta?: Record<string, unknown>;
 };
 
-export async function handleChannelInbound(input: InboundPayload) {
-  const text = input.text.trim();
-  if (!text) {
-    return { ok: false as const, error: "empty_message" };
-  }
+export function aiPaused(thread: Pick<ChannelThread, "ai_paused_until">) {
+  return Boolean(thread.ai_paused_until && Date.parse(thread.ai_paused_until) > Date.now());
+}
 
+/** Save the guest's message on its thread (creating the thread if new). */
+export async function recordInboundMessage(input: InboundPayload) {
+  const text = input.text.trim();
   const channel = input.channel;
   const externalId = input.external_id.trim() || uid("ext");
   const now = new Date().toISOString();
-
   let threadId = "";
+  let paused = false;
 
   await updateDb((d) => {
     d.channel_threads = d.channel_threads || [];
@@ -54,14 +56,25 @@ export async function handleChannelInbound(input: InboundPayload) {
       role: "user",
       content: text,
       created_at: now,
+      meta: input.meta || null,
     });
+    t.status = "open";
+    t.unread = (t.unread || 0) + 1;
     t.updated_at = now;
     threadId = t.id;
+    paused = aiPaused(t);
   });
 
+  return { threadId, aiPaused: paused };
+}
+
+/** Ask AI Yogi to answer the latest guest message on a thread and save the reply. */
+export async function aiReplyForThread(threadId: string) {
   const db = await getDb();
   const thread = (db.channel_threads || []).find((t) => t.id === threadId);
   if (!thread) return { ok: false as const, error: "thread_failed" };
+  const channel = thread.channel;
+  const externalId = thread.external_id;
 
   const leadName = thread.lead_name || "Guest";
   const leadEmail =
@@ -85,15 +98,14 @@ export async function handleChannelInbound(input: InboundPayload) {
   });
 
   const history = thread.messages
-    .filter((m) => m.role === "user" || m.role === "assistant")
+    .filter((m) => m.role === "user" || m.role === "assistant" || m.role === "manager")
     .slice(-20)
     .map((m) => ({
-      role: m.role as "user" | "assistant",
+      role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
       content: m.content,
     }));
-
-  if (!history.length || history[history.length - 1].content !== text) {
-    history.push({ role: "user", content: text });
+  if (!history.length || history[history.length - 1].role !== "user") {
+    return { ok: false as const, error: "no_guest_message", thread_id: threadId };
   }
 
   try {
@@ -109,11 +121,13 @@ export async function handleChannelInbound(input: InboundPayload) {
     });
 
     const replyAt = new Date().toISOString();
+    let messageId = "";
     await updateDb((d) => {
       const t = (d.channel_threads || []).find((x) => x.id === threadId);
       if (!t) return;
+      messageId = uid("msg");
       t.messages.push({
-        id: uid("msg"),
+        id: messageId,
         role: "assistant",
         content: result.reply,
         created_at: replyAt,
@@ -128,6 +142,7 @@ export async function handleChannelInbound(input: InboundPayload) {
     return {
       ok: true as const,
       thread_id: threadId,
+      message_id: messageId,
       reply: result.reply,
       quote_url: result.quote_url,
       tools_used: result.tools_used,
@@ -137,6 +152,14 @@ export async function handleChannelInbound(input: InboundPayload) {
     const detail = e instanceof Error ? e.message : String(e);
     return { ok: false as const, error: detail, thread_id: threadId };
   }
+}
+
+export async function handleChannelInbound(input: InboundPayload) {
+  if (!input.text.trim()) {
+    return { ok: false as const, error: "empty_message" };
+  }
+  const { threadId } = await recordInboundMessage(input);
+  return aiReplyForThread(threadId);
 }
 
 export async function listChannelThreads(): Promise<ChannelThread[]> {

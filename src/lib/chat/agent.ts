@@ -36,6 +36,7 @@ import {
   type AddressVerifyResult,
 } from "@/lib/geocode";
 import { notifyManagersOfHumanRequest } from "@/lib/handoff";
+import { voiceConfigured } from "@/lib/twilio-voice";
 import {
   chefWithTitle,
   escapeRegExp,
@@ -120,6 +121,8 @@ export type AgentTurnResult = {
   verified_address: AddressVerifyResult | null;
   /** Voice call: latest guest turn was unrelated to Yogiplate catering. */
   off_topic: boolean;
+  /** Website guest asked for a person and browser calling is set up: offer to ring the store manager. */
+  transfer_call: boolean;
 };
 
 function parseMenuLines(raw: unknown): AgentMenuLine[] {
@@ -567,7 +570,7 @@ export async function runFrontDeskTurn(
       ? `\nCHANNEL: This turn arrived via ${channel}. Keep replies concise for that medium.`
       : "",
     voiceMode
-      ? "\nVOICE CALL MODE: Guest is on a live phone-style call. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. If they did, name at most two dishes and one reason from the tool. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Never say a URL, localhost address, or quote link out loud. Say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
+      ? "\nVOICE MODE: Guest is talking to you with their microphone and hears your reply spoken aloud. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. If they did, name at most two dishes and one reason from the tool. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Never say a URL, localhost address, or quote link out loud. Say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
       : "",
   ].join("\n");
 
@@ -1064,6 +1067,7 @@ export async function runFrontDeskTurn(
     (Boolean(parsed.offer_whatsapp) || userAskedHuman || userAskedWhatsApp);
 
   const finalProposal = proposalState.current;
+  const transferCall = userAskedHuman && channel === "web_chat" && voiceConfigured();
 
   if (userAskedHuman && !humanHandoffSent) {
     const handoff = await notifyManagersOfHumanRequest({
@@ -1100,7 +1104,11 @@ export async function runFrontDeskTurn(
     }
   }
 
-  if (humanHandoffSent) {
+  if (transferCall) {
+    reply = voiceMode
+      ? "Sure — connecting you to our store manager now. If he can't pick up, our store manager will call you as soon as he is available."
+      : "Sure — tap “Call store manager” below and I'll connect you right from your browser. If he can't pick up, our store manager will call you as soon as he is available.";
+  } else if (humanHandoffSent) {
     const team = handoffTeamPhrase(people);
     const transferAckRe = new RegExp(
       `${chefToken}|${managerToken}|restaurant manager|forwarded|transferred|shared your`,
@@ -1292,5 +1300,6 @@ export async function runFrontDeskTurn(
     tools_used: [...new Set(toolsUsed)],
     verified_address,
     off_topic,
+    transfer_call: transferCall,
   };
 }

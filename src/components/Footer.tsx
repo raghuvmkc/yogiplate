@@ -39,6 +39,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/privacy" className="hover:text-accent-deep">
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
               <Link href="/admin" className="hover:text-accent-deep">
                 Admin
               </Link>
@@ -58,7 +63,10 @@ export function Footer() {
       </div>
       <div className="border-t border-line py-5 text-center text-sm font-medium text-muted">
         © {new Date().getFullYear()} Yogiplate Catering. All vegetarian. Always
-        fresh.
+        fresh. ·{" "}
+        <Link href="/privacy" className="hover:text-accent-deep">
+          Privacy Policy
+        </Link>
       </div>
     </footer>
   );

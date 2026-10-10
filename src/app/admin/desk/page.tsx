@@ -5,7 +5,7 @@ import { DEFAULT_SETUP_FEE } from "@/lib/pricing";
 import { getDb } from "@/lib/store/local-db";
 
 export default async function AdminDeskPage() {
-  if (!(await isAdminAuthenticated())) redirect("/admin/login");
+  if (!(await isAdminAuthenticated())) redirect("/admin/login?next=/admin/desk");
   const db = await getDb();
   const items = db.menu_items
     .filter((item) => item.is_available)

@@ -202,7 +202,8 @@ export interface ChatSessionLog {
 
 export interface ChannelMessage {
   id: string;
-  role: "user" | "assistant" | "system";
+  /** user = guest, assistant = AI Yogi, manager = typed by staff on the desk. */
+  role: "user" | "assistant" | "system" | "manager";
   content: string;
   created_at: string;
   meta?: Record<string, unknown> | null;
@@ -220,6 +221,12 @@ export interface ChannelThread {
   status: "open" | "closed";
   created_at: string;
   updated_at: string;
+  /** Guest messages the desk has not opened yet. */
+  unread?: number;
+  /** AI Yogi stays quiet until this time because a manager is replying in person. */
+  ai_paused_until?: string | null;
+  /** Guest replied STOP; no texts may be sent until they reply START. */
+  sms_opted_out?: boolean;
 }
 
 export interface Coupon {

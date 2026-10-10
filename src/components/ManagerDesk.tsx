@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AdminCalendarPageClient } from "@/components/AdminCalendarPageClient";
+import { DeskTexts } from "@/components/DeskTexts";
 import type { CartLine, DietTag, MenuCategory } from "@/lib/types";
 
 export type DeskMenuItem = {
@@ -20,7 +21,26 @@ type DeskCall = {
   mute: (muted?: boolean) => void;
   on: (event: string, handler: () => void) => void;
   parameters: { From?: string; To?: string };
+  customParameters?: Map<string, string>;
 };
+
+/** Website-chat transfers arrive as client:guest_* with the guest's name and phone attached. */
+function callerLabel(call: DeskCall | null) {
+  if (!call) return "";
+  const from = call.parameters?.From || "";
+  if (from.startsWith("client:guest_")) {
+    const guest = call.customParameters?.get("GuestName") || "Website guest";
+    const guestPhone = call.customParameters?.get("GuestPhone");
+    return `${guest}${guestPhone ? ` · ${guestPhone}` : ""} (website chat)`;
+  }
+  return from || call.parameters?.To || "";
+}
+
+function callerPhone(call: DeskCall) {
+  const from = call.parameters?.From || "";
+  if (from.startsWith("client:")) return call.customParameters?.get("GuestPhone") || "";
+  return from;
+}
 
 type CallRow = {
   sid: string;
@@ -80,7 +100,8 @@ export function ManagerDesk({
   const [active, setActive] = useState<DeskCall | null>(null);
   const [muted, setMuted] = useState(false);
   const [calls, setCalls] = useState<CallRow[]>([]);
-  const [tab, setTab] = useState<"calendar" | "menu" | "quote" | "invoice">("quote");
+  const [tab, setTab] = useState<"texts" | "calendar" | "menu" | "quote" | "invoice">("quote");
+  const [unreadTexts, setUnreadTexts] = useState(0);
   const [query, setQuery] = useState("");
   const [lines, setLines] = useState<CartLine[]>([]);
   const [name, setName] = useState("");
@@ -164,9 +185,10 @@ export function ManagerDesk({
         setPhoneError(error.message || "The phone hit an error.");
       });
       device.on("incoming", (call: DeskCall) => {
-        const from = call.parameters?.From || "";
+        const label = callerLabel(call);
+        const from = callerPhone(call);
         setIncoming(call);
-        setStatus(from ? `Incoming ${from}` : "Incoming call");
+        setStatus(label ? `Incoming ${label}` : "Incoming call");
         if (from) setPhone((current) => current || from);
         call.on("cancel", () => {
           setIncoming((current) => (current === call ? null : current));
@@ -193,6 +215,13 @@ export function ManagerDesk({
       deviceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    document.body.dataset.adminBusy = active || incoming ? "1" : "";
+    return () => {
+      document.body.dataset.adminBusy = "";
+    };
+  }, [active, incoming]);
 
   function watchCall(call: DeskCall, label: string) {
     setActive(call);
@@ -232,9 +261,9 @@ export function ManagerDesk({
   function answer() {
     if (!incoming) return;
     incoming.accept();
-    const from = incoming.parameters?.From || "";
+    const label = callerLabel(incoming);
     setIncoming(null);
-    watchCall(incoming, from ? `On a call with ${from}` : "On a call");
+    watchCall(incoming, label ? `On a call with ${label}` : "On a call");
   }
 
   function decline() {
@@ -322,11 +351,7 @@ export function ManagerDesk({
     }
   }
 
-  const remote =
-    incoming?.parameters?.From ||
-    active?.parameters?.From ||
-    active?.parameters?.To ||
-    "";
+  const remote = callerLabel(incoming) || callerLabel(active);
 
   return (
     <div className="mx-auto grid max-w-[1400px] lg:grid-cols-[22rem_1fr]">
@@ -441,6 +466,7 @@ export function ManagerDesk({
         <div className="flex flex-wrap gap-2">
           {(
             [
+              ["texts", "Texts"],
               ["calendar", "Calendar"],
               ["menu", "Menu"],
               ["quote", "Quote"],
@@ -453,14 +479,26 @@ export function ManagerDesk({
               onClick={() => setTab(id)}
               className={
                 tab === id
-                  ? "bg-accent-deep px-4 py-2 text-sm font-semibold text-white"
-                  : "border border-line px-4 py-2 text-sm font-semibold text-foreground"
+                  ? "inline-flex items-center gap-2 bg-accent-deep px-4 py-2 text-sm font-semibold text-white"
+                  : "inline-flex items-center gap-2 border border-line px-4 py-2 text-sm font-semibold text-foreground"
               }
             >
               {label}
+              {id === "texts" && unreadTexts > 0 ? (
+                <span className="min-w-5 rounded-full bg-[#c2410c] px-1.5 text-center text-xs font-bold leading-5 text-white">
+                  {unreadTexts}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
+
+        <DeskTexts
+          visible={tab === "texts"}
+          canCall={phoneReady && !active}
+          onCall={(to) => void placeCall(to)}
+          onUnreadChange={setUnreadTexts}
+        />
 
         {tab === "calendar" ? (
           <div className="mt-4">
