@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
         <Section title="SMS Text Messaging">
           <p>
             When you text the keyword <strong className="text-foreground">CATERING</strong> to{" "}
-            <a href="sms:+14083354055" className="font-semibold text-accent-deep hover:underline">
+            <a href="sms:+1-408-335-4055" className="font-semibold text-accent-deep hover:underline">
               (408) 335-4055
             </a>
             , you agree to receive text messages from Stone Craft Pizza Catering / Yogiplate Catering
@@ -145,7 +145,7 @@ export default function PrivacyPolicyPage() {
             <p className="mt-1">326 Commercial Street, San Jose, CA</p>
             <p className="mt-1">
               Phone:{" "}
-              <a href="tel:+14083354055" className="font-semibold text-accent-deep hover:underline">
+              <a href="tel:+1-408-335-4055" className="font-semibold text-accent-deep hover:underline">
                 (408) 335-4055
               </a>
             </p>
