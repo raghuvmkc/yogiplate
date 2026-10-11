@@ -69,6 +69,7 @@ const BodySchema = z.object({
     .optional(),
   session_id: z.string().min(4).max(80).optional(),
   voice_mode: z.boolean().optional(),
+  stream: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -116,31 +117,66 @@ export async function POST(req: Request) {
     );
   }
 
+  const turn = {
+    messages: body.messages,
+    lead: body.lead,
+    order_context: body.order_context,
+    order_draft: body.order_draft as
+      | Partial<import("@/lib/chat/order-draft").OrderDraft>
+      | undefined,
+    session_id: body.session_id,
+    channel: "web_chat" as const,
+    voice_mode: Boolean(body.voice_mode),
+  };
+
+  if (body.stream) return streamTurn(turn);
+
   try {
-    const result = await runFrontDeskTurn({
-      messages: body.messages,
-      lead: body.lead,
-      order_context: body.order_context,
-      order_draft: body.order_draft as
-        | Partial<import("@/lib/chat/order-draft").OrderDraft>
-        | undefined,
-      session_id: body.session_id,
-      channel: "web_chat",
-      voice_mode: Boolean(body.voice_mode),
-    });
+    const result = await runFrontDeskTurn(turn);
     return NextResponse.json(result);
   } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    await reportError("chat", detail, { code: agentErrorCode(detail) });
-    const safeDetail = detail.replace(/key=[^&\s]+/gi, "key=***").slice(0, 240);
-    return NextResponse.json(
-      {
-        error:
-          "Sorry — the front desk chat is briefly unavailable. Please try again, or use Build order.",
-        code: agentErrorCode(detail),
-        detail: safeDetail,
-      },
-      { status: 502 }
-    );
+    return NextResponse.json(await chatFailure(err), { status: 502 });
   }
+}
+
+async function chatFailure(err: unknown) {
+  const detail = err instanceof Error ? err.message : String(err);
+  await reportError("chat", detail, { code: agentErrorCode(detail) });
+  const safeDetail = detail.replace(/key=[^&\s]+/gi, "key=***").slice(0, 240);
+  return {
+    error:
+      "Sorry — the front desk chat is briefly unavailable. Please try again, or use Build order.",
+    code: agentErrorCode(detail),
+    detail: safeDetail,
+  };
+}
+
+/** NDJSON: {t:"delta",round,text} / {t:"status",text} … then {t:"done",result} or {t:"error",…}. */
+function streamTurn(turn: Parameters<typeof runFrontDeskTurn>[0]) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const write = (event: Record<string, unknown>) =>
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      try {
+        const result = await runFrontDeskTurn({
+          ...turn,
+          onReplyDelta: ({ round, text }) => write({ t: "delta", round, text }),
+          onStatus: (text) => write({ t: "status", text }),
+        });
+        write({ t: "done", result });
+      } catch (err) {
+        write({ t: "error", ...(await chatFailure(err)) });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

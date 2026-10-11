@@ -30,7 +30,7 @@ import {
 import { useCartStore } from "@/lib/cart-store";
 import { cartSubtotal } from "@/lib/pricing";
 import { ContinuousMic } from "@/lib/mic-recorder";
-import { speakableForCall } from "@/lib/speakable";
+import { finishedSentences, speakableForCall } from "@/lib/speakable";
 import type { DietTag } from "@/lib/types";
 
 type ChatRole = "user" | "assistant";
@@ -125,6 +125,55 @@ const MIC_IDLE_NOTE =
 const MANAGER_CALLBACK_NOTE =
   "If our store manager couldn't pick up, our store manager will call you as soon as he is available.";
 
+/** Same cap as speakableForCall: talk mode speaks the first 1–2 sentences. */
+const CALL_SPEECH_SENTENCES = 2;
+const CALL_SPEECH_CHARS = 320;
+
+function chatErrorText(data: { error?: string; code?: string; detail?: string }) {
+  const bits = [String(data.error || "Chat failed")];
+  if (data.code) bits.push(`[${data.code}]`);
+  if (data.detail) bits.push(String(data.detail).slice(0, 160));
+  return bits.join(" ");
+}
+
+/** Reads /api/chat NDJSON events and resolves with the final turn result. */
+async function readChatStream<T>(
+  body: ReadableStream<Uint8Array>,
+  handlers: {
+    onDelta: (round: number, text: string) => void;
+    onStatus: (text: string) => void;
+  }
+): Promise<T> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let newline: number;
+    while ((newline = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      if (!line) continue;
+      const event = JSON.parse(line) as {
+        t: string;
+        round?: number;
+        text?: string;
+        result?: T;
+        error?: string;
+        code?: string;
+        detail?: string;
+      };
+      if (event.t === "delta") handlers.onDelta(Number(event.round) || 0, String(event.text || ""));
+      else if (event.t === "status") handlers.onStatus(String(event.text || ""));
+      else if (event.t === "done" && event.result) return event.result;
+      else if (event.t === "error") throw new Error(chatErrorText(event));
+    }
+    if (done) break;
+  }
+  throw new Error("Chat returned an unexpected response. Please try again.");
+}
+
 export function ChatWidget() {
   const pathname = usePathname();
   const diet = useCartStore((s) => s.diet);
@@ -144,6 +193,8 @@ export function ChatWidget() {
   const [gateError, setGateError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [liveReply, setLiveReply] = useState("");
+  const [liveStatus, setLiveStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [lead, setLead] = useState<Lead>(EMPTY_LEAD);
   const [orderDraft, setOrderDraft] = useState<OrderDraft>(EMPTY_ORDER_DRAFT);
@@ -733,6 +784,58 @@ export function ChatWidget() {
     return blob.size ? blob : null;
   }
 
+  /** Speaks streamed sentences in order while later ones are still being synthesized. */
+  function createSentenceSpeaker() {
+    const spoken: string[] = [];
+    let chars = 0;
+    let chain: Promise<void> = Promise.resolve();
+    const sameWords = (a = "", b = "") =>
+      a.toLowerCase().replace(/[^a-z0-9]+/g, "") ===
+      b.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+    function enqueue(sentence: string) {
+      if (spoken.length >= CALL_SPEECH_SENTENCES) return false;
+      if (spoken.length && chars + sentence.length + 1 > CALL_SPEECH_CHARS) return false;
+      spoken.push(sentence);
+      chars += sentence.length + 1;
+      const blob = fetchTtsBlob(sentence).catch(() => null);
+      chain = chain.then(async () => {
+        const ready = await blob;
+        if (
+          ready &&
+          voiceEnabled &&
+          voiceSpeakRef.current &&
+          listeningRef.current &&
+          !endingCallRef.current
+        ) {
+          await playAudioBlob(ready);
+        }
+      });
+      return true;
+    }
+
+    function enqueueFrom(sentences: string[]) {
+      for (const sentence of sentences.slice(spoken.length)) {
+        if (!enqueue(sentence)) break;
+      }
+    }
+
+    return {
+      get count() {
+        return spoken.length;
+      },
+      feed(text: string) {
+        enqueueFrom(finishedSentences(text));
+      },
+      /** Speak whatever the final reply adds, unless it no longer starts with what was spoken. */
+      finish(reply: string) {
+        const all = finishedSentences(reply, true);
+        if (spoken.every((s, i) => sameWords(all[i], s))) enqueueFrom(all);
+      },
+      drained: () => chain,
+    };
+  }
+
   async function speakReply(text: string) {
     if (!voiceEnabled || !voiceSpeakRef.current || !text.trim()) return;
     try {
@@ -900,6 +1003,9 @@ export function ChatWidget() {
     setBusy(true);
     busyRef.current = true;
 
+    const speaker = listeningRef.current ? createSentenceSpeaker() : null;
+    let speakRound = 0;
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -923,9 +1029,9 @@ export function ChatWidget() {
           order_draft: currentDraft,
           session_id: sessionId,
           voice_mode: listeningRef.current,
+          stream: true,
         }),
       });
-      const rawBody = await res.text();
       type ChatApiPayload = {
         error?: string;
         code?: string;
@@ -946,27 +1052,42 @@ export function ChatWidget() {
         transfer_call?: boolean;
       };
       let data: ChatApiPayload = {};
-      try {
-        data = rawBody ? (JSON.parse(rawBody) as ChatApiPayload) : {};
-      } catch {
-        throw new Error(
-          res.ok
-            ? "Chat returned an unexpected response. Please try again."
-            : `Chat failed (${res.status}). Please try again.`
-        );
+      if (res.ok && res.body && /ndjson/.test(res.headers.get("content-type") || "")) {
+        data = await readChatStream<ChatApiPayload>(res.body, {
+          onDelta: (round, text) => {
+            setLiveStatus("");
+            setLiveReply(text);
+            if (!speaker) return;
+            if (round !== speakRound) {
+              if (speaker.count) return;
+              speakRound = round;
+            }
+            speaker.feed(text);
+          },
+          onStatus: setLiveStatus,
+        });
+      } else {
+        const rawBody = await res.text();
+        try {
+          data = rawBody ? (JSON.parse(rawBody) as ChatApiPayload) : {};
+        } catch {
+          throw new Error(
+            res.ok
+              ? "Chat returned an unexpected response. Please try again."
+              : `Chat failed (${res.status}). Please try again.`
+          );
+        }
+        if (!res.ok) throw new Error(chatErrorText(data));
       }
-      if (!res.ok) {
-        const bits = [String(data.error || "Chat failed")];
-        if (data.code) bits.push(`[${data.code}]`);
-        if (data.detail) bits.push(String(data.detail).slice(0, 160));
-        throw new Error(bits.join(" "));
-      }
+      setLiveReply("");
+      setLiveStatus("");
       const reply = String(data.reply || "");
       const transferCall = data.transfer_call === true;
       const autoTransfer = transferCall && listeningRef.current;
+      const streamedSpeech = Boolean(speaker?.count);
       // Overlap TTS with state updates so speech starts sooner on calls.
       const ttsPrefetch =
-        listeningRef.current && reply.trim()
+        listeningRef.current && reply.trim() && !streamedSpeech
           ? fetchTtsBlob(reply)
           : null;
       if (data.lead && typeof data.lead === "object") {
@@ -1048,7 +1169,10 @@ export function ChatWidget() {
         messagesRef.current = next;
         return next;
       });
-      if (ttsPrefetch) {
+      if (speaker && streamedSpeech) {
+        speaker.finish(reply);
+        await speaker.drained();
+      } else if (ttsPrefetch) {
         try {
           const blob = await ttsPrefetch;
           if (blob && voiceSpeakRef.current) {
@@ -1078,6 +1202,8 @@ export function ChatWidget() {
     } finally {
       busyRef.current = false;
       setBusy(false);
+      setLiveReply("");
+      setLiveStatus("");
     }
   }
 
@@ -1509,13 +1635,22 @@ export function ChatWidget() {
                     </div>
                   </div>
                 ))}
-                {busy || voiceBusy ? (
+                {busy && liveReply ? (
+                  <div className="flex justify-start">
+                    <p className="max-w-[90%] whitespace-pre-wrap border border-line bg-white px-3 py-2 text-sm leading-relaxed text-foreground">
+                      {liveReply.replace(/\*\*|__/g, "")}
+                    </p>
+                  </div>
+                ) : null}
+                {(busy && !liveReply) || voiceBusy ? (
                   <p className="text-xs font-medium text-muted">
                     {voiceBusy
                       ? "Hearing you…"
-                      : listening
-                        ? "AI Yogi is answering…"
-                        : "Front desk is typing…"}
+                      : liveStatus
+                        ? liveStatus
+                        : listening
+                          ? "AI Yogi is answering…"
+                          : "Front desk is typing…"}
                   </p>
                 ) : null}
                 {error ? (

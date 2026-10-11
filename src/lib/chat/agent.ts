@@ -91,7 +91,56 @@ export type AgentTurnInput = {
   channel?: ContactChannel;
   /** True when guest is on the voice Call path — keep spoken replies short. */
   voice_mode?: boolean;
+  /**
+   * Streams the answer's reply text as Gemini writes it (cumulative text per model call).
+   * Post-processing can still append to the final reply, so callers must reconcile with it.
+   */
+  onReplyDelta?: (event: { round: number; text: string }) => void;
+  /** Short progress note while a tool runs, e.g. "Choosing dishes…". */
+  onStatus?: (text: string) => void;
 };
+
+const TOOL_STATUS: Record<string, string> = {
+  build_plan: "Choosing dishes…",
+  get_menu: "Checking the menu…",
+  catering_math: "Working out quantities…",
+  check_capacity: "Checking the calendar…",
+  time_context: "Checking the date…",
+  get_famous_combinations: "Looking up favorite combos…",
+  followthrough: "Working on it…",
+  order_draft: "Updating your order…",
+};
+
+/**
+ * Pulls the "reply" string out of answer JSON while it is still streaming.
+ * Only streams when "type":"answer" appears before "reply", so tool calls are never spoken.
+ */
+export function streamingReplyText(buffer: string): string | null {
+  const typeAt = buffer.search(/"type"\s*:\s*"answer"/);
+  const replyKey = /"reply"\s*:\s*"/.exec(buffer);
+  if (typeAt < 0 || !replyKey || replyKey.index < typeAt) return null;
+  let out = "";
+  for (let i = replyKey.index + replyKey[0].length; i < buffer.length; i++) {
+    const ch = buffer[i]!;
+    if (ch === '"') return out;
+    if (ch !== "\\") {
+      out += ch;
+      continue;
+    }
+    const next = buffer[i + 1];
+    if (next == null) return out;
+    if (next === "u") {
+      const hex = buffer.slice(i + 2, i + 6);
+      if (hex.length < 4) return out;
+      out += String.fromCharCode(parseInt(hex, 16));
+      i += 5;
+      continue;
+    }
+    out += next === "n" ? "\n" : next === "t" ? " " : next;
+    i += 1;
+  }
+  return out;
+}
 
 export type AgentMenuLine = {
   name: string;
@@ -547,6 +596,13 @@ export async function runFrontDeskTurn(
   }
 
   const channel = input.channel || "web_chat";
+  const people = getYogiPeople();
+  const chefToken = escapeRegExp(people.chefName);
+  const managerToken = escapeRegExp(people.managerName);
+  const userAskedHuman = new RegExp(
+    `\\b(talk to (a |the )?(human|person|owner|chef|someone|manager)|speak (to|with) (a |the )?(human|person|owner|chef|someone|manager)|call (me|us|you|the owner|${chefToken}|${managerToken})|connect me|real person|live (agent|person|chat)|escalate|restaurant manager|human please|want a person|${chefToken}|${managerToken})\\b`,
+    "i"
+  ).test(last.content);
   const sessionId =
     input.session_id ||
     `sess_${input.lead.email.toLowerCase().replace(/[^a-z0-9]/g, "")}_${channel}`;
@@ -708,6 +764,29 @@ export async function runFrontDeskTurn(
   }
 
   const chat = model.startChat({ history });
+  const streamReply = input.onReplyDelta && !userAskedHuman ? input.onReplyDelta : null;
+  let modelRound = 0;
+
+  async function sendModel(message: string) {
+    if (!streamReply) return chat.sendMessage(message);
+    const round = ++modelRound;
+    const streamed = await chat.sendMessageStream(message);
+    let buffer = "";
+    let sent = "";
+    for await (const chunk of streamed.stream) {
+      try {
+        buffer += chunk.text();
+      } catch {
+        continue;
+      }
+      const text = streamingReplyText(buffer);
+      if (text && text.length > sent.length) {
+        sent = text;
+        streamReply({ round, text });
+      }
+    }
+    return { response: await streamed.response };
+  }
 
   const asksOnionGarlic =
     /onion|garlic|mushroom|pyaaz|lahsun|ingredients?/.test(
@@ -757,6 +836,7 @@ export async function runFrontDeskTurn(
     specialtyHint,
     "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional lines/highlights/bullets).",
+    'In answer JSON always write "type":"answer" first and "reply" second, before lines or any other field.',
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
     asksOnionGarlic
       ? "REQUIRED THIS TURN: Guest asked about onion/garlic/mushrooms/ingredients. Answer that fact clearly and warmly in reply — do not evade or only talk about menus. Our kitchen does not use onion, garlic, or mushrooms."
@@ -821,7 +901,7 @@ export async function runFrontDeskTurn(
     };
   }
 
-  let result = await chat.sendMessage(turn);
+  let result = await sendModel(turn);
   let parsed = safeParse(modelText(result));
   let lastToolSummary = "";
 
@@ -835,7 +915,7 @@ export async function runFrontDeskTurn(
         !String(parsed.reply || parsed.type || parsed.tool || "").trim())
     ) {
       didCompactRetry = true;
-      result = await chat.sendMessage(
+      result = await sendModel(
         [
           "Your previous JSON was empty or truncated. Return ONE compact answer JSON now.",
           "Fields: type:answer, reply (2 short sentences), lines (every planned dish, up to 12, with name,quantity,unit,price), lines_total, highlights (optional).",
@@ -857,6 +937,8 @@ export async function runFrontDeskTurn(
 
     const toolCall = parseToolCall(parsed);
     if (toolCall) {
+      const status = TOOL_STATUS[toolCall.tool];
+      if (status) input.onStatus?.(status);
       const toolResult = await executeChatTool(toolCall.tool, toolCall.args, {
         lead_name: input.lead.name,
         lead_phone: input.lead.phone,
@@ -926,7 +1008,7 @@ export async function runFrontDeskTurn(
           }
         }
       }
-      result = await chat.sendMessage(
+      result = await sendModel(
         [
           `Tool ${toolCall.tool} result (cite these numbers; do not invent):`,
           JSON.stringify(toolResult),
@@ -956,7 +1038,7 @@ export async function runFrontDeskTurn(
           skillsUsed.push(item.id);
         }
       }
-      result = await chat.sendMessage(
+      result = await sendModel(
         `Skills loaded.\n${formatLoadedSkills(loaded)}\nReturn compact answer JSON (reply + every planned line, up to 12) or one tool_call.`
       );
       parsed = safeParse(modelText(result));
@@ -1054,13 +1136,6 @@ export async function runFrontDeskTurn(
       input.lead.event_date ||
       "",
   });
-  const people = getYogiPeople();
-  const chefToken = escapeRegExp(people.chefName);
-  const managerToken = escapeRegExp(people.managerName);
-  const userAskedHuman = new RegExp(
-    `\\b(talk to (a |the )?(human|person|owner|chef|someone|manager)|speak (to|with) (a |the )?(human|person|owner|chef|someone|manager)|call (me|us|you|the owner|${chefToken}|${managerToken})|connect me|real person|live (agent|person|chat)|escalate|restaurant manager|human please|want a person|${chefToken}|${managerToken})\\b`,
-    "i"
-  ).test(last.content);
   const userAskedWhatsApp = /\b(whats?\s*app|wa\.me)\b/i.test(last.content);
   const offerWhatsApp =
     waReady &&

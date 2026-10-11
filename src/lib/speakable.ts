@@ -116,6 +116,28 @@ export function speakableText(raw: string): string {
   return t;
 }
 
+/**
+ * Sentences that are certainly complete in streamed text: end punctuation followed by whitespace,
+ * so "$2,058.00" or "a@b.com" are not split. With `final`, the unpunctuated tail counts too.
+ */
+export function finishedSentences(raw: string, final = false): string[] {
+  const text = final ? `${raw} ` : raw;
+  const out: string[] = [];
+  const re = /[\s\S]*?[.!?]+["')\]]*(?=\s)/g;
+  let end = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const sentence = m[0].trim();
+    if (sentence) out.push(sentence);
+    end = re.lastIndex;
+  }
+  if (final) {
+    const tail = text.slice(end).trim();
+    if (tail) out.push(tail);
+  }
+  return out;
+}
+
 /** First 1–2 sentences for low-latency call TTS. */
 export function speakableForCall(raw: string, maxChars = 320): string {
   const t = speakableText(raw);
