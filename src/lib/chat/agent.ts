@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, type GenerationConfig } from "@google/generative-ai";
 import { replyWithoutQuoteUrl } from "@/lib/speakable";
 import { serverEnv } from "@/lib/server-env";
 import {
@@ -26,9 +26,15 @@ import {
   getOrCreateGuestMemory,
   updateGuestMemoryOps,
 } from "@/lib/planning/guest-memory-store";
-import { summarizeGuestMemory } from "@/lib/planning/guest-memory";
+import {
+  summarizeGuestMemory,
+  type GuestEventMemory,
+  type MemoryOp,
+} from "@/lib/planning/guest-memory";
 import { getChefSpecialties } from "@/lib/planning/chef-specialties";
 import { getDb } from "@/lib/store/local-db";
+import { emptyMenuWishes, type MenuWishes } from "@/lib/planning/menu-wishes";
+import { wishesFromMessages } from "@/lib/planning/wish-lexicon";
 import { resolveRelativeEventDate } from "@/lib/chat/relative-date";
 import {
   addressCandidateForTurn,
@@ -385,16 +391,8 @@ function parseModelResponse(text: string): Record<string, unknown> {
     if (partialFromParsed) return partialFromParsed;
   }
 
+  // Never treat non-JSON text as a reply: with JSON mode it is cut-off model reasoning.
   const plain = stripCodeFences(text).trim();
-  if (plain.length > 0 && !plain.startsWith("{")) {
-    return {
-      type: "answer",
-      reply: plain.slice(0, 2000),
-      offer_whatsapp: false,
-      lead: {},
-    };
-  }
-
   const partial = extractPartialAnswer(text);
   if (partial) return partial;
 
@@ -414,35 +412,117 @@ function isFallbackReply(parsed: Record<string, unknown>): boolean {
   );
 }
 
+type ModelPart = { text?: string; thought?: boolean };
+
+/** Visible answer text only — thought parts are internal reasoning and must never reach the guest. */
+function visibleText(parts: ModelPart[] | undefined): string {
+  return (parts || [])
+    .filter((p) => !p.thought && typeof p.text === "string")
+    .map((p) => p.text)
+    .join("");
+}
+
 function modelText(result: {
   response: {
-    text: () => string;
     candidates?: Array<{
       finishReason?: string;
-      content?: { parts?: Array<{ text?: string }> };
+      content?: { parts?: ModelPart[] };
     }>;
   };
 }): string {
-  try {
-    const t = result.response.text() || "";
-    if (t.trim()) return t;
-  } catch (err) {
-    console.error("[chat] response.text() failed", err);
+  const candidate = result.response.candidates?.[0];
+  const text = visibleText(candidate?.content?.parts).trim();
+  if (!text && candidate?.finishReason) {
+    console.error("[chat] empty model text, finishReason=", candidate.finishReason);
   }
-  // Fallback: stitch parts when .text() throws (blocked / empty candidates)
-  try {
-    const parts = result.response.candidates?.[0]?.content?.parts || [];
-    const joined = parts
-      .map((p) => (typeof p.text === "string" ? p.text : ""))
-      .join("")
-      .trim();
-    if (joined) return joined;
-    const reason = result.response.candidates?.[0]?.finishReason;
-    if (reason) console.error("[chat] empty model text, finishReason=", reason);
-  } catch {
-    /* ignore */
+  return text;
+}
+
+const INTERNAL_TERMS = [
+  /\b(build_plan|get_menu|update_guest_memory|get_guest_memory|order_draft|catering_math|catering_calendar|check_capacity|time_context|followthrough|get_chef_specialties|get_famous_combinations|load_skill|tool_call|skill_ids|GUEST_MEMORY)\b/i,
+  /\b(model responses?|tool calls?|tool results?|function calls?|function responses?|system prompt|in the prompt|the prompt (says|shows|includes|contains))\b/i,
+  /\bJSON\b|[`{}]/,
+];
+
+export const INTERNAL_REPLY_SUBSTITUTE = "Give me one moment while I pull up the menu.";
+
+/** True when text reads like the agent's own reasoning or plumbing rather than a guest reply. */
+export function looksInternal(text: string): boolean {
+  return INTERNAL_TERMS.some((re) => re.test(text));
+}
+
+const FULL_GROUP_DIETS = ["jain", "vegan", "swaminarayan", "pushtimarg"] as const;
+
+/**
+ * build_plan reads guest memory, while earlier turns save event facts to the order draft.
+ * Copy draft facts that memory is missing or has differently so the plan uses them.
+ */
+export function draftMemoryOps(
+  draft: OrderDraft,
+  memory: GuestEventMemory,
+  heardWishes?: MenuWishes
+): MemoryOp[] {
+  const ops: MemoryOp[] = [];
+  const event = memory.event as Record<string, unknown>;
+  const fields: [keyof GuestEventMemory["event"], string][] = [
+    ["occasion", String(draft.occasion || "")],
+    ["date", draft.event_date],
+    ["meal_time", draft.event_time],
+    ["meal", draft.meal],
+    ["delivery_or_pickup", draft.delivery_or_pickup],
+    ["city", draft.city],
+    ["address", draft.address],
+  ];
+  for (const [key, raw] of fields) {
+    const value = String(raw || "").trim();
+    if (value && String(event[key] || "") !== value) {
+      ops.push({ op: "update", path: `event.${key}`, value });
+    }
   }
-  return "";
+
+  const total =
+    draft.adults != null && draft.adults > 0 ? draft.adults + (draft.kids || 0) : null;
+  if (total != null && memory.headcount.total !== total) {
+    ops.push({ op: "update", path: "headcount", value: total });
+  }
+
+  const dietText = String(draft.diet || "").toLowerCase();
+  const diet = FULL_GROUP_DIETS.find((d) => dietText.includes(d));
+  const guests = total ?? memory.headcount.total;
+  if (diet && guests) {
+    const group = memory.requirement_groups.find((g) => g.kind === diet);
+    if (!group || group.count !== guests) {
+      ops.push({ op: "update", path: "requirement_groups", key: diet, value: guests });
+    }
+  }
+
+  if (heardWishes) {
+    const before = JSON.stringify(memory.menu_wishes_heard || emptyMenuWishes());
+    if (JSON.stringify(heardWishes) !== before) {
+      ops.push({ op: "update", path: "menu_wishes_heard", value: heardWishes });
+    }
+  }
+
+  return ops;
+}
+
+const AFFIRMATIVE =
+  /^\s*(yes|yeah|yep|yup|ya|sure|ok(ay)?|correct|right|perfect|great|confirm(ed)?|proceed|go ahead|sounds good|looks good|all good|that'?s (right|correct|good|it))\b/i;
+const CONFIRM_QUESTION =
+  /\b(look good|looks good|proceed|confirm|correct|sound good|shall i|ready to (see|choose|view))\b/i;
+
+/** Guest just said yes to the event summary and no menu has been planned yet. */
+export function confirmedDetailsForMenu(
+  messages: { role: string; content: string }[],
+  memory: GuestEventMemory | null
+): boolean {
+  const last = messages[messages.length - 1];
+  const prev = messages[messages.length - 2];
+  if (!last || last.role !== "user" || last.content.length > 80) return false;
+  if (!AFFIRMATIVE.test(last.content)) return false;
+  if (!prev || prev.role !== "assistant" || !CONFIRM_QUESTION.test(prev.content)) return false;
+  if (!memory?.headcount.total) return false;
+  return !memory.planned_menu?.length;
 }
 
 function mergeLead(prev: AgentLead, next: Partial<AgentLead>): AgentLead {
@@ -644,9 +724,11 @@ export async function runFrontDeskTurn(
     systemInstruction: system,
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: voiceMode ? 900 : 2200,
+      // Thinking tokens count against this budget on Gemini 3; a low cap truncates the JSON.
+      maxOutputTokens: 4096,
       responseMimeType: "application/json",
-    },
+      thinkingConfig: { thinkingLevel: "low" },
+    } as GenerationConfig,
   });
 
   const slimCart = slimOrderContext(input.order_context);
@@ -717,6 +799,28 @@ export async function runFrontDeskTurn(
     resolvedDateHint = `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Already on file — do not re-ask.]`;
   }
 
+  if (guestMemory) {
+    let heard: MenuWishes | undefined;
+    try {
+      heard = wishesFromMessages(input.messages, (await getDb()).menu_items || []);
+    } catch {
+      heard = undefined;
+    }
+    const ops = draftMemoryOps(orderDraft, guestMemory, heard);
+    if (ops.length) {
+      try {
+        const memResult = await updateGuestMemoryOps({
+          session_id: sessionId,
+          customer_email: input.lead.email || "unknown@guest.local",
+          ops,
+        });
+        guestMemory = memResult.memory;
+      } catch {
+        /* build_plan still works from whatever memory has */
+      }
+    }
+  }
+
   const memorySummary = guestMemory
     ? summarizeGuestMemory(guestMemory)
     : "(none)";
@@ -753,7 +857,9 @@ export async function runFrontDeskTurn(
   const draftHint = `\n\n[Order draft:\n${JSON.stringify(orderDraft)}]`;
   const memoryHint = `\n\n[GUEST_MEMORY: ${memorySummary}]\n(Do not invent headcount/diet/date missing from GUEST_MEMORY. Do not re-ask facts already listed.)`;
 
+  const confirmedForMenu = confirmedDetailsForMenu(input.messages, guestMemory);
   const prefetch = prefetchSkillIds(last.content);
+  if (confirmedForMenu) prefetch.push("menu-index", "menu-recommend");
   const { loaded: preloaded } = loadChatSkills(prefetch);
   const loaded: Record<string, string> = {};
   const skillsUsed: string[] = [];
@@ -773,14 +879,16 @@ export async function runFrontDeskTurn(
     const streamed = await chat.sendMessageStream(message);
     let buffer = "";
     let sent = "";
+    let blocked = false;
     for await (const chunk of streamed.stream) {
-      try {
-        buffer += chunk.text();
-      } catch {
+      buffer += visibleText(chunk.candidates?.[0]?.content?.parts as ModelPart[] | undefined);
+      const text = streamingReplyText(buffer);
+      if (blocked || !text) continue;
+      if (looksInternal(text)) {
+        blocked = true;
         continue;
       }
-      const text = streamingReplyText(buffer);
-      if (text && text.length > sent.length) {
+      if (text.length > sent.length) {
         sent = text;
         streamReply({ round, text });
       }
@@ -835,6 +943,10 @@ export async function runFrontDeskTurn(
     formatLoadedSkills(loaded),
     specialtyHint,
     "",
+    "Earlier turns in this chat show only what you said to the guest; tool calls and results from earlier turns are not shown. Order draft and GUEST_MEMORY above are the current saved facts, and build_plan reads GUEST_MEMORY directly. Do not try to reconstruct earlier tool calls.",
+    confirmedForMenu
+      ? 'REQUIRED THIS TURN: The guest just confirmed their event details. The facts are already saved, and menu-recommend is loaded. Call {"type":"tool_call","tool":"build_plan","args":{"replace":true}} now, with no other tool first, then present the menu from its lines.'
+      : "",
     "Return ONLY JSON: tool_call, load_skill, or answer (with reply + optional lines/highlights/bullets).",
     'In answer JSON always write "type":"answer" first and "reply" second, before lines or any other field.',
     "For simple greetings (hi/hello), return answer JSON with a short warm reply — no tools needed.",
@@ -855,7 +967,19 @@ export async function runFrontDeskTurn(
 
   function safeParse(raw: string): Record<string, unknown> {
     try {
-      return parseModelResponse(raw);
+      const parsed = parseModelResponse(raw);
+      const kind = String(parsed.type || "answer").toLowerCase();
+      if (kind === "answer" && typeof parsed.reply === "string" && looksInternal(parsed.reply)) {
+        console.error("[chat] internal text in reply, retrying:", parsed.reply.slice(0, 280));
+        return {
+          type: "answer",
+          reply: FALLBACK_REPLY,
+          offer_whatsapp: false,
+          lead: {},
+          _parse_failed: "1",
+        };
+      }
+      return parsed;
     } catch (err) {
       console.error("[chat] parse failed", err, "raw=", raw.slice(0, 280));
       return {
@@ -1066,6 +1190,10 @@ export async function runFrontDeskTurn(
       reply =
         "I've emailed your catering quotation. You can open it with the button here.";
     }
+  }
+  if (looksInternal(reply)) {
+    console.error("[chat] blocked internal text from guest reply:", reply.slice(0, 280));
+    reply = INTERNAL_REPLY_SUBSTITUTE;
   }
 
   const rawHighlights = Array.isArray(parsed.highlights)

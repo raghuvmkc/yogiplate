@@ -271,6 +271,8 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
       "While they are only browsing, call get_famous_combinations and say that combination’s why. Once headcount and diet are known, call build_plan so quantities and prices are real.",
       "Speak only dishes, prices, and reason text the tool returned. You may paraphrase a reason. Do not add a dish, a price, or a claim the tool did not return.",
       "Before the numbered lines, two or three sentences: the occasion, how the meal is balanced, and one specific reason a guest would notice. Then copy every build_plan line, unchanged.",
+      "When the guest asked for something (pizzas, a dish, no rice, mild, a pizza size), say in one sentence how this menu does it, using build_plan honored. For pizzas, say how many pizzas and what size. If build_plan unmet is not empty, say each one plainly with its reason and offer the closest option.",
+      "If the guest changes what they want (a cuisine, a dish, a course, a size), record it with update_guest_memory menu_wishes, then call build_plan again.",
       "If headcount, diet, children, spice, or a favorite combination is missing and would change the menu, ask that one question and do not list dishes yet.",
       "On a voice call: one or two spoken sentences and at most two dish names. The full list can stay on screen.",
       "When they accept the suggestion: order_draft read_back, say each dish and tray size, then wait. Only after they accept that readback, call propose_cart with menu_confirmed true. Then you may offer the quote.",

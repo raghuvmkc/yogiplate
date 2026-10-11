@@ -13,6 +13,7 @@ import { filterMenuItems } from "@/lib/planning/menu-tags";
 import { getChefSpecialties } from "@/lib/planning/chef-specialties";
 import { matchFamousCombinations } from "@/lib/planning/famous-combinations";
 import { buildPlan, menuRowsForTool } from "@/lib/planning/engine";
+import { normalizeWishes } from "@/lib/planning/menu-wishes";
 import { runCateringCalendar } from "@/lib/chat/tools/calendar";
 import type { CartProposal } from "@/lib/chat/order-draft";
 
@@ -170,6 +171,7 @@ export async function runUpdateGuestMemory(
       conflicts: result.memory.conflicts,
       open_questions: result.memory.open_questions,
       timeline: result.memory.timeline,
+      menu_wishes: result.memory.menu_wishes,
     },
     summary: result.ok
       ? `Guest memory updated (${result.applied} op(s)). ${summarizeGuestMemory(result.memory)}`
@@ -276,6 +278,7 @@ export async function runBuildPlan(
     dish_count,
     swap_role,
     swap_item_id,
+    wishes: args.wishes != null ? normalizeWishes(args.wishes) : undefined,
   });
 
   if (plan.mode === "build" && plan.items.length) {

@@ -1,5 +1,14 @@
 /** Typed guest-event memory for the catering planning agent (Phase 1). */
 
+import {
+  applyWishOp,
+  describeWishes,
+  emptyMenuWishes,
+  mergeWishes,
+  normalizeWishes,
+  type MenuWishes,
+} from "@/lib/planning/menu-wishes";
+
 export type HeadcountSegmentKey =
   | "adults"
   | "kids"
@@ -39,7 +48,9 @@ export type MemoryPath =
   | "open_questions"
   | "declined_suggestions"
   | "preferences"
-  | "notes";
+  | "notes"
+  | "menu_wishes"
+  | "menu_wishes_heard";
 
 export interface HeadcountSegment {
   key: HeadcountSegmentKey;
@@ -104,6 +115,10 @@ export interface GuestEventMemory {
   declined_suggestions: string[];
   preferences: string[];
   notes: string[];
+  /** Menu wishes the model recorded from the conversation. */
+  menu_wishes?: MenuWishes;
+  /** Menu wishes read deterministically from the guest's own words (rewritten every turn). */
+  menu_wishes_heard?: MenuWishes;
   /** Last build_plan menu. Quotes use this so dishes are not replaced by a short package. */
   planned_menu?: {
     menu_item_id: string;
@@ -588,6 +603,27 @@ export function applyMemoryOps(
       continue;
     }
 
+    if (path === "menu_wishes_heard") {
+      memory.menu_wishes_heard =
+        op === "remove" ? emptyMenuWishes() : normalizeWishes(raw.value);
+      log(memory, op, path, describeWishes(memory.menu_wishes_heard) || "cleared");
+      applied++;
+      continue;
+    }
+
+    if (path === "menu_wishes" || path.startsWith("menu_wishes.")) {
+      const target = raw.key && path === "menu_wishes" ? `menu_wishes.${raw.key}` : path;
+      const res = applyWishOp(memory.menu_wishes || emptyMenuWishes(), op, target, raw.value);
+      if (res.error) {
+        errors.push(res.error);
+        continue;
+      }
+      memory.menu_wishes = res.wishes;
+      log(memory, op, target, describeWishes(res.wishes) || "cleared");
+      applied++;
+      continue;
+    }
+
     if (path === "open_questions" && op === "remove") {
       const id = String(raw.key || raw.value || "");
       memory.open_questions = memory.open_questions.filter((q) => q.id !== id);
@@ -610,6 +646,20 @@ export function applyMemoryOps(
     conflicts,
     clarifications,
   };
+}
+
+/**
+ * Wishes the planner honors: what the guest literally said, then model-recorded wishes
+ * (which can correct the word match), then a per-call override from build_plan.
+ */
+export function effectiveWishes(
+  memory: GuestEventMemory,
+  override?: MenuWishes | null
+): MenuWishes {
+  let w = memory.menu_wishes_heard ? normalizeWishes(memory.menu_wishes_heard) : emptyMenuWishes();
+  if (memory.menu_wishes) w = mergeWishes(w, normalizeWishes(memory.menu_wishes));
+  if (override) w = mergeWishes(w, override);
+  return w;
 }
 
 /** Compact summary for prompt injection. */
@@ -641,6 +691,8 @@ export function summarizeGuestMemory(memory: GuestEventMemory): string {
   if (memory.declined_suggestions.length) {
     parts.push(`declined=${memory.declined_suggestions.join("|")}`);
   }
+  const wishes = describeWishes(effectiveWishes(memory));
+  if (wishes) parts.push(`menu_wishes={${wishes}}`);
   if (memory.conflicts.length) {
     parts.push(`CONFLICTS=${memory.conflicts.join(" | ")}`);
   }

@@ -1,11 +1,16 @@
 import type { MenuItem } from "@/lib/types";
-import type { GuestEventMemory } from "@/lib/planning/guest-memory";
+import { effectiveWishes, type GuestEventMemory } from "@/lib/planning/guest-memory";
+import { hasWishes, type MenuWishes } from "@/lib/planning/menu-wishes";
+import { buildWishPlan, menuRules, quantityPhrase } from "@/lib/planning/wish-planner";
+import { courseOf } from "@/lib/planning/menu-templates";
 import {
   adultEquivalent,
+  chooseVariantAndQuantity,
   effectiveHeadcount,
   PORTION_RULES,
   subtractMinutes,
   traysForServes,
+  UNIT_RULES,
   type MealKind,
 } from "@/lib/planning/portion-rules";
 import {
@@ -72,6 +77,10 @@ export type BuildPlanResult = {
   lines_title: string;
   lines_total: number;
   summary: string;
+  /** Guest wishes this plan meets (wish planner only). */
+  honored?: string[];
+  /** Guest wishes the plan could not meet, with the reason to tell the guest. */
+  unmet?: { wish: string; reason: string }[];
 };
 
 const MAX_PLAN_LINES = 12;
@@ -344,6 +353,8 @@ export function buildPlan(input: {
   swap_role?: ComboRole;
   /** Catalog id to use for that role, when the guest named a dish. */
   swap_item_id?: string;
+  /** Per-call wishes layered over the ones saved in guest memory. */
+  wishes?: MenuWishes;
 }): BuildPlanResult {
   if (input.swap_role) {
     return swapRolePlan(input);
@@ -387,6 +398,21 @@ export function buildPlan(input: {
       lines_total: 0,
       summary: "Missing headcount.",
     };
+  }
+
+  const wishes = effectiveWishes(memory, input.wishes);
+  const sectDiet = memory.requirement_groups.some(
+    (g) => (g.kind === "swaminarayan" || g.kind === "pushtimarg") && g.count > 0
+  );
+  if (hasWishes(wishes) || sectDiet) {
+    return buildWishPlan({
+      memory,
+      catalog,
+      wishes,
+      total,
+      prefer_item_ids: input.prefer_item_ids,
+      dish_count: requestedDishCount(memory, input.dish_count),
+    });
   }
 
   const adults = segCount(memory, "adults") || Math.max(0, total - segCount(memory, "kids") - segCount(memory, "toddlers"));
@@ -846,6 +872,7 @@ function answerLines(items: PlanLine[]) {
 }
 
 function trayPhrase(line: PlanLine): string {
+  if (/^(pizza|piece)$/i.test(line.unit || "") && line.serves) return quantityPhrase(line);
   const label = line.name.match(/\(([^)]+)\)\s*$/)?.[1]?.trim() || "";
   const size = label
     ? /tray/i.test(label)
@@ -892,6 +919,7 @@ function swapRolePlan(input: {
   cart_items?: CartHintLine[];
   swap_role?: ComboRole;
   swap_item_id?: string;
+  wishes?: MenuWishes;
 }): BuildPlanResult {
   const role = input.swap_role!;
   const declined = new Set(
@@ -968,12 +996,8 @@ function swapRolePlan(input: {
   }
 
   const totalGuests = input.memory.headcount.total || 20;
-  const dietJain = input.memory.requirement_groups.some(
-    (g) => g.kind === "jain" && g.count >= totalGuests * 0.8
-  );
-  const dietVegan = input.memory.requirement_groups.some(
-    (g) => g.kind === "vegan" && g.count >= totalGuests * 0.8
-  );
+  const wishes = effectiveWishes(input.memory, input.wishes);
+  const { blockedBy } = menuRules(input.memory, input.catalog, wishes, totalGuests);
   const notes: string[] = [];
   const warnings: string[] = [];
 
@@ -989,10 +1013,7 @@ function swapRolePlan(input: {
     ) {
       return false;
     }
-    const tags = derivePlanningTags(item);
-    if (dietJain && !tags.jain_ok) return false;
-    if (dietVegan && !tags.vegan) return false;
-    return item.is_available !== false;
+    return !blockedBy(item);
   };
 
   let chosen: MenuItem | undefined;
@@ -1017,9 +1038,26 @@ function swapRolePlan(input: {
     }
   }
   if (chosen) {
-    const v = pickVariantServes(chosen);
-    const qty = Math.max(1, traysForServes(totalGuests * 0.7, v.serves));
-    addLine(kept, chosen, qty, "general");
+    const preferVariantId =
+      chosen.category_id === "cat-pizzas"
+        ? wishes.size_pref?.pizza || UNIT_RULES.pizza.default_size
+        : wishes.size_pref?.tray;
+    const pick = chooseVariantAndQuantity(chosen, totalGuests * 0.7, {
+      course: courseOf(chosen) || undefined,
+      preferVariantId,
+    });
+    const price = pick.variant?.price ?? chosen.price;
+    kept.push({
+      menu_item_id: chosen.id,
+      variant_id: pick.variant?.id,
+      name: pick.variant ? `${chosen.name} (${pick.variant.label})` : chosen.name,
+      quantity: pick.quantity,
+      unit: pick.variant?.unit || chosen.unit,
+      price,
+      line_total: Math.round(pick.quantity * price * 100) / 100,
+      serves: Math.round(pick.servings * 100) / 100,
+      coverage_for: "general",
+    });
     if (!notes.some((n) => n.includes("stayed"))) {
       notes.push(`Swapped only the ${role}. The rest of the menu stayed.`);
     }

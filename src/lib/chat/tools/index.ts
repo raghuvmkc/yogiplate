@@ -73,6 +73,13 @@ TOOLS (call these — do not invent their results)
    Examples: {op:"update",path:"headcount",value:25}; {op:"update",path:"requirement_groups",key:"jain",value:3};
    {op:"update",path:"requirement_groups",key:"allergy",value:{count:1,allergen:"cashew"}};
    Corrections upsert (Jain 2→3 replaces, does not duplicate). Max 2 clarifying questions per turn.
+   Menu wishes (what the guest wants the menu to be): path "menu_wishes" with update and a partial object, or "menu_wishes.<field>" with add/remove.
+   Fields: cuisines [{id: indian|south_indian|indo_chinese|italian|pizza|thai, mode: only|include}], must_have [{ref: dish id or name, quantity?}], exclude_items [dish id or name],
+   courses_only / courses_add / courses_exclude [appetizer|chaat|main|pasta|dal|soup|starch|bread|salad|dessert|drink|condiment|pizza], exclude_terms [paneer|potato|fried|dairy|gluten|nuts|…],
+   spice_max mild|medium|hot, size_pref {pizza: 10|12|14, tray: half|medium|full}, appetite light|regular|hearty.
+   Examples: "pizzas for the kids party" → {op:"update",path:"menu_wishes",value:{cuisines:[{id:"pizza",mode:"include"}]}};
+   "only pizzas" → mode "only"; "must have palak paneer, no rice" → {op:"update",path:"menu_wishes",value:{must_have:[{ref:"palak paneer"}],courses_exclude:["starch"]}}.
+   The guest's own words are also read automatically; record a wish when they change their mind (e.g. "actually add rice back" → {op:"update",path:"menu_wishes",value:{courses_add:["starch"]}}) or when the automatic read in GUEST_MEMORY menu_wishes looks wrong.
 7) get_guest_memory — read canonical guest memory.
 8) get_menu — filter catalog by diet/allergy/kid tags. Args: diet, jain_ok, vegan, kid_friendly, spice_max, exclude_allergen, query, limit.
    Empty allergens on an item = unknown → excluded when filtering by allergy.
@@ -81,7 +88,9 @@ TOOLS (call these — do not invent their results)
     Args: item_ids? (seed from cart), hints? (vegan|jain|italian|pizza|party|lunch…), limit?
     Use these when suggesting menus. Never invent combinations. Never recommend appetizer-only as a full meal.
 11) build_plan — deterministic plan from guest memory (qty/prices/reason from code). Uses famous combos + balanced roles.
-    Args: replace (bool), prefer_item_ids[], dish_count (number), mode build|validate, swap_role (bread|main|dessert|starch|appetizer|dal|pizza), swap_item_id.
+    Args: replace (bool), prefer_item_ids[], dish_count (number), mode build|validate, swap_role (bread|main|dessert|starch|appetizer|dal|pizza), swap_item_id, wishes? (same shape as menu_wishes, for this call only).
+    The plan follows GUEST_MEMORY menu_wishes (cuisines, must-have dishes, courses, exclusions, spice, sizes, appetite) and every diet group.
+    The result has honored[] (wishes met) and unmet[] ({wish, reason}). Tell the guest plainly about every unmet wish and why; never pretend it was met.
     Each line includes reason. Paraphrase that reason. Do not invent a dish, price, or claim.
     If the guest asks for a number of dishes (for example 7), pass dish_count and store that number in preferences. Return every dish — never drop one to fit a shorter list.
     If cart already has items and replace is false: validates coverage (±30%) and returns notes — does not replace.
