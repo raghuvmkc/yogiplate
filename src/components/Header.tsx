@@ -23,7 +23,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 overflow-visible border-b border-line/80 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1700px] items-center justify-start gap-1 overflow-visible px-3 sm:h-28 sm:gap-6 sm:px-6 lg:h-32 lg:gap-10">
-        <Link href="/" className="flex min-w-0 items-center">
+        <Link href="/" className="flex shrink-0 items-center">
           <Image
             src="/images/Yogiplate_Logo_transparent.png"
             alt="Yogiplate"
@@ -34,12 +34,12 @@ export function Header() {
             priority
           />
         </Link>
-        <nav className="flex min-w-0 flex-wrap items-center justify-start gap-0 sm:gap-2 lg:gap-4">
+        <nav className="flex min-w-0 flex-nowrap items-center justify-start gap-0 sm:flex-wrap sm:gap-2 lg:gap-4">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className={`rounded-md px-1.5 py-1.5 text-sm font-bold transition-colors sm:px-3 sm:py-2 sm:text-lg lg:text-xl ${
+              className={`whitespace-nowrap rounded-md px-1 py-1.5 text-[13px] font-bold transition-colors sm:px-3 sm:py-2 sm:text-lg lg:text-xl ${
                 pathname === l.href
                   ? "text-logo-gold-deep"
                   : "text-accent-deep hover:text-logo-gold"
