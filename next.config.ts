@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@netlify/blobs"],
+  serverExternalPackages: ["@netlify/blobs", "ws"],
   turbopack: {},
   webpack: (config, { dev }) => {
     if (!dev) {

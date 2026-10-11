@@ -3,9 +3,15 @@ import { z } from "zod";
 import { agentErrorCode, runFrontDeskTurn } from "@/lib/chat/agent";
 import { reportError } from "@/lib/monitor";
 import { serverEnv } from "@/lib/server-env";
+import { isSarvamConfigured } from "@/lib/sarvam";
+import { openSarvamTtsStream } from "@/lib/sarvam-stream";
+import { ttsProvider } from "@/lib/tts";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
+
+/** Longest wait for streamed speech after the reply is done. */
+const TTS_DRAIN_MS = 10_000;
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -70,6 +76,8 @@ const BodySchema = z.object({
   session_id: z.string().min(4).max(80).optional(),
   voice_mode: z.boolean().optional(),
   stream: z.boolean().optional(),
+  /** Browser can play streamed MP3; speak the reply over Sarvam's WebSocket inside this stream. */
+  tts_stream: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -129,7 +137,11 @@ export async function POST(req: Request) {
     voice_mode: Boolean(body.voice_mode),
   };
 
-  if (body.stream) return streamTurn(turn);
+  if (body.stream) {
+    const speak =
+      turn.voice_mode && Boolean(body.tts_stream) && ttsProvider() === "sarvam" && isSarvamConfigured();
+    return streamTurn(turn, speak);
+  }
 
   try {
     const result = await runFrontDeskTurn(turn);
@@ -151,23 +163,43 @@ async function chatFailure(err: unknown) {
   };
 }
 
-/** NDJSON: {t:"delta",round,text} / {t:"status",text} … then {t:"done",result} or {t:"error",…}. */
-function streamTurn(turn: Parameters<typeof runFrontDeskTurn>[0]) {
+/**
+ * NDJSON: {t:"delta",round,text} / {t:"status",text} … then {t:"done",result} or {t:"error",…}.
+ * With `speak`, also {t:"audio",b64} MP3 chunks, then {t:"audio_end",ok,chunks} after done.
+ */
+function streamTurn(turn: Parameters<typeof runFrontDeskTurn>[0], speak: boolean) {
   const encoder = new TextEncoder();
+  const startedAt = Date.now();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const write = (event: Record<string, unknown>) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      let open = true;
+      const write = (event: Record<string, unknown>) => {
+        if (open) controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      };
+      const tts = speak
+        ? openSarvamTtsStream({ onAudio: (b64) => write({ t: "audio", b64 }) })
+        : null;
       try {
         const result = await runFrontDeskTurn({
           ...turn,
-          onReplyDelta: ({ round, text }) => write({ t: "delta", round, text }),
+          onReplyDelta: ({ round, text }) => {
+            write({ t: "delta", round, text });
+            tts?.feed(round, text);
+          },
           onStatus: (text) => write({ t: "status", text }),
         });
+        tts?.finish(String(result.reply || ""));
         write({ t: "done", result });
+        if (tts) {
+          const left = (maxDuration - 1) * 1000 - (Date.now() - startedAt);
+          const audio = await tts.drained(Math.min(TTS_DRAIN_MS, left));
+          write({ t: "audio_end", ok: audio.ok, chunks: audio.chunks });
+        }
       } catch (err) {
         write({ t: "error", ...(await chatFailure(err)) });
       } finally {
+        tts?.close();
+        open = false;
         controller.close();
       }
     },

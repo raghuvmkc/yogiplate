@@ -136,42 +136,83 @@ function chatErrorText(data: { error?: string; code?: string; detail?: string })
   return bits.join(" ");
 }
 
-/** Reads /api/chat NDJSON events and resolves with the final turn result. */
-async function readChatStream<T>(
+/**
+ * Reads /api/chat NDJSON events and resolves with the final turn result. Streamed speech
+ * ({t:"audio"} / {t:"audio_end"}) can follow "done", so reading continues until the stream closes.
+ */
+function readChatStream<T>(
   body: ReadableStream<Uint8Array>,
   handlers: {
     onDelta: (round: number, text: string) => void;
     onStatus: (text: string) => void;
+    onAudio?: (b64: string) => void;
+    onAudioEnd?: (ok: boolean, chunks: number) => void;
+    /** Stream closed, normally or not. */
+    onClose?: () => void;
   }
 ): Promise<T> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    let newline: number;
-    while ((newline = buffer.indexOf("\n")) >= 0) {
-      const line = buffer.slice(0, newline).trim();
-      buffer = buffer.slice(newline + 1);
-      if (!line) continue;
-      const event = JSON.parse(line) as {
-        t: string;
-        round?: number;
-        text?: string;
-        result?: T;
-        error?: string;
-        code?: string;
-        detail?: string;
-      };
-      if (event.t === "delta") handlers.onDelta(Number(event.round) || 0, String(event.text || ""));
-      else if (event.t === "status") handlers.onStatus(String(event.text || ""));
-      else if (event.t === "done" && event.result) return event.result;
-      else if (event.t === "error") throw new Error(chatErrorText(event));
-    }
-    if (done) break;
-  }
-  throw new Error("Chat returned an unexpected response. Please try again.");
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      fn();
+    };
+    void (async () => {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          buffer += decoder.decode(value, { stream: !done });
+          let newline: number;
+          while ((newline = buffer.indexOf("\n")) >= 0) {
+            const line = buffer.slice(0, newline).trim();
+            buffer = buffer.slice(newline + 1);
+            if (!line) continue;
+            const event = JSON.parse(line) as {
+              t: string;
+              round?: number;
+              text?: string;
+              result?: T;
+              b64?: string;
+              ok?: boolean;
+              chunks?: number;
+              error?: string;
+              code?: string;
+              detail?: string;
+            };
+            if (event.t === "delta") handlers.onDelta(Number(event.round) || 0, String(event.text || ""));
+            else if (event.t === "status") handlers.onStatus(String(event.text || ""));
+            else if (event.t === "audio" && event.b64) handlers.onAudio?.(event.b64);
+            else if (event.t === "audio_end") handlers.onAudioEnd?.(event.ok === true, Number(event.chunks) || 0);
+            else if (event.t === "done" && event.result) {
+              const result = event.result;
+              settle(() => resolve(result));
+            } else if (event.t === "error") {
+              const err = new Error(chatErrorText(event));
+              settle(() => reject(err));
+            }
+          }
+          if (done) break;
+        }
+        settle(() => reject(new Error("Chat returned an unexpected response. Please try again.")));
+      } catch (err) {
+        settle(() => reject(err instanceof Error ? err : new Error(String(err))));
+      } finally {
+        handlers.onClose?.();
+      }
+    })();
+  });
+}
+
+/** Browser can append streamed MP3 to a MediaSource (ManagedMediaSource on iPhone Safari 17.1+). */
+function supportsStreamedMp3(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as { ManagedMediaSource?: typeof MediaSource };
+  const MS = w.ManagedMediaSource || window.MediaSource;
+  return Boolean(MS?.isTypeSupported?.("audio/mpeg"));
 }
 
 export function ChatWidget() {
@@ -836,6 +877,98 @@ export function ChatWidget() {
     };
   }
 
+  /** Plays MP3 chunks as they arrive from the chat stream (server-side Sarvam WebSocket). */
+  function createStreamPlayer() {
+    const w = window as unknown as { ManagedMediaSource?: typeof MediaSource };
+    const MS = w.ManagedMediaSource || window.MediaSource;
+    const source = new MS();
+    const audio = new Audio();
+    (audio as HTMLAudioElement & { disableRemotePlayback: boolean }).disableRemotePlayback = true;
+    const url = URL.createObjectURL(source);
+    audio.src = url;
+    let sourceBuffer: SourceBuffer | null = null;
+    const queue: Uint8Array<ArrayBuffer>[] = [];
+    let started = false;
+    let ending = false;
+    let finished = false;
+    let resolveEnded: () => void = () => {};
+    const ended = new Promise<void>((resolve) => {
+      resolveEnded = resolve;
+    });
+
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      if (speakDoneRef.current === done) speakDoneRef.current = null;
+      if (audioPlayerRef.current === audio) ttsPlayingRef.current = false;
+      if (!started) URL.revokeObjectURL(url);
+      resolveEnded();
+    };
+    const pump = () => {
+      if (!sourceBuffer || sourceBuffer.updating || finished) return;
+      const next = queue.shift();
+      if (next) {
+        try {
+          sourceBuffer.appendBuffer(next);
+        } catch {
+          done();
+        }
+        return;
+      }
+      if (ending && source.readyState === "open") {
+        try {
+          source.endOfStream();
+        } catch {
+          done();
+        }
+      }
+    };
+    source.addEventListener("sourceopen", () => {
+      try {
+        sourceBuffer = source.addSourceBuffer("audio/mpeg");
+        sourceBuffer.mode = "sequence";
+        sourceBuffer.addEventListener("updateend", pump);
+        pump();
+      } catch {
+        done();
+      }
+    });
+    audio.onended = done;
+    audio.onerror = done;
+
+    return {
+      get started() {
+        return started;
+      },
+      ended,
+      push(b64: string) {
+        if (finished) return;
+        const allowed =
+          voiceEnabled && voiceSpeakRef.current && listeningRef.current && !endingCallRef.current;
+        if (!allowed && !started) return;
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        queue.push(bytes);
+        if (!started) {
+          started = true;
+          stopSpeaking();
+          audioPlayerRef.current = audio;
+          audioUrlRef.current = url;
+          ttsPlayingRef.current = true;
+          speakDoneRef.current = done;
+          void audio.play().catch(done);
+        }
+        pump();
+      },
+      end() {
+        ending = true;
+        if (!started) done();
+        else pump();
+      },
+    };
+  }
+
   async function speakReply(text: string) {
     if (!voiceEnabled || !voiceSpeakRef.current || !text.trim()) return;
     try {
@@ -1003,7 +1136,14 @@ export function ChatWidget() {
     setBusy(true);
     busyRef.current = true;
 
-    const speaker = listeningRef.current ? createSentenceSpeaker() : null;
+    const streamTts =
+      listeningRef.current && voiceEnabled && voiceSpeakRef.current && supportsStreamedMp3();
+    const player = streamTts ? createStreamPlayer() : null;
+    let resolveAudioEnd: (ended: { ok: boolean; chunks: number }) => void = () => {};
+    const audioEnd = new Promise<{ ok: boolean; chunks: number }>((resolve) => {
+      resolveAudioEnd = resolve;
+    });
+    const speaker = listeningRef.current && !player ? createSentenceSpeaker() : null;
     let speakRound = 0;
 
     try {
@@ -1030,6 +1170,7 @@ export function ChatWidget() {
           session_id: sessionId,
           voice_mode: listeningRef.current,
           stream: true,
+          tts_stream: streamTts,
         }),
       });
       type ChatApiPayload = {
@@ -1065,8 +1206,12 @@ export function ChatWidget() {
             speaker.feed(text);
           },
           onStatus: setLiveStatus,
+          onAudio: (b64) => player?.push(b64),
+          onAudioEnd: (ok, chunks) => resolveAudioEnd({ ok, chunks }),
+          onClose: () => resolveAudioEnd({ ok: false, chunks: 0 }),
         });
       } else {
+        resolveAudioEnd({ ok: false, chunks: 0 });
         const rawBody = await res.text();
         try {
           data = rawBody ? (JSON.parse(rawBody) as ChatApiPayload) : {};
@@ -1087,7 +1232,7 @@ export function ChatWidget() {
       const streamedSpeech = Boolean(speaker?.count);
       // Overlap TTS with state updates so speech starts sooner on calls.
       const ttsPrefetch =
-        listeningRef.current && reply.trim() && !streamedSpeech
+        listeningRef.current && reply.trim() && !streamedSpeech && !player
           ? fetchTtsBlob(reply)
           : null;
       if (data.lead && typeof data.lead === "object") {
@@ -1169,7 +1314,16 @@ export function ChatWidget() {
         messagesRef.current = next;
         return next;
       });
-      if (speaker && streamedSpeech) {
+      if (player) {
+        await audioEnd;
+        player.end();
+        if (player.started) {
+          await player.ended;
+        } else if (reply.trim() && listeningRef.current && voiceSpeakRef.current) {
+          const blob = await fetchTtsBlob(reply).catch(() => null);
+          if (blob) await playAudioBlob(blob);
+        }
+      } else if (speaker && streamedSpeech) {
         speaker.finish(reply);
         await speaker.drained();
       } else if (ttsPrefetch) {
@@ -1198,6 +1352,7 @@ export function ChatWidget() {
           ? "Chat timed out or lost connection — please try that question again."
           : raw || "Something went wrong. Please try again.";
       setError(friendly);
+      player?.end();
       if (listeningRef.current && !endingCallRef.current) armSilenceTimer();
     } finally {
       busyRef.current = false;
