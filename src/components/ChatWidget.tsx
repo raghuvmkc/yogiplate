@@ -1081,7 +1081,7 @@ export function ChatWidget() {
           const last = prev[prev.length - 1];
           if (
             last?.role === "assistant" &&
-            last.content.includes("Our chef and founder, Radhavallabh")
+            last.content.trim() === greeting.trim()
           ) {
             messagesRef.current = prev;
             return prev;
