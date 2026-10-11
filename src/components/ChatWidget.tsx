@@ -981,8 +981,9 @@ export function ChatWidget() {
     };
   }
 
+  /** Replies are spoken only during a voice call; typed chat stays silent. */
   async function speakReply(text: string) {
-    if (!voiceEnabled || !voiceSpeakRef.current || !text.trim()) return;
+    if (!voiceEnabled || !voiceSpeakRef.current || !listeningRef.current || !text.trim()) return;
     try {
       const blob = await fetchTtsBlob(text);
       if (!blob) return;
@@ -1341,7 +1342,7 @@ export function ChatWidget() {
       } else if (ttsPrefetch) {
         try {
           const blob = await ttsPrefetch;
-          if (blob && voiceSpeakRef.current) {
+          if (blob && voiceSpeakRef.current && listeningRef.current) {
             await playAudioBlob(blob);
           } else if (!blob) {
             await speakReply(reply);

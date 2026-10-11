@@ -1,21 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { ChatWidget } from "@/components/ChatWidget";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import "./globals.css";
 
-const display = Cormorant_Garamond({
+// Self-hosted (Latin variable fonts from Google Fonts) so builds never depend on fetching Google.
+const display = localFont({
+  src: "./fonts/cormorant-garamond-latin.woff2",
   variable: "--font-display",
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
-const sans = DM_Sans({
+const sans = localFont({
+  src: "./fonts/dm-sans-latin.woff2",
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
