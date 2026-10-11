@@ -35,7 +35,12 @@ import { getChefSpecialties } from "@/lib/planning/chef-specialties";
 import { getDb } from "@/lib/store/local-db";
 import { emptyMenuWishes, type MenuWishes } from "@/lib/planning/menu-wishes";
 import { wishesFromMessages } from "@/lib/planning/wish-lexicon";
-import { resolveRelativeEventDate } from "@/lib/chat/relative-date";
+import {
+  daysUntilIso,
+  resolveRelativeEventDate,
+  spokenDateLabel,
+  todayLabel,
+} from "@/lib/chat/relative-date";
 import {
   addressCandidateForTurn,
   verifyAddress,
@@ -706,7 +711,7 @@ export async function runFrontDeskTurn(
       ? `\nCHANNEL: This turn arrived via ${channel}. Keep replies concise for that medium.`
       : "",
     voiceMode
-      ? "\nVOICE MODE: Guest is talking to you with their microphone and hears your reply spoken aloud. reply must be 1–2 short spoken sentences only (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Ask at most one question. Prefer empty lines[] unless they explicitly asked for a menu list. If they did, name at most two dishes and one reason from the tool. Keep JSON compact for speed. Never re-ask event date, headcount, or diet already present in Order draft, GUEST_MEMORY, or [Resolved event_date]. When a date was just resolved, acknowledge that calendar date and ask the next missing slot only. Before proposing a cart or quote, ask special requirements (allergies, setup, utensils, or “none”) and store via order_draft.special_requirements. For delivery, the address must include the house number and street, not only the city. Never say a URL, localhost address, or quote link out loud. Say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
+      ? "\nVOICE MODE: The guest is talking to you with their microphone and hears your reply spoken aloud. reply is one or two short spoken sentences: a brief acknowledgment or one tip, then one question (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Name at most two dishes. Prefer empty lines[] unless they asked for the menu list. Keep JSON compact for speed. Never re-ask anything already in Order draft, GUEST_MEMORY, or [Resolved event_date]. The final recap may run a little longer, but keep it natural. Never say a URL, localhost address, or quote link out loud; say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
       : "",
   ].join("\n");
 
@@ -769,13 +774,20 @@ export async function runFrontDeskTurn(
 
   // Persist relative spoken dates (e.g. "next Thursday") into draft + memory
   // so voice mode cannot "forget" and re-ask on the next turn.
+  const savedDaysOut = daysUntilIso(String(orderDraft.event_date || "").trim());
+  if (savedDaysOut != null && savedDaysOut < 0) {
+    orderDraft = { ...orderDraft, event_date: "" };
+  }
   const resolvedDate = resolveRelativeEventDate(last.content);
-  let resolvedDateHint = "";
-  if (resolvedDate && !String(orderDraft.event_date || "").trim()) {
+  let resolvedDateHint = `\n\n[TODAY: ${todayLabel()}]`;
+  if (resolvedDate?.options && !String(orderDraft.event_date || "").trim()) {
+    const [a, b] = resolvedDate.options;
+    resolvedDateHint += `\n\n[DATE_OPTIONS: The guest said "${resolvedDate.phrase}", which could mean ${a} (${spokenDateLabel(a)}) or ${b} (${spokenDateLabel(b)}). Do not save a date yet. Ask once: "Just to check: ${spokenDateLabel(a)}, or ${spokenDateLabel(b)}?" Save the one they pick with order_draft event_date.]`;
+  } else if (resolvedDate && !String(orderDraft.event_date || "").trim()) {
     orderDraft = mergeOrderDraft(orderDraft, {
       event_date: resolvedDate.iso,
     });
-    resolvedDateHint = `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Treat this as known — do not re-ask for the date.]`;
+    resolvedDateHint += `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Treat this as known — do not re-ask for the date.]`;
     try {
       const memResult = await updateGuestMemoryOps({
         session_id: sessionId,
@@ -796,7 +808,34 @@ export async function runFrontDeskTurn(
     resolvedDate &&
     String(orderDraft.event_date || "").trim() === resolvedDate.iso
   ) {
-    resolvedDateHint = `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Already on file — do not re-ask.]`;
+    resolvedDateHint += `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Already on file — do not re-ask.]`;
+  }
+  let verified_address: AddressVerifyResult | null = null;
+  let addressHint = "";
+  const spokenAddress = addressCandidateForTurn({ userText: last.content });
+  if (spokenAddress) {
+    verified_address = await verifyAddress(
+      spokenAddress,
+      orderDraft.city || input.lead.city || undefined
+    ).catch(() => ({
+      ok: false as const,
+      query: spokenAddress,
+      error: "Could not verify that address right now.",
+    }));
+    if (verified_address.ok) {
+      orderDraft = mergeOrderDraft(orderDraft, {
+        delivery_or_pickup: orderDraft.delivery_or_pickup || "delivery",
+        address: verified_address.formatted,
+      });
+      addressHint = `\n\n[VERIFIED_ADDRESS: ${verified_address.formatted} (already saved to the order draft). Read it back naturally as house number and street, city, state, and ZIP (skip county and country), and ask the guest to confirm it. Do not ask for the ZIP or city.]`;
+    } else {
+      addressHint = `\n\n[ADDRESS_NOT_VERIFIED: "${spokenAddress}" could not be found on the map. Kindly ask the guest to repeat the house number and street, with the city.]`;
+    }
+  }
+
+  const daysOut = daysUntilIso(String(orderDraft.event_date || "").trim());
+  if (daysOut != null && daysOut >= 0 && daysOut <= 1) {
+    resolvedDateHint += `\n\n[SHORT_NOTICE: The event (${orderDraft.event_date}, ${spokenDateLabel(orderDraft.event_date)}) is less than 48 hours away. If you have not said so yet in this chat, mention once, politely, that short-notice orders need the kitchen's confirmation, then keep helping.]`;
   }
 
   if (guestMemory) {
@@ -934,6 +973,7 @@ export async function runFrontDeskTurn(
   const turn = [
     last.content,
     resolvedDateHint,
+    addressHint,
     leadHint,
     orderHint,
     draftHint,
@@ -956,8 +996,8 @@ export async function runFrontDeskTurn(
     asksSpecialty
       ? "Do not call get_chef_specialties this turn — specialties are already in CHEF_SPECIALTIES above."
       : "",
-    "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines, prices, and reason. Load menu-recommend before you recommend. Say I’ll help you choose. Never say we’ll plan.",
-    "When proposing dishes: put every build_plan line in lines[] (up to 12) and use each line’s reason. If the guest asked for a number of dishes, call build_plan with dish_count and do not drop any. Two or three sentences before the list: occasion, balance, and one reason. On a voice call, one or two sentences and at most two dish names. Never Markdown ** in reply. Keep JSON compact so it is not truncated.",
+    "Extract new guest facts with update_guest_memory. For menu plans use build_plan and copy its lines, prices, and reason. Load menu-recommend before you recommend. Never say we’ll plan.",
+    "When proposing dishes: put every build_plan line in lines[] (up to 12) and use each line’s reason. If the guest asked for a number of dishes, call build_plan with dish_count and do not drop any. One short sentence before the list with one reason. On a voice call, one or two sentences and at most two dish names. Never Markdown ** in reply. Keep JSON compact so it is not truncated.",
     "Prefer one tool then answer. Use get_menu / build_plan for planning; catering_math for packages; order_draft for cart; followthrough for quote/deposit.",
     "Use time_context + check_capacity for dates.",
     `Skill ids: ${CHAT_SKILL_CATALOG.map((s) => s.id).join(", ")}`,
@@ -1425,13 +1465,14 @@ export async function runFrontDeskTurn(
           : "browsing",
   }).catch(() => null);
 
-  let verified_address: AddressVerifyResult | null = null;
-  const addressQuery = addressCandidateForTurn({
-    userText: last.content,
-    draftAddress: orderDraft.address,
-    draftCity: orderDraft.city || lead.city,
-    prevDraftAddress: input.order_draft?.address || "",
-  });
+  const addressQuery = verified_address?.ok
+    ? null
+    : addressCandidateForTurn({
+        userText: "",
+        draftAddress: orderDraft.address,
+        draftCity: orderDraft.city || lead.city,
+        prevDraftAddress: input.order_draft?.address || "",
+      });
   if (addressQuery) {
     verified_address = await verifyAddress(
       addressQuery,

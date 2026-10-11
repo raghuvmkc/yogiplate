@@ -67,6 +67,8 @@ const BodySchema = z.object({
       address: z.string().optional(),
       budget: z.string().optional(),
       setup_needs: z.string().optional(),
+      special_requirements: z.string().optional(),
+      company_name: z.string().optional(),
       meal: z.string().optional(),
       package_tier: z.string().optional(),
       confirmed: z.boolean().optional(),

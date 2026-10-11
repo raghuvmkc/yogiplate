@@ -45,6 +45,7 @@ export async function POST(req: Request) {
         budget: "",
         setup_needs: setup,
         special_requirements: String(body.notes || ""),
+        company_name: "",
         meal: "",
         package_tier: "",
         confirmed: false,

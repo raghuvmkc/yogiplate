@@ -28,6 +28,8 @@ export type OrderDraft = {
   setup_needs: string;
   /** Allergies, utensils, serving style, religious needs, etc. */
   special_requirements: string;
+  /** Asked only for corporate events. */
+  company_name: string;
   meal: "lunch" | "dinner" | "brunch" | "";
   package_tier: "good" | "better" | "best" | "";
   confirmed: boolean;
@@ -69,6 +71,7 @@ export const EMPTY_ORDER_DRAFT: OrderDraft = {
   budget: "",
   setup_needs: "",
   special_requirements: "",
+  company_name: "",
   meal: "",
   package_tier: "",
   confirmed: false,
@@ -137,7 +140,26 @@ export function missingOrderSlots(draft: OrderDraft): string[] {
   if (!draft.special_requirements && !draft.setup_needs) {
     missing.push("special_requirements");
   }
+  if (isCorporateOccasion(draft.occasion) && !draft.company_name) {
+    missing.push("company_name");
+  }
   return missing;
+}
+
+const CORPORATE_OCCASIONS = new Set([
+  "team_lunch",
+  "office_celebration",
+  "employee_event",
+  "client_meeting",
+  "business_gathering",
+]);
+
+export function isCorporateOccasion(occasion: string): boolean {
+  const o = String(occasion || "").toLowerCase();
+  return (
+    CORPORATE_OCCASIONS.has(o) ||
+    /\b(company|corporate|office|team|client|business|employee|work|staff|conference|offsite)\b/.test(o)
+  );
 }
 
 export function headcountFromDraft(draft: OrderDraft): number {
@@ -154,6 +176,7 @@ export function formatOrderReadback(draft: OrderDraft): string {
       : "headcount TBD";
   const lines = [
     `Occasion: ${draft.occasion || "—"}`,
+    draft.company_name ? `Company: ${draft.company_name}` : null,
     `When: ${draft.event_date || "—"}${draft.event_time ? ` ${draft.event_time}` : ""} (${draft.meal || "meal TBD"})`,
     `Guests: ${guests}`,
     `Diet: ${draft.diet || "—"}`,

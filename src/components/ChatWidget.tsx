@@ -107,7 +107,7 @@ function isValidPhone(phone: string) {
 
 /** Spoken and shown when chat or a call opens. */
 const OPENING_MESSAGE =
-  "Namaste. I'm AI Yogi with Yogiplate. Our chef and founder, Radhavallabh, graduated from IIT Bombay, lived as a monk, and cooks wholesome vegetarian food, pure and full of flavor. First I'll collect a few basic details about your event, and then I'll help you choose the menu. What occasion are you gathering for?";
+  "Namaste! I'm AI Yogi from Yogiplate. Everything's cooked fresh by our founder, Chef Radhavallabh. What are you celebrating?";
 
 function welcomeFor(
   _orderAware?: boolean,

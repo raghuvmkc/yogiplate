@@ -13,7 +13,7 @@ export type AddressVerifyResult =
   | { ok: false; query: string; error: string };
 
 const STREET_RE =
-  /\b\d{1,6},?\s+[A-Za-z0-9.'\-][A-Za-z0-9.'\-\s]{1,60}\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|ct|court|pkwy|parkway|plaza|circle|cir|ter|terrace)\.?\b/i;
+  /(?<![:.\d])\b\d{1,6},?\s+[A-Za-z0-9.'\-][A-Za-z0-9.'\-\s]{1,60}\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|ct|court|pkwy|parkway|plaza|circle|cir|ter|terrace)\.?\b/i;
 
 /** Heuristic: utterance looks like a street address worth geocoding. */
 export function looksLikeStreetAddress(text: string): boolean {
