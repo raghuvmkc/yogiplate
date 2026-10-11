@@ -138,8 +138,20 @@ export function finishedSentences(raw: string, final = false): string[] {
   return out;
 }
 
-/** First 1–2 sentences for low-latency call TTS. */
-export function speakableForCall(raw: string, maxChars = 320): string {
+/** Talk mode speaks an acknowledgment, a tip, and a question; longer replies stay on screen. */
+export const CALL_SPEECH_SENTENCES = 4;
+export const CALL_SPEECH_CHARS = 480;
+
+const isQuestion = (s: string) => /\?["')\]]*\s*$/.test(s);
+
+/** The reply's closing question when it fell past the speech cap, so the guest still hears what to answer. */
+export function unspokenClosingQuestion(sentences: string[], spokenCount: number): string | null {
+  const last = sentences[sentences.length - 1];
+  return sentences.length > spokenCount && last && isQuestion(last) ? last : null;
+}
+
+/** First few sentences for low-latency call TTS, always ending with the closing question. */
+export function speakableForCall(raw: string, maxChars = CALL_SPEECH_CHARS): string {
   const t = speakableText(raw);
   if (!t) return "";
   const masked = t.replace(
@@ -150,13 +162,16 @@ export function speakableForCall(raw: string, maxChars = 320): string {
     (part) => part.replace(/\u0001/g, ".")
   );
   let out = "";
-  for (const part of parts.slice(0, 2)) {
+  let used = 0;
+  for (const part of parts.slice(0, CALL_SPEECH_SENTENCES)) {
     const next = (out + " " + part.trim()).trim();
     if (out && next.length > maxChars) break;
     out = next;
+    used++;
     if (out.length >= maxChars) break;
   }
   if (!out) out = t.slice(0, maxChars).trim();
   if (out.length > maxChars) out = `${out.slice(0, maxChars - 1).trim()}…`;
-  return out;
+  const question = unspokenClosingQuestion(parts.map((p) => p.trim()), used);
+  return question ? `${out} ${question}` : out;
 }

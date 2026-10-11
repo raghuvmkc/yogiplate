@@ -1,13 +1,15 @@
 import WebSocket from "ws";
 import { serverEnv } from "@/lib/server-env";
 import { sarvamLanguageCode } from "@/lib/sarvam";
-import { finishedSentences, speakableForCall } from "@/lib/speakable";
+import {
+  CALL_SPEECH_CHARS,
+  CALL_SPEECH_SENTENCES,
+  finishedSentences,
+  speakableForCall,
+  unspokenClosingQuestion,
+} from "@/lib/speakable";
 
 const TTS_WS_URL = "wss://api.sarvam.ai/text-to-speech/ws";
-
-/** Same limits the browser used for call speech: first two sentences, at most 320 characters. */
-const CALL_SPEECH_SENTENCES = 2;
-const CALL_SPEECH_CHARS = 320;
 
 export type SarvamTtsStream = {
   /** Live reply text so far for one model round; speaks each newly finished sentence. */
@@ -101,9 +103,9 @@ export function openSarvamTtsStream(opts: {
     if (!closed && pendingFlushes > 0) fail("Sarvam TTS stream closed early");
   });
 
-  function speak(sentence: string): boolean {
-    if (spoken.length >= CALL_SPEECH_SENTENCES) return false;
-    if (spoken.length && chars + sentence.length + 1 > CALL_SPEECH_CHARS) return false;
+  function speak(sentence: string, force = false): boolean {
+    if (!force && spoken.length >= CALL_SPEECH_SENTENCES) return false;
+    if (!force && spoken.length && chars + sentence.length + 1 > CALL_SPEECH_CHARS) return false;
     spoken.push(sentence);
     chars += sentence.length + 1;
     const text = speakableForCall(sentence);
@@ -133,7 +135,10 @@ export function openSarvamTtsStream(opts: {
     },
     finish(reply) {
       const all = finishedSentences(reply, true);
-      if (spoken.every((s, i) => sameWords(all[i], s))) speakFrom(all);
+      if (!spoken.every((s, i) => sameWords(all[i], s))) return;
+      speakFrom(all);
+      const question = unspokenClosingQuestion(all, spoken.length);
+      if (question) speak(question, true);
     },
     drained(timeoutMs) {
       return new Promise((resolve) => {

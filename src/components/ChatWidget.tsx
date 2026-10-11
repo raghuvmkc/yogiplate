@@ -30,7 +30,14 @@ import {
 import { useCartStore } from "@/lib/cart-store";
 import { cartSubtotal } from "@/lib/pricing";
 import { ContinuousMic } from "@/lib/mic-recorder";
-import { finishedSentences, speakableForCall } from "@/lib/speakable";
+import { OPEN_CHAT_EVENT } from "@/lib/chat-events";
+import {
+  CALL_SPEECH_CHARS,
+  CALL_SPEECH_SENTENCES,
+  finishedSentences,
+  speakableForCall,
+  unspokenClosingQuestion,
+} from "@/lib/speakable";
 import type { DietTag } from "@/lib/types";
 
 type ChatRole = "user" | "assistant";
@@ -124,10 +131,6 @@ const MIC_IDLE_NOTE =
 
 const MANAGER_CALLBACK_NOTE =
   "If our store manager couldn't pick up, our store manager will call you as soon as he is available.";
-
-/** Same cap as speakableForCall: talk mode speaks the first 1–2 sentences. */
-const CALL_SPEECH_SENTENCES = 2;
-const CALL_SPEECH_CHARS = 320;
 
 function chatErrorText(data: { error?: string; code?: string; detail?: string }) {
   const bits = [String(data.error || "Chat failed")];
@@ -573,6 +576,12 @@ export function ChatWidget() {
     setPendingOrderWelcome(false);
   }
 
+  useEffect(() => {
+    const onOpen = () => openChat();
+    window.addEventListener(OPEN_CHAT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_CHAT_EVENT, onOpen);
+  });
+
   function openChat(opts?: { orderAware?: boolean }) {
     dismissNudge();
     setPendingOrderWelcome(Boolean(opts?.orderAware));
@@ -834,9 +843,9 @@ export function ChatWidget() {
       a.toLowerCase().replace(/[^a-z0-9]+/g, "") ===
       b.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
-    function enqueue(sentence: string) {
-      if (spoken.length >= CALL_SPEECH_SENTENCES) return false;
-      if (spoken.length && chars + sentence.length + 1 > CALL_SPEECH_CHARS) return false;
+    function enqueue(sentence: string, force = false) {
+      if (!force && spoken.length >= CALL_SPEECH_SENTENCES) return false;
+      if (!force && spoken.length && chars + sentence.length + 1 > CALL_SPEECH_CHARS) return false;
       spoken.push(sentence);
       chars += sentence.length + 1;
       const blob = fetchTtsBlob(sentence).catch(() => null);
@@ -871,7 +880,10 @@ export function ChatWidget() {
       /** Speak whatever the final reply adds, unless it no longer starts with what was spoken. */
       finish(reply: string) {
         const all = finishedSentences(reply, true);
-        if (spoken.every((s, i) => sameWords(all[i], s))) enqueueFrom(all);
+        if (!spoken.every((s, i) => sameWords(all[i], s))) return;
+        enqueueFrom(all);
+        const question = unspokenClosingQuestion(all, spoken.length);
+        if (question) enqueue(question, true);
       },
       drained: () => chain,
     };
