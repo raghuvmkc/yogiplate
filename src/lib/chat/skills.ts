@@ -53,7 +53,6 @@ export type ChatSkillId =
   | "menu-sides"
   | "menu-drinks"
   | "menu-pizzas"
-  | "menu-packages"
   | "menu-recommend";
 
 const CATEGORY_SKILL: Record<string, ChatSkillId> = {
@@ -69,7 +68,6 @@ const CATEGORY_SKILL: Record<string, ChatSkillId> = {
   "cat-sides": "menu-sides",
   "cat-drinks": "menu-drinks",
   "cat-pizzas": "menu-pizzas",
-  "cat-packages": "menu-packages",
 };
 
 function formatItem(item: CatalogItem): string {
@@ -207,11 +205,6 @@ export const CHAT_SKILL_CATALOG: {
     when: "Stone Craft pizzas",
   },
   {
-    id: "menu-packages",
-    title: "Catering packages",
-    when: "Bundled catering packages",
-  },
-  {
     id: "menu-recommend",
     title: "Menu recommendation",
     when: "Helping the guest choose a menu, explain why a dish fits, or swap one dish",
@@ -270,7 +263,6 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
   "menu-sides": () => menuCategorySection("cat-sides"),
   "menu-drinks": () => menuCategorySection("cat-drinks"),
   "menu-pizzas": () => menuCategorySection("cat-pizzas"),
-  "menu-packages": () => menuCategorySection("cat-packages"),
   "menu-recommend": () =>
     [
       "Use this when helping the guest choose a menu or change one dish. You are assisting. Say “I’ll help you choose.” Never say “we’ll plan.” Never say Prabhu. Never say sattvik.",

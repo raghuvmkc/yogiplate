@@ -511,7 +511,7 @@ function prefetchSkillIds(userText: string): ChatSkillId[] {
   if (/chutney|raita|pickle|condiment/.test(t)) ids.add("menu-condiments");
   if (/pasta|lasagna|risotto|orzo/.test(t)) ids.add("menu-pastas");
   if (/pizza|margherita/.test(t)) ids.add("menu-pizzas");
-  if (/package|thali|combo/.test(t)) ids.add("menu-packages");
+  if (/package|thali|combo/.test(t)) ids.add("menu-recommend");
   if (/side|focaccia/.test(t)) ids.add("menu-sides");
   if (/drink|beverage|lassi|chaas|buttermilk|tea\b/.test(t)) ids.add("menu-drinks");
 

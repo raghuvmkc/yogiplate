@@ -1,5 +1,5 @@
 {
-  "seedVersion": "catering-v14-pdf-prices",
+  "seedVersion": "catering-v16-no-packages",
   "categories": [
     {
       "id": "cat-appetizers",
@@ -60,11 +60,6 @@
       "id": "cat-pizzas",
       "name": "Pizzas (Stone Craft)",
       "sort_order": 12
-    },
-    {
-      "id": "cat-packages",
-      "name": "Catering Packages",
-      "sort_order": 13
     }
   ],
   "items": [
@@ -156,7 +151,7 @@
       "category_id": "cat-appetizers",
       "name": "Pani Pooris",
       "description": "Signature street classic — crisp shells with cool chef-spiced water.",
-      "price": 120,
+      "price": 60,
       "unit": "tray",
       "diet_tags": [
         "pure_vegetarian",
@@ -168,7 +163,7 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 120,
+          "price": 60,
           "unit": "half tray",
           "serves": 15,
           "serves_label": "15–18"
@@ -176,7 +171,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 90,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -184,7 +179,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 127,
+          "price": 120,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -243,7 +238,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 165,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -251,7 +246,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 441,
+          "price": 220,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -287,7 +282,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -295,7 +290,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -331,7 +326,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -339,7 +334,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -414,7 +409,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 200,
+          "price": 225,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -422,7 +417,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 225,
+          "price": 300,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -614,7 +609,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 120,
+          "price": 150,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -622,7 +617,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220.5,
+          "price": 200,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -657,7 +652,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -665,7 +660,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220.5,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -701,7 +696,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -709,7 +704,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 245,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -746,7 +741,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 144,
+          "price": 162,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -754,7 +749,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 216,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -791,7 +786,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 144,
+          "price": 162,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -799,7 +794,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 216,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -877,7 +872,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 199.99,
+          "price": 224.99,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -885,7 +880,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 249.99,
+          "price": 299.98,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1001,7 +996,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1009,7 +1004,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1044,7 +1039,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 180,
+          "price": 210,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1052,7 +1047,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 280,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1086,7 +1081,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 165,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1094,7 +1089,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220.5,
+          "price": 220,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1215,7 +1210,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1223,7 +1218,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 288,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1299,7 +1294,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 216,
+          "price": 243,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1307,7 +1302,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 294,
+          "price": 324,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1427,7 +1422,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 195,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1435,7 +1430,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 220.5,
+          "price": 260,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1472,7 +1467,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 225,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1480,7 +1475,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 245,
+          "price": 300,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1939,7 +1934,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 150,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1947,7 +1942,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -1982,7 +1977,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 135,
+          "price": 151.88,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -1990,7 +1985,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 202.5,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2109,7 +2104,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 130,
+          "price": 146.25,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2117,7 +2112,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 195,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2150,7 +2145,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 157.5,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2158,7 +2153,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 210,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2194,7 +2189,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 130,
+          "price": 146.25,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2202,7 +2197,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 171.5,
+          "price": 195,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2579,7 +2574,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 168.75,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2587,7 +2582,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 225,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2624,7 +2619,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 120,
+          "price": 135,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2632,7 +2627,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 180,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2667,7 +2662,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2675,7 +2670,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 288,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2708,7 +2703,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 150,
+          "price": 168.75,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2716,7 +2711,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 171.5,
+          "price": 225,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2730,7 +2725,7 @@
       "category_id": "cat-rice-noodles",
       "name": "Thai Jasmine Rice",
       "description": "Signature jasmine rice — steamed fragrant and snow-white.",
-      "price": 81,
+      "price": 91,
       "unit": "tray",
       "diet_tags": [
         "pure_vegetarian",
@@ -2744,7 +2739,7 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 81,
+          "price": 91,
           "unit": "half tray",
           "serves": 15,
           "serves_label": "15–18"
@@ -2752,7 +2747,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 108,
+          "price": 136.5,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2760,7 +2755,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 182,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2797,7 +2792,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2805,7 +2800,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 171.5,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2882,7 +2877,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2890,7 +2885,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 171.5,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -2923,7 +2918,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 160,
+          "price": 180,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -2931,7 +2926,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 196,
+          "price": 240,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3171,7 +3166,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 250,
+          "price": 281.25,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3179,7 +3174,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 214.38,
+          "price": 375,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3214,7 +3209,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 240,
+          "price": 270,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3222,7 +3217,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 183.75,
+          "price": 360,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3327,7 +3322,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 200,
+          "price": 225,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3335,7 +3330,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 153.12,
+          "price": 300,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3370,7 +3365,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 200,
+          "price": 225,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3378,7 +3373,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 153.12,
+          "price": 300,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3440,7 +3435,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 240,
+          "price": 270,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3448,7 +3443,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 214.38,
+          "price": 360,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3483,7 +3478,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 200,
+          "price": 225,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3491,7 +3486,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 183.75,
+          "price": 300,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3688,7 +3683,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 109,
+          "price": 121.5,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3696,7 +3691,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 98,
+          "price": 162,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3732,7 +3727,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 58,
+          "price": 45,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -3740,7 +3735,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 98,
+          "price": 60,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -3907,7 +3902,7 @@
       "category_id": "cat-pastas",
       "name": "Vegetable Lasagna",
       "description": "House signature lasagna — layered pasta, cheese, slow tomato bake.",
-      "price": 146.25,
+      "price": 138,
       "unit": "tray",
       "diet_tags": [
         "pure_vegetarian",
@@ -3918,7 +3913,7 @@
         {
           "id": "half",
           "label": "Half tray",
-          "price": 146.25,
+          "price": 138,
           "unit": "half tray",
           "serves": 15,
           "serves_label": "15–18"
@@ -3926,10 +3921,18 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 195,
+          "price": 207,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 276,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
       "image": "/images/menu/vegatable-lasanga.png",
@@ -3963,10 +3966,18 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 288,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
       "image": "/images/menu/pasta-in-marinara-sauce.jpeg",
@@ -4000,7 +4011,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -4008,7 +4019,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 269.5,
+          "price": 288,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -4044,10 +4055,18 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 288,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
       "image": "/images/menu/minestrone-soup.jpeg",
@@ -4081,10 +4100,18 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
+        },
+        {
+          "id": "full",
+          "label": "Full tray",
+          "price": 288,
+          "unit": "full tray",
+          "serves": 35,
+          "serves_label": "35–40"
         }
       ],
       "image": "/images/menu/yogiplate-special-pumpkin-basil-soup.jpeg",
@@ -4143,7 +4170,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 120,
+          "price": 135,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -4151,7 +4178,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 98,
+          "price": 180,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -4188,7 +4215,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 150,
+          "price": 168.75,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -4196,7 +4223,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 98,
+          "price": 225,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -4231,7 +4258,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 140,
+          "price": 157.5,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -4239,7 +4266,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 98,
+          "price": 210,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -4271,7 +4298,7 @@
         {
           "id": "medium",
           "label": "Medium tray",
-          "price": 192,
+          "price": 216,
           "unit": "medium tray",
           "serves": 26,
           "serves_label": "26–30"
@@ -4279,7 +4306,7 @@
         {
           "id": "full",
           "label": "Full tray",
-          "price": 147,
+          "price": 288,
           "unit": "full tray",
           "serves": 35,
           "serves_label": "35–40"
@@ -4445,13 +4472,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 27.99,
+          "price": 28.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 29.99,
+          "price": 31.99,
           "unit": "pizza"
         }
       ],
@@ -4484,13 +4511,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 27.99,
+          "price": 28.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 29.99,
+          "price": 31.99,
           "unit": "pizza"
         }
       ],
@@ -4522,13 +4549,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 28.99,
+          "price": 29.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 30.99,
+          "price": 32.99,
           "unit": "pizza"
         }
       ],
@@ -4561,13 +4588,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 27.99,
+          "price": 28.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 29.99,
+          "price": 31.99,
           "unit": "pizza"
         }
       ],
@@ -4600,13 +4627,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 29.99,
+          "price": 30.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 31.99,
+          "price": 33.99,
           "unit": "pizza"
         }
       ],
@@ -4638,13 +4665,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 30.49,
+          "price": 31.49,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 32.49,
+          "price": 34.49,
           "unit": "pizza"
         }
       ],
@@ -4677,13 +4704,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 27.99,
+          "price": 28.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 29.99,
+          "price": 31.99,
           "unit": "pizza"
         }
       ],
@@ -4716,13 +4743,13 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 27.99,
+          "price": 28.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 29.99,
+          "price": 31.99,
           "unit": "pizza"
         }
       ],
@@ -4756,103 +4783,19 @@
         {
           "id": "12",
           "label": "12\"",
-          "price": 28.99,
+          "price": 29.99,
           "unit": "pizza"
         },
         {
           "id": "14",
           "label": "14\"",
-          "price": 30.99,
+          "price": 32.99,
           "unit": "pizza"
         }
       ],
       "notes": "Stone Craft Pizza — Jain / Swaminarayan / Vegan prep available on request.",
       "image": "/images/menu/pizzas/soya_chilli.jpg",
       "fresh_note": "Stone-baked to order with dough made the same day, soy protein and bell peppers. Never made ahead or frozen. No onion, garlic or mushrooms."
-    },
-    {
-      "id": "pkg-jain-25",
-      "category_id": "cat-packages",
-      "name": "Jain Celebration Package",
-      "description": "Signature Jain feast — starter through sweet, purity-first.",
-      "price": 22,
-      "unit": "per guest",
-      "diet_tags": [
-        "jain"
-      ],
-      "is_available": true,
-      "min_quantity": 25,
-      "fresh_note": " seasonal produce chosen for Jain guidelines. Never made ahead or frozen. No onion, garlic or mushrooms."
-    },
-    {
-      "id": "pkg-swami-25",
-      "category_id": "cat-packages",
-      "name": "Swaminarayan Feast Package",
-      "description": "Chef’s sattvic feast — curated clean from starter to dessert.",
-      "price": 20,
-      "unit": "per guest",
-      "diet_tags": [
-        "swaminarayan"
-      ],
-      "is_available": true,
-      "min_quantity": 25,
-      "fresh_note": " seasonal vegetables, lentils and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
-    },
-    {
-      "id": "pkg-pushti-25",
-      "category_id": "cat-packages",
-      "name": "Pushtimarg Seva Package",
-      "description": "Signature seva thali — shuddha vegetarian throughout.",
-      "price": 21,
-      "unit": "per guest",
-      "diet_tags": [
-        "pushtimarg"
-      ],
-      "is_available": true,
-      "min_quantity": 25,
-      "fresh_note": " seasonal vegetables, lentils and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
-    },
-    {
-      "id": "pkg-vegan-25",
-      "category_id": "cat-packages",
-      "name": "Bay Area Vegan Package",
-      "description": "Chef’s plant-only spread — built bold for Bay Area tables.",
-      "price": 23,
-      "unit": "per guest",
-      "diet_tags": [
-        "vegan"
-      ],
-      "is_available": true,
-      "min_quantity": 25,
-      "fresh_note": " vegetables, legumes and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
-    },
-    {
-      "id": "pkg-pureveg-25",
-      "category_id": "cat-packages",
-      "name": "Pure Vegetarian Feast Package",
-      "description": "House signature vegetarian feast — curries, breads, and sweet.",
-      "price": 20,
-      "unit": "per guest",
-      "diet_tags": [
-        "pure_vegetarian"
-      ],
-      "is_available": true,
-      "min_quantity": 25,
-      "fresh_note": " vegetables, house-made paneer, lentils and grains. Never made ahead or frozen. No onion, garlic or mushrooms."
-    },
-    {
-      "id": "pkg-italian-25",
-      "category_id": "cat-packages",
-      "name": "Italian Vegetarian Package",
-      "description": "Chef’s Italian package — pasta, salad, bread, dessert.",
-      "price": 24,
-      "unit": "per guest",
-      "diet_tags": [
-        "italian"
-      ],
-      "is_available": true,
-      "min_quantity": 25,
-      "fresh_note": " vegetables, ripe tomatoes, herbs and cheese. Never made ahead or frozen. No onion, garlic or mushrooms."
     }
   ]
 }

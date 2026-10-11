@@ -220,10 +220,7 @@ export function OrderBuilder({
     const counts = {} as Record<DietTag, number>;
     for (const d of diets) {
       counts[d] = menuItems.filter(
-        (i) =>
-          i.is_available &&
-          i.diet_tags.includes(d) &&
-          i.category_id !== "cat-packages"
+        (i) => i.is_available && i.diet_tags.includes(d)
       ).length;
     }
     return counts;
