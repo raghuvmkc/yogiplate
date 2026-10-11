@@ -59,6 +59,8 @@ const TERM_WORDS: [RegExp, string][] = [
 const NEGATION =
   /\b(no|not|without|skip|avoid|except|exclude|minus|hold the|nothing(?! but)|none of|instead of|don'?t (want|need|include|like|add)|do not (want|need|include|like|add)|no more|remove|leave out)\b/;
 const ONLY = /\b(only|just|purely|nothing but|all about)\b/;
+/** "add some pizzas too" extends the menu rather than replacing its cuisine. */
+const ADD_CUE = /\b(add|adding|also|too|as well|along with|alongside|plus|extra|throw in|in addition|on the side)\b/;
 const QUESTION_START = /^\s*(do|does|is|are|what|which|how|why|when|where|who|can you tell)\b/;
 
 const GENERIC = new Set([
@@ -147,6 +149,10 @@ function clauseWishes(clause: string, aliases: Map<string, string>): MenuWishes 
     const t = h.term;
     if (t.kind === "cuisine") {
       if (isNeg(h)) continue;
+      if (t.id === "pizza" && !isOnly(h) && ADD_CUE.test(clause)) {
+        w.courses_add.push("pizza");
+        continue;
+      }
       w.cuisines.push({ id: t.id, mode: isOnly(h) ? "only" : "include" });
     } else if (t.kind === "course") {
       if (isNeg(h)) w.courses_exclude.push(t.id);
@@ -182,7 +188,7 @@ function clauseWishes(clause: string, aliases: Map<string, string>): MenuWishes 
 /** Split a message into clauses so "pizza, but no paneer" scopes the negation. */
 function clauses(message: string): string[] {
   return message
-    .split(/[.;!?\n]+|,\s*(?=(?:but|and|also|plus)\b)|\b(?:but|however|although|plus)\b/i)
+    .split(/[.;!?\n]+|,\s*(?=(?:but|and|also|plus)\b)|\b(?:but|however|although)\b|(?=\bplus\b)/i)
     .map((s) => norm(s || ""))
     .filter(Boolean);
 }
@@ -201,7 +207,13 @@ export function wishesFromMessages(
     for (const sentence of sentences) {
       if (sentence.trim().endsWith("?") && QUESTION_START.test(norm(sentence))) continue;
       for (const c of clauses(sentence)) {
-        wishes = mergeWishes(wishes, clauseWishes(c, aliases));
+        const next = clauseWishes(c, aliases);
+        const extendsMenu =
+          ADD_CUE.test(c) &&
+          !wishes.cuisines.length &&
+          next.cuisines.some((x) => x.mode === "include" && x.id !== "indian");
+        if (extendsMenu) next.cuisines.unshift({ id: "indian", mode: "include" });
+        wishes = mergeWishes(wishes, next);
       }
     }
   }

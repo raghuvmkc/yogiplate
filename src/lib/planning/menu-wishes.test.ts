@@ -121,6 +121,29 @@ function testJainPizzaParty() {
   console.log("ok: Jain pizza party →", p.items.map((l) => `${l.quantity}× ${l.name}`).join(", "));
 }
 
+function testAddPizzasKeepsIndianMeal() {
+  const messages = [
+    "We're doing a team lunch for about 30 people",
+    "Mostly pure vegetarian",
+    "Sounds good, maybe add some pizzas too",
+  ];
+  const heard = wishesFromMessages(messages.map((content) => ({ role: "user", content })), catalog);
+  assert.ok(heard.courses_add.includes("pizza"), "add cue → pizza course");
+  assert.ok(!heard.cuisines.some((c) => c.id === "pizza"), "not a pizza cuisine");
+
+  for (const wishes of [undefined, { cuisines: [{ id: "pizza", mode: "include" }] }]) {
+    const p = plan(memoryWith(30, { messages, wishes }));
+    const cs = courses(p);
+    assert.ok(cs.includes("pizza"), `pizzas added: ${p.items.map((l) => l.name).join(", ")}`);
+    assert.ok(cs.includes("main"), `Indian mains kept: ${p.items.map((l) => l.name).join(", ")}`);
+    assert.ok(cs.includes("starch") || cs.includes("bread"), "rice or bread kept");
+  }
+
+  const plus = wishesFromMessages([{ role: "user", content: "Indian food plus pizzas" }], catalog);
+  assert.ok(plus.courses_add.includes("pizza"), "'plus pizzas' adds a pizza course");
+  console.log("ok: 'add some pizzas too' keeps the Indian meal");
+}
+
 function testOnlyPizzaSize() {
   const p = plan(
     memoryWith(20, { wishes: { cuisines: [{ id: "pizza", mode: "only" }], size_pref: { pizza: "12" } } })
@@ -209,6 +232,7 @@ testLexiconLaterWordingWins();
 testMustHaveByName();
 testNoWishesKeepsIndianLunch();
 testJainPizzaParty();
+testAddPizzasKeepsIndianMeal();
 testOnlyPizzaSize();
 testSnacksNoFried();
 testMustHaveNoRice();

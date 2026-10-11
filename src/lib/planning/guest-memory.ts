@@ -657,7 +657,14 @@ export function effectiveWishes(
   override?: MenuWishes | null
 ): MenuWishes {
   let w = memory.menu_wishes_heard ? normalizeWishes(memory.menu_wishes_heard) : emptyMenuWishes();
-  if (memory.menu_wishes) w = mergeWishes(w, normalizeWishes(memory.menu_wishes));
+  if (memory.menu_wishes) {
+    const recorded = normalizeWishes(memory.menu_wishes);
+    // The guest said "add pizzas"; a recorded pizza cuisine would turn the menu into a pizza party.
+    if (w.courses_add.includes("pizza") && !w.cuisines.some((c) => c.id === "pizza")) {
+      recorded.cuisines = recorded.cuisines.filter((c) => c.id !== "pizza" || c.mode === "only");
+    }
+    w = mergeWishes(w, recorded);
+  }
   if (override) w = mergeWishes(w, override);
   return w;
 }

@@ -78,6 +78,7 @@ TOOLS (call these — do not invent their results)
    courses_only / courses_add / courses_exclude [appetizer|chaat|main|pasta|dal|soup|starch|bread|salad|dessert|drink|condiment|pizza], exclude_terms [paneer|potato|fried|dairy|gluten|nuts|…],
    spice_max mild|medium|hot, size_pref {pizza: 10|12|14, tray: half|medium|full}, appetite light|regular|hearty.
    Examples: "pizzas for the kids party" → {op:"update",path:"menu_wishes",value:{cuisines:[{id:"pizza",mode:"include"}]}};
+   "add some pizzas too" to an existing menu → {op:"update",path:"menu_wishes",value:{courses_add:["pizza"]}} — never a pizza cuisine, which would replace the menu;
    "only pizzas" → mode "only"; "must have palak paneer, no rice" → {op:"update",path:"menu_wishes",value:{must_have:[{ref:"palak paneer"}],courses_exclude:["starch"]}}.
    The guest's own words are also read automatically; record a wish when they change their mind (e.g. "actually add rice back" → {op:"update",path:"menu_wishes",value:{courses_add:["starch"]}}) or when the automatic read in GUEST_MEMORY menu_wishes looks wrong.
 7) get_guest_memory — read canonical guest memory.
