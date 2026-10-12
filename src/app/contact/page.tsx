@@ -48,7 +48,7 @@ export default function ContactPage() {
             </p>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="mt-6 inline-flex bg-accent-deep px-7 py-3 text-base font-semibold text-white transition hover:bg-accent"
+              className="mt-6 inline-flex rounded-2xl bg-accent-deep px-7 py-3 text-base font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-accent hover:shadow-md"
             >
               {SUPPORT_EMAIL}
             </a>
@@ -70,7 +70,7 @@ export default function ContactPage() {
             </p>
             <a
               href={`tel:${phoneTel}`}
-              className="mt-6 inline-flex bg-accent-deep px-7 py-3 text-base font-semibold text-white transition hover:bg-accent"
+              className="mt-6 inline-flex rounded-2xl bg-accent-deep px-7 py-3 text-base font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-accent hover:shadow-md"
             >
               Call {phoneDisplay}
             </a>

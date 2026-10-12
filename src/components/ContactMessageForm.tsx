@@ -154,7 +154,7 @@ export function ContactMessageForm() {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-8 w-full bg-accent-deep px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-accent disabled:opacity-60 sm:w-auto"
+        className="mt-8 w-full rounded-2xl bg-accent-deep px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-accent hover:shadow-md disabled:opacity-60 sm:w-auto"
       >
         {status === "sending" ? "Sending…" : "Send message"}
       </button>
