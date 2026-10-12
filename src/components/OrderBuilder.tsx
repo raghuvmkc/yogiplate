@@ -519,10 +519,40 @@ export function OrderBuilder({
               />
             </div>
           ) : null}
+          {items.length > 0 ? (
+            <div className="mt-4 space-y-3 border border-line bg-white p-3">
+              {!activeDiet ? (
+                <p className="text-xs font-semibold text-accent">
+                  Choose a menu path above (Jain, Pure Vegetarian, etc.) before
+                  checkout.
+                </p>
+              ) : null}
+              <label className="block text-sm">
+                <span className="font-semibold text-foreground">
+                  Event date{eventDate ? "" : " (required)"}
+                </span>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="mt-1.5 w-full border border-line bg-white px-3 py-2 outline-none focus:border-accent"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium text-foreground">Event time</span>
+                <input
+                  type="time"
+                  value={eventTime}
+                  onChange={(e) => setEventTime(e.target.value)}
+                  className="mt-1.5 w-full border border-line bg-white px-3 py-2 outline-none focus:border-accent"
+                />
+              </label>
+            </div>
+          ) : null}
           <Link
             href="/checkout"
             className={`mt-4 flex w-full items-center justify-center py-3 text-sm font-semibold text-white ${
-              items.length && activeDiet && eventDate
+              items.length && activeDiet && eventDate && eventTime
                 ? "bg-accent-deep hover:bg-accent"
                 : "pointer-events-none bg-foreground/25"
             }`}
@@ -531,12 +561,14 @@ export function OrderBuilder({
           </Link>
           <EmailInvoiceOption
             setupFee={setupFee}
-            disabled={!(items.length && activeDiet && eventDate)}
+            disabled={!(items.length && activeDiet && eventDate && eventTime)}
             onSent={setInvoiceNotice}
           />
-          {(!eventDate || !activeDiet) && items.length > 0 ? (
-            <p className="mt-2 text-xs text-accent">
-              Select diet and event date to continue.
+          {(!eventDate || !eventTime || !activeDiet) && items.length > 0 ? (
+            <p className="mt-2 text-xs font-semibold text-red-600">
+              {!activeDiet
+                ? "Select a menu path above, then enter event date and time in the fields above these buttons."
+                : "Enter your event date and time in the fields above these buttons to continue."}
             </p>
           ) : null}
           {invoiceNotice ? (

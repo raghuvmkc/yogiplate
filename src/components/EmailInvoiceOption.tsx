@@ -97,11 +97,21 @@ export function EmailInvoiceOption(props: {
       }
       setContact({ name, email, phone });
       clear();
-      props.onSent(
-        data.email_sent
-          ? `Invoice ${data.invoice_number} is on its way to ${email}. Pay anytime from the link in the email — your date is held on our calendar.`
-          : `Invoice ${data.invoice_number} is ready, but the email did not go through. You can pay here: ${data.pay_url}`
-      );
+      if (data.email_sent) {
+        props.onSent(
+          data.pay_url
+            ? `Invoice ${data.invoice_number} is on its way to ${email}. Pay anytime from the link in the email — your date is held on our calendar.`
+            : `Invoice ${data.invoice_number} is on its way to ${email}. We'll follow up with a pay link shortly — your date is held on our calendar.`
+        );
+      } else if (data.pay_url) {
+        props.onSent(
+          `Invoice ${data.invoice_number} is ready, but the email did not go through. You can pay here: ${data.pay_url}`
+        );
+      } else {
+        props.onSent(
+          `Invoice ${data.invoice_number} is saved, but email could not be sent from this environment. Call or WhatsApp us and we'll send the pay link.`
+        );
+      }
     } finally {
       setBusy(false);
     }

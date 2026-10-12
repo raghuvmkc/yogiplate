@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdminIdleLock } from "@/components/AdminIdleLock";
+import { AdminAuthedShell } from "@/components/AdminAuthedShell";
 import { AdminLogout } from "@/components/AdminLogout";
 import { isAdminAuthenticated } from "@/lib/auth";
 
@@ -52,8 +52,7 @@ export default async function AdminLayout({
           ) : null}
         </div>
       </div>
-      {children}
-      {authed ? <AdminIdleLock /> : null}
+      {authed ? <AdminAuthedShell>{children}</AdminAuthedShell> : children}
     </div>
   );
 }

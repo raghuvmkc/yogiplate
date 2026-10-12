@@ -48,9 +48,6 @@ export async function createDeskInvoice(input: DeskBillInput) {
     throw new GuestInputError("Name and email are required.");
   }
   if (!input.event_date) throw new GuestInputError("Event date is required.");
-  if (!stripeConfigured()) {
-    throw new Error("Stripe is not configured, so a pay link cannot be sent.");
-  }
 
   const db = await getDb();
   const pickup = input.delivery_or_pickup === "pickup";
@@ -128,23 +125,26 @@ export async function createDeskInvoice(input: DeskBillInput) {
     paid_at: null,
   };
 
-  const session = await createCateringPaymentLink({
-    customer_email: order.customer_email,
-    amount: order.total,
-    product_name: `Yogiplate invoice ${invNum}`,
-    description: `Order ${ordNum}. ${input.items
-      .map((item) => `${item.name} × ${item.quantity}`)
-      .join(", ")}`,
-    success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: siteUrl(),
-    order_id: orderId,
-    order_number: ordNum,
-    invoice_number: invNum,
-    kind: "desk_invoice",
-  });
-  order.stripe_session_id = session.id;
-  const payUrl = session.url;
-  if (!payUrl) throw new Error("Stripe did not return a pay link.");
+  let payUrl: string | null = null;
+  if (stripeConfigured()) {
+    const session = await createCateringPaymentLink({
+      customer_email: order.customer_email,
+      amount: order.total,
+      product_name: `Yogiplate invoice ${invNum}`,
+      description: `Order ${ordNum}. ${input.items
+        .map((item) => `${item.name} × ${item.quantity}`)
+        .join(", ")}`,
+      success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: siteUrl(),
+      order_id: orderId,
+      order_number: ordNum,
+      invoice_number: invNum,
+      kind: "desk_invoice",
+    });
+    order.stripe_session_id = session.id;
+    payUrl = session.url;
+    if (!payUrl) throw new Error("Stripe did not return a pay link.");
+  }
 
   const orderItems: OrderItem[] = input.items.map((item) => ({
     id: uid("oi"),
@@ -235,7 +235,9 @@ export async function createDeskInvoice(input: DeskBillInput) {
         name: order.customer_name,
         subject,
         html,
-        text: `Invoice ${invNum} for order ${ordNum}. Total ${order.total}. Pay: ${payUrl}`,
+        text: payUrl
+          ? `Invoice ${invNum} for order ${ordNum}. Total ${order.total}. Pay: ${payUrl}`
+          : `Invoice ${invNum} for order ${ordNum}. Total ${order.total}. We'll send a pay link shortly.`,
       });
       email = { sent: true };
     } catch (err) {

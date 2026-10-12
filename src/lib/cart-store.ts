@@ -216,15 +216,25 @@ export const useCartStore = create<CartStore>()(
           ...i,
           line_id: i.line_id || i.menu_item_id,
         }));
+        const diet =
+          state.diet && DIET_TAGS.has(state.diet) ? state.diet : null;
         return {
           contact: state.contact || EMPTY_CONTACT,
-          diet: null,
-          guestCount: 0,
-          eventDate: "",
-          eventTime: "",
-          notes: "",
-          setupService: false,
-          couponCode: "",
+          diet,
+          guestCount:
+            typeof state.guestCount === "number" && state.guestCount > 0
+              ? state.guestCount
+              : 0,
+          eventDate: typeof state.eventDate === "string" ? state.eventDate : "",
+          eventTime:
+            typeof state.eventTime === "string" &&
+            /^\d{2}:\d{2}$/.test(state.eventTime)
+              ? state.eventTime
+              : "",
+          notes: typeof state.notes === "string" ? state.notes : "",
+          setupService: state.setupService === true,
+          couponCode:
+            typeof state.couponCode === "string" ? state.couponCode : "",
           items,
         } as CartStore;
       },

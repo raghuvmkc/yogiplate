@@ -1,7 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AdminCalendarPageClient } from "@/components/AdminCalendarPageClient";
+import {
+  callbackNumber,
+  callerLabel,
+  callerPhone,
+  formatCallWhen,
+  useAdminVoice,
+} from "@/components/AdminVoiceProvider";
 import { DeskTexts } from "@/components/DeskTexts";
 import type { CartLine, DietTag, MenuCategory } from "@/lib/types";
 
@@ -27,45 +34,6 @@ function money(value: number) {
   return `$${value.toFixed(2).replace(/\.00$/, "")}`;
 }
 
-type DeskCall = {
-  accept: () => void;
-  reject: () => void;
-  disconnect: () => void;
-  mute: (muted?: boolean) => void;
-  sendDigits: (digits: string) => void;
-  on: (event: string, handler: () => void) => void;
-  parameters: { From?: string; To?: string };
-  customParameters?: Map<string, string>;
-};
-
-/** Website-chat transfers arrive as client:guest_* with the guest's name and phone attached. */
-function callerLabel(call: DeskCall | null) {
-  if (!call) return "";
-  const from = call.parameters?.From || "";
-  if (from.startsWith("client:guest_")) {
-    const guest = call.customParameters?.get("GuestName") || "Website guest";
-    const guestPhone = call.customParameters?.get("GuestPhone");
-    return `${guest}${guestPhone ? ` · ${guestPhone}` : ""} (website chat)`;
-  }
-  return from || call.parameters?.To || "";
-}
-
-function callerPhone(call: DeskCall) {
-  const from = call.parameters?.From || "";
-  if (from.startsWith("client:")) return call.customParameters?.get("GuestPhone") || "";
-  return from;
-}
-
-type CallRow = {
-  sid: string;
-  from: string;
-  to: string;
-  status: string;
-  direction: string;
-  duration: string;
-  started_at: string;
-};
-
 const DIETS: { id: DietTag; label: string }[] = [
   { id: "pure_vegetarian", label: "Pure vegetarian" },
   { id: "jain", label: "Jain" },
@@ -77,21 +45,6 @@ const DIETS: { id: DietTag; label: string }[] = [
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
-function callbackNumber(call: CallRow) {
-  return call.direction.startsWith("outbound") ? call.to : call.from;
-}
-
-function when(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export function ManagerDesk({
   items,
   categories,
@@ -101,20 +54,25 @@ export function ManagerDesk({
   categories: MenuCategory[];
   setupFee: number;
 }) {
-  const deviceRef = useRef<{
-    destroy: () => void;
-    updateToken: (token: string) => void;
-    connect: (options: { params: Record<string, string> }) => Promise<DeskCall>;
-  } | null>(null);
-  const [status, setStatus] = useState("Connecting the phone…");
-  const [phoneReady, setPhoneReady] = useState(false);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [number, setNumber] = useState("");
-  const [incoming, setIncoming] = useState<DeskCall | null>(null);
-  const [active, setActive] = useState<DeskCall | null>(null);
-  const [muted, setMuted] = useState(false);
-  const [tones, setTones] = useState("");
-  const [calls, setCalls] = useState<CallRow[]>([]);
+  const {
+    status,
+    phoneReady,
+    phoneError,
+    dialNumber,
+    setDialNumber,
+    incoming,
+    active,
+    muted,
+    tones,
+    calls,
+    placeCall,
+    answer,
+    decline,
+    hangUp,
+    sendTone,
+    toggleMute,
+  } = useAdminVoice();
+
   const [tab, setTab] = useState<"texts" | "calendar" | "menu" | "quote" | "invoice">("quote");
   const [unreadTexts, setUnreadTexts] = useState(0);
   const [query, setQuery] = useState("");
@@ -161,157 +119,12 @@ export function ManagerDesk({
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
   const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
 
-  async function loadCalls() {
-    const res = await fetch("/api/admin/voice/calls");
-    if (!res.ok) return;
-    const data = await res.json();
-    setCalls(data.calls || []);
-  }
-
   useEffect(() => {
-    void loadCalls();
-    const timer = window.setInterval(() => void loadCalls(), 20000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function connect() {
-      const res = await fetch("/api/admin/voice/token");
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (!cancelled && !deviceRef.current) {
-          setPhoneReady(false);
-          setStatus("Phone is not ready");
-          setPhoneError(
-            data.configured === false
-              ? "Add the Twilio voice keys in the environment, then restart the server."
-              : data.error || "Could not start the phone."
-          );
-        }
-        return;
-      }
-      if (cancelled) return;
-      if (deviceRef.current) {
-        deviceRef.current.updateToken(data.token);
-        return;
-      }
-      const { Device } = await import("@twilio/voice-sdk");
-      if (cancelled) return;
-      const device = new Device(data.token, { closeProtection: true });
-      device.on("registered", () => {
-        setPhoneReady(true);
-        setPhoneError(null);
-        setStatus("Ready for calls");
-      });
-      device.on("unregistered", () => {
-        setPhoneReady(false);
-        setStatus("Phone disconnected");
-      });
-      device.on("error", (error: { message?: string }) => {
-        setPhoneError(error.message || "The phone hit an error.");
-      });
-      device.on("incoming", (call: DeskCall) => {
-        const label = callerLabel(call);
-        const from = callerPhone(call);
-        setIncoming(call);
-        setStatus(label ? `Incoming ${label}` : "Incoming call");
-        if (from) setPhone((current) => current || from);
-        call.on("cancel", () => {
-          setIncoming((current) => (current === call ? null : current));
-          setStatus("Ready for calls");
-        });
-        call.on("disconnect", () => {
-          setActive((current) => (current === call ? null : current));
-          setIncoming((current) => (current === call ? null : current));
-          setMuted(false);
-          setTones("");
-          setStatus("Ready for calls");
-          void loadCalls();
-        });
-      });
-      deviceRef.current = device;
-      await device.register();
-    }
-
-    void connect();
-    const refreshTimer = window.setInterval(() => void connect(), 50 * 60 * 1000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(refreshTimer);
-      deviceRef.current?.destroy();
-      deviceRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    document.body.dataset.adminBusy = active || incoming ? "1" : "";
-    return () => {
-      document.body.dataset.adminBusy = "";
-    };
-  }, [active, incoming]);
-
-  function watchCall(call: DeskCall, label: string) {
-    setActive(call);
-    setStatus(label);
-    call.on("accept", () => setStatus("On a call"));
-    call.on("disconnect", () => {
-      setActive((current) => (current === call ? null : current));
-      setMuted(false);
-      setTones("");
-      setStatus("Ready for calls");
-      void loadCalls();
-    });
-  }
-
-  async function placeCall(to: string) {
-    const device = deviceRef.current;
-    if (!device || !phoneReady) return;
-    setPhoneError(null);
-    const res = await fetch("/api/admin/voice/ticket", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setPhoneError(data.error || "Could not start the call.");
-      return;
-    }
-    setPhone((current) => current || data.to);
-    try {
-      const call = await device.connect({ params: { Ticket: data.ticket } });
-      watchCall(call, `Calling ${data.to}`);
-    } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : "Could not start the call.");
-    }
-  }
-
-  function answer() {
-    if (!incoming) return;
-    incoming.accept();
-    const label = callerLabel(incoming);
-    setIncoming(null);
-    watchCall(incoming, label ? `On a call with ${label}` : "On a call");
-  }
-
-  function decline() {
-    incoming?.reject();
-    setIncoming(null);
-    setStatus("Ready for calls");
-  }
-
-  function sendTone(key: string) {
-    if (!active) return;
-    active.sendDigits(key);
-    setTones((current) => (current + key).slice(-32));
-  }
-
-  function hangUp() {
-    active?.disconnect();
-    incoming?.reject();
-  }
+    const call = incoming || active;
+    if (!call) return;
+    const from = callerPhone(call);
+    if (from) setPhone((current) => current || from);
+  }, [incoming, active]);
 
   function minFor(item: DeskMenuItem | undefined) {
     return Math.max(1, item?.min_quantity || 1);
@@ -513,8 +326,8 @@ export function ManagerDesk({
           <label className="mt-5 block text-sm font-semibold text-foreground">
             Number
             <input
-              value={number}
-              onChange={(event) => setNumber(event.target.value)}
+              value={dialNumber}
+              onChange={(event) => setDialNumber(event.target.value)}
               placeholder="408 555 0100"
               className="mt-1 w-full border border-line bg-white px-3 py-2 text-base"
             />
@@ -525,7 +338,9 @@ export function ManagerDesk({
             <button
               key={key}
               type="button"
-              onClick={() => (active ? sendTone(key) : setNumber((current) => current + key))}
+              onClick={() =>
+                active ? sendTone(key) : setDialNumber((current) => current + key)
+              }
               className={`border bg-white py-3 text-lg font-semibold text-foreground active:bg-warm ${
                 active ? "border-accent" : "border-line"
               }`}
@@ -538,7 +353,11 @@ export function ManagerDesk({
           <button
             type="button"
             disabled={!phoneReady || Boolean(active)}
-            onClick={() => void placeCall(number)}
+            onClick={() => {
+              void placeCall(dialNumber).then((to) => {
+                if (to) setPhone((current) => current || to);
+              });
+            }}
             className="bg-accent-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             Call
@@ -546,7 +365,7 @@ export function ManagerDesk({
           {active ? null : (
             <button
               type="button"
-              onClick={() => setNumber((current) => current.slice(0, -1))}
+              onClick={() => setDialNumber((current) => current.slice(0, -1))}
               className="border border-line bg-white px-4 py-2 text-sm font-semibold"
             >
               Delete
@@ -556,11 +375,7 @@ export function ManagerDesk({
             <>
               <button
                 type="button"
-                onClick={() => {
-                  const next = !muted;
-                  active.mute(next);
-                  setMuted(next);
-                }}
+                onClick={toggleMute}
                 className="border border-line bg-white px-4 py-2 text-sm font-semibold"
               >
                 {muted ? "Unmute" : "Mute"}
@@ -583,7 +398,7 @@ export function ManagerDesk({
                 <button
                   type="button"
                   onClick={() => {
-                    setNumber(who);
+                    setDialNumber(who);
                     setPhone(who);
                   }}
                   className="flex w-full items-baseline justify-between gap-3 py-2 text-left"
@@ -591,7 +406,8 @@ export function ManagerDesk({
                   <span>
                     <span className="block text-sm font-semibold text-foreground">{who}</span>
                     <span className="text-xs text-muted">
-                      {outbound ? "Outgoing" : "Incoming"} · {call.status} · {when(call.started_at)}
+                      {outbound ? "Outgoing" : "Incoming"} · {call.status} ·{" "}
+                      {formatCallWhen(call.started_at)}
                     </span>
                   </span>
                   <span className="text-xs text-muted">{call.duration}s</span>
