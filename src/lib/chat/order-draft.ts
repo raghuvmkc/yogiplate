@@ -90,11 +90,11 @@ const DIETS = new Set([
 export function normalizeDiet(raw: string): DietTag | "" {
   const t = raw.trim().toLowerCase().replace(/\s+/g, "_");
   if (DIETS.has(t)) return t as DietTag;
-  if (t.includes("jain")) return "jain";
+  if (t.includes("jain") || t === "jane") return "jain";
   if (t.includes("swaminarayan")) return "swaminarayan";
   if (t.includes("pushti")) return "pushtimarg";
   if (t.includes("vegan")) return "vegan";
-  if (t.includes("italian")) return "italian";
+  if (t.includes("italian") || t.includes("pizza")) return "italian";
   if (t.includes("pure") || t.includes("vegetarian")) return "pure_vegetarian";
   return "";
 }

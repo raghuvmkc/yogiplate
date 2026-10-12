@@ -42,6 +42,7 @@ import {
   spokenDateLabel,
   todayLabel,
 } from "@/lib/chat/relative-date";
+import { draftPatchFromUtterance } from "@/lib/chat/utterance-facts";
 import {
   addressCandidateForTurn,
   verifyAddress,
@@ -816,6 +817,70 @@ export async function runFrontDeskTurn(
   ) {
     resolvedDateHint += `\n\n[Resolved event_date: ${resolvedDate.iso} (${resolvedDate.phrase}). Already on file — do not re-ask.]`;
   }
+
+  // Voice turns often answer without calling tools — persist occasion, guests,
+  // time, and diet (incl. STT “Jane”→Jain and pizza→Italian) from the utterance.
+  const utterancePatch = draftPatchFromUtterance(orderDraft, last.content);
+  if (Object.keys(utterancePatch).length) {
+    orderDraft = mergeOrderDraft(orderDraft, utterancePatch);
+    const factBits = [
+      utterancePatch.occasion ? `occasion=${utterancePatch.occasion}` : "",
+      utterancePatch.adults != null ? `guests=${utterancePatch.adults}` : "",
+      utterancePatch.event_time ? `time=${utterancePatch.event_time}` : "",
+      utterancePatch.diet ? `diet=${utterancePatch.diet}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    if (factBits) {
+      resolvedDateHint += `\n\n[Heard this turn and saved to the order draft: ${factBits}. Do not re-ask for these. Continue to the next missing slot, or call build_plan when you have enough for a menu.]`;
+    }
+    try {
+      const memOps: MemoryOp[] = [];
+      if (utterancePatch.occasion) {
+        memOps.push({
+          op: "update",
+          path: "event.occasion",
+          value: utterancePatch.occasion,
+        });
+      }
+      if (utterancePatch.event_time) {
+        memOps.push({
+          op: "update",
+          path: "event.meal_time",
+          value: utterancePatch.event_time,
+        });
+      }
+      if (utterancePatch.adults != null) {
+        memOps.push({
+          op: "update",
+          path: "headcount",
+          value: utterancePatch.adults,
+        });
+      }
+      if (utterancePatch.diet === "jain" || utterancePatch.diet === "vegan") {
+        const dietGuests = utterancePatch.adults ?? orderDraft.adults ?? 0;
+        if (dietGuests > 0) {
+          memOps.push({
+            op: "update",
+            path: "requirement_groups",
+            key: utterancePatch.diet,
+            value: dietGuests,
+          });
+        }
+      }
+      if (memOps.length) {
+        const memResult = await updateGuestMemoryOps({
+          session_id: sessionId,
+          customer_email: input.lead.email || "unknown@guest.local",
+          ops: memOps,
+        });
+        guestMemory = memResult.memory;
+      }
+    } catch {
+      /* draft still holds the facts */
+    }
+  }
+
   let verified_address: AddressVerifyResult | null = null;
   let addressHint = "";
   const spokenAddress = addressCandidateForTurn({ userText: last.content });
@@ -1051,23 +1116,36 @@ export async function runFrontDeskTurn(
       input.order_context?.guest_count;
     const diet =
       orderDraft.diet || input.lead.diet || input.order_context?.diet || "";
-    const reply = [
-      guests || diet || cartBits
-        ? `I can build a ${diet || "catering"} menu${
-            guests ? ` for about ${guests} guests` : ""
-          }${cartBits ? ` that complements what you already have (${cartBits})` : ""}.`
-        : "I can suggest a clear tray-by-tray menu for your event.",
-      "Share your event date if you have it, or say “propose a Better package” and I will list dishes with quantities and prices.",
-    ].join(" ");
+    const occasion = String(orderDraft.occasion || "").trim();
+    const date = String(orderDraft.event_date || "").trim();
+    const missing =
+      (!occasion && "occasion") ||
+      (!guests && "guest count") ||
+      (!date && "event date") ||
+      (!diet && "dietary preference") ||
+      "";
+    const reply =
+      guests && diet && date
+        ? `I have ${guests} guests${occasion ? ` for a ${occasion.replace(/_/g, " ")}` : ""}${
+            diet ? ` on a ${diet.replace(/_/g, " ")} menu` : ""
+          }${date ? ` for ${spokenDateLabel(date)}` : ""}. Shall I propose a pizza and catering menu with prices next?`
+        : guests || diet || cartBits || occasion || date
+          ? `Thanks — I have${occasion ? ` a ${occasion.replace(/_/g, " ")}` : ""}${
+              guests ? ` for about ${guests} guests` : ""
+            }${diet ? `, ${diet.replace(/_/g, " ")}` : ""}${
+              date ? `, ${spokenDateLabel(date)}` : ""
+            }${cartBits ? ` (${cartBits})` : ""}. ${
+              missing ? `What’s the ${missing}?` : "Shall I propose a menu with prices?"
+            }`
+          : "I can suggest a clear tray-by-tray menu for your event. What’s the occasion, and about how many guests?";
     return {
       type: "answer",
       reply,
       offer_whatsapp: false,
       lead: {},
-      bullets: [
-        "Ask for a Good / Better / Best package",
-        "Or name a few favorites (paneer, rice, dessert)",
-      ],
+      bullets: missing
+        ? [`Share ${missing}`]
+        : ["Ask me to propose a menu with prices"],
     };
   }
 
@@ -1218,7 +1296,11 @@ export async function runFrontDeskTurn(
     break;
   }
 
-  if (isFallbackReply(parsed)) {
+  if (
+    isFallbackReply(parsed) ||
+    !String(parsed.reply || "").trim() ||
+    String(parsed.type || "").toLowerCase() === "tool_call"
+  ) {
     parsed = contextualFallback();
   }
 
@@ -1229,7 +1311,7 @@ export async function runFrontDeskTurn(
           .trim()
           .replace(/\*\*([^*]+)\*\*/g, "$1")
           .replace(/__([^_]+)__/g, "$1")
-      : "I can help with Yogiplate catering menus, diets, and orders. What would you like to know?";
+      : String(contextualFallback().reply || FALLBACK_REPLY);
   if (voiceMode || channel === "web_chat") {
     reply = replyWithoutQuoteUrl(reply);
     if (!reply && quoteUrl) {

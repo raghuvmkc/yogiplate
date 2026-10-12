@@ -14,6 +14,7 @@ const AREA_LABELS: Record<string, string> = {
   "checkout-confirm": "Order success page",
   "quote-deposit": "Quote deposit payment",
   "corporate-inquiry": "Corporate inquiry form",
+  "contact-message": "Contact page message form",
   "sms-webhook": "Incoming texts (Twilio webhook)",
   "sms-ai": "AI Yogi reply to a text",
   "sms-send": "Sending a text message",

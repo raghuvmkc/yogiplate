@@ -159,6 +159,85 @@ async function smtpSend(rawMessage: string, envelopeTo: string[]) {
   }
 }
 
+/** Guest contact form on /contact — delivered to support@yogiplate.com. */
+export function contactSupportEmails(): string[] {
+  const raw = env("CONTACT_SUPPORT_EMAIL") || "support@yogiplate.com";
+  return [
+    ...new Set(
+      raw
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+}
+
+export async function sendContactMessageEmail(input: {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+}) {
+  const to = contactSupportEmails();
+  if (!to.length) throw new Error("No support recipients configured.");
+
+  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromName = env("SMTP_FROM_NAME") || "Yogiplate Contact";
+  const from = `${fromName} <${fromEmail}>`;
+
+  const subject = `Website contact — ${input.name}`;
+  const lines = [
+    "New message from the Yogiplate contact page",
+    "",
+    `Name: ${input.name}`,
+    `Email: ${input.email}`,
+    `Phone: ${input.phone}`,
+    "",
+    "Message:",
+    input.message,
+    "",
+    "Reply directly to this email to contact the guest.",
+  ];
+  const text = lines.join("\n");
+  const esc = (v: string) =>
+    String(v)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  const html = `
+    <div style="font-family:Georgia,serif;color:#2a4a36;line-height:1.55">
+      <p style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#3d6b4f;margin:0 0 8px">Contact us</p>
+      <h2 style="margin:0 0 16px;font-size:24px">New message</h2>
+      <table style="border-collapse:collapse;width:100%;max-width:560px;font-size:15px">
+        ${[
+          ["Name", input.name],
+          ["Email", input.email],
+          ["Phone", input.phone],
+          ["Message", input.message],
+        ]
+          .map(
+            ([k, v]) =>
+              `<tr><td style="padding:8px 12px 8px 0;border-top:1px solid #e8ebe9;vertical-align:top;font-weight:600">${k}</td><td style="padding:8px 0;border-top:1px solid #e8ebe9;white-space:pre-wrap">${esc(String(v))}</td></tr>`
+          )
+          .join("")}
+      </table>
+      <p style="margin:20px 0 0;color:#3d6b4f;font-size:14px">Reply to this email to reach the guest directly.</p>
+    </div>
+  `;
+
+  const raw = buildMime({
+    from,
+    to,
+    replyTo: `${input.name} <${input.email}>`,
+    subject,
+    text,
+    html,
+  });
+
+  await smtpSend(raw, to);
+  return { ok: true as const };
+}
+
 export async function sendCorporateInquiryEmail(input: {
   company: string;
   name: string;

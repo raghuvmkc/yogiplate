@@ -1743,7 +1743,20 @@ export function ChatWidget() {
                     </button>
                   </div>
                 ) : null}
-                {messages.map((m, i) => (
+                {messages.map((m, i) => {
+                  const lastHighlightIdx = (() => {
+                    for (let j = messages.length - 1; j >= 0; j--) {
+                      if (
+                        messages[j].role === "assistant" &&
+                        messages[j].highlights &&
+                        messages[j].highlights!.length > 0
+                      ) {
+                        return j;
+                      }
+                    }
+                    return -1;
+                  })();
+                  return (
                   <div
                     key={`${m.role}-${i}`}
                     className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
@@ -1758,7 +1771,9 @@ export function ChatWidget() {
                       {m.role === "assistant" ? (
                         <ChatRichMessage
                           content={m.content}
-                          highlights={m.highlights}
+                          highlights={
+                            i === lastHighlightIdx ? m.highlights : undefined
+                          }
                           bullets={m.bullets}
                           lines={m.lines}
                           linesTotal={m.linesTotal}
@@ -1880,7 +1895,8 @@ export function ChatWidget() {
                       */}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {busy && liveReply ? (
                   <div className="flex justify-start">
                     <p className="max-w-[90%] whitespace-pre-wrap border border-line bg-white px-3 py-2 text-sm leading-relaxed text-foreground">
