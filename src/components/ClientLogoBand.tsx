@@ -27,15 +27,28 @@ function NameSequence({ copy }: { copy: string }) {
 export function ClientLogoBand({ compact = false }: { compact?: boolean }) {
   return (
     <section
-      className={compact ? "shrink-0 pl-3 pr-40 pt-2 sm:pl-5 sm:pr-48" : "py-8 sm:py-10"}
+      className={
+        compact
+          ? "shrink-0 bg-white pl-3 pr-40 pt-3 pb-1 sm:pl-5 sm:pr-48"
+          : "bg-white py-8 sm:py-10"
+      }
       aria-label="Corporate clients"
     >
-      <div className="overflow-hidden border-y border-logo-gold/50 bg-white">
-        <div className="flex items-stretch">
-          <p className="flex shrink-0 items-center border-r border-logo-gold/40 px-4 font-display text-lg italic text-foreground sm:px-5 sm:text-xl">
+      <div className="overflow-x-hidden border-y border-logo-gold/50 bg-white">
+        <div className="flex min-h-[3.5rem] items-center sm:min-h-[3.75rem]">
+          <p className="flex shrink-0 items-center self-stretch border-r border-logo-gold/40 px-4 font-display text-lg italic leading-snug text-foreground sm:px-5 sm:text-xl">
             Proud caterer for
           </p>
-          <div className="client-marquee-window min-w-0 flex-1 overflow-hidden py-2.5 sm:py-3">
+          <div className="client-marquee-window min-w-0 flex-1 overflow-x-hidden overflow-y-visible py-3 sm:py-3.5">
+            {/* Horizontal fades — safe on iOS (no CSS mask) */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-white to-transparent sm:w-10"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white to-transparent sm:w-10"
+            />
             <div className="client-marquee-rtl flex w-max items-center leading-none">
               <NameSequence copy="a" />
               <div className="client-marquee-copy flex" aria-hidden>

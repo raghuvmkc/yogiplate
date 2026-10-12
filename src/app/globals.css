@@ -136,22 +136,10 @@ h3,
   animation: client-marquee-rtl 28s linear infinite;
 }
 
+/* Edge fade via overlays in ClientLogoBand — avoid mask-image (iOS Safari
+   often crops it vertically and chops the scrolling names in half). */
 .client-marquee-window {
-  /* Explicit size/repeat — iOS Safari otherwise crops the gradient mask vertically. */
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 12%,
-    #000 88%,
-    transparent
-  );
-  -webkit-mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
-  mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  mask-position: center;
+  position: relative;
 }
 
 @media (prefers-reduced-motion: reduce) {

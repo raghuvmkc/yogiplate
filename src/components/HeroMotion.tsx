@@ -122,94 +122,94 @@ export function HeroMotion() {
   }, [brandIndex, index]);
 
   return (
-    <section className="relative overflow-hidden bg-white">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col px-3 py-4 sm:px-5 sm:py-5 lg:h-[calc(100svh-8rem)] lg:px-6 lg:py-3">
-        <div className="mx-auto w-full max-w-5xl shrink-0 px-1">
-          <div className="grid place-items-center">
-            <QuoteBlock quote={LONGEST_QUOTE} className="invisible" ariaHidden />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={quoteIndex}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                className="w-full [grid-area:1/1]"
-              >
-                <QuoteBlock quote={QUOTES[quoteIndex]} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5 sm:mt-3 lg:grid-cols-[0.78fr_1.22fr] lg:grid-rows-1 lg:gap-6 xl:gap-8">
-          {/* Brand / food carousel — explicit size on mobile so frames actually swap */}
-          <div className="relative z-10 flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-white">
-            <div
-              className={`relative aspect-square h-auto w-full max-h-full max-w-[min(100%,420px)] overflow-hidden ${
-                brand.contain ? "" : "soft-media"
-              }`}
-            >
-              <AnimatePresence mode="sync" initial={false}>
+    <>
+      <section className="relative overflow-hidden bg-white">
+        <div className="mx-auto flex w-full max-w-[1800px] flex-col px-3 py-4 sm:px-5 sm:py-5 lg:h-[calc(100svh-8rem)] lg:px-6 lg:py-3">
+          <div className="mx-auto w-full max-w-5xl shrink-0 px-1">
+            <div className="grid place-items-center">
+              <QuoteBlock quote={LONGEST_QUOTE} className="invisible" ariaHidden />
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                  key={brand.src}
-                  className="absolute inset-0 overflow-hidden"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+                  key={quoteIndex}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-full [grid-area:1/1]"
                 >
-                  <Image
-                    src={brand.src}
-                    alt={brand.alt}
-                    fill
-                    priority={brandIndex === 0}
-                    unoptimized
-                    className={
-                      brand.contain
-                        ? "object-contain object-center p-4 mix-blend-multiply"
-                        : "object-cover object-center"
-                    }
-                    sizes="(max-width: 1024px) 90vw, 40vw"
-                  />
+                  <QuoteBlock quote={QUOTES[quoteIndex]} />
                 </motion.div>
               </AnimatePresence>
             </div>
           </div>
 
-          <div className="relative z-0 flex min-h-0 min-w-0 w-full flex-col overflow-hidden">
-            <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden bg-white">
-              <div className="soft-media-wide relative aspect-[4/3] w-full max-w-full overflow-hidden sm:aspect-[2/1] lg:aspect-[3/1] lg:max-h-full">
-                <AnimatePresence mode="wait" initial={false}>
+          <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5 sm:mt-3 lg:grid-cols-[0.78fr_1.22fr] lg:grid-rows-1 lg:gap-6 xl:gap-8">
+            {/* Brand / food carousel — explicit size on mobile so frames actually swap */}
+            <div className="relative z-10 flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-white">
+              <div
+                className={`relative aspect-square h-auto w-full max-h-full max-w-[min(100%,420px)] overflow-hidden ${
+                  brand.contain ? "" : "soft-media"
+                }`}
+              >
+                <AnimatePresence mode="sync" initial={false}>
                   <motion.div
-                    key={current.src}
-                    className="absolute inset-0 overflow-hidden bg-white"
+                    key={brand.src}
+                    className="absolute inset-0 overflow-hidden"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
+                    transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
                   >
                     <Image
-                      src={current.src}
-                      alt={`Google review ${index + 1}`}
+                      src={brand.src}
+                      alt={brand.alt}
                       fill
+                      priority={brandIndex === 0}
                       unoptimized
-                      quality={100}
-                      className="object-contain object-center"
-                      sizes="(max-width: 1024px) 100vw, 55vw"
-                      priority={index === 0}
+                      className={
+                        brand.contain
+                          ? "object-contain object-center p-4 mix-blend-multiply"
+                          : "object-cover object-center"
+                      }
+                      sizes="(max-width: 1024px) 90vw, 40vw"
                     />
                   </motion.div>
                 </AnimatePresence>
               </div>
             </div>
 
+            <div className="relative z-0 flex min-h-0 min-w-0 w-full flex-col overflow-hidden">
+              <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden bg-white">
+                <div className="soft-media-wide relative aspect-[4/3] w-full max-w-full overflow-hidden sm:aspect-[2/1] lg:aspect-[3/1] lg:max-h-full">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={current.src}
+                      className="absolute inset-0 overflow-hidden bg-white"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      <Image
+                        src={current.src}
+                        alt={`Google review ${index + 1}`}
+                        fill
+                        unoptimized
+                        quality={100}
+                        className="object-contain object-center"
+                        sizes="(max-width: 1024px) 100vw, 55vw"
+                        priority={index === 0}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="mt-4 shrink-0 lg:mt-3">
-          <ClientLogoBand compact />
-        </div>
-      </div>
-    </section>
+      </section>
+      {/* Outside hero overflow-hidden so iOS cannot clip the scrolling names. */}
+      <ClientLogoBand compact />
+    </>
   );
 }
