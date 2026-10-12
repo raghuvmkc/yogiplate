@@ -151,5 +151,5 @@ create policy "Public read settings" on settings for select using (true);
 insert into settings (
   kitchen_address, kitchen_lat, kitchen_lng, business_email, business_phone
 ) values (
-  'Fremont, CA 94538', 37.5485, -121.9886, 'orders@yogiplate.com', '(510) 555-0199'
+  'Fremont, CA 94538', 37.5485, -121.9886, 'support@yogiplate.com', '(510) 555-0199'
 ) on conflict (id) do nothing;

@@ -39,7 +39,7 @@ export const defaultSettings = {
   setup_fee: 200,
   tax_rate: 0.0975,
   business_name: "Yogiplate Catering",
-  business_email: "orders@yogiplate.com",
+  business_email: "support@yogiplate.com",
   business_phone: "(510) 555-0199",
   lead_time_hours: 48,
   max_guests_per_day: 200,

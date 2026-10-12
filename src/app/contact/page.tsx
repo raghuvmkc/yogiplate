@@ -41,6 +41,13 @@ export default function ContactPage() {
               directly. If he can&apos;t pick up, he&apos;ll call you back as soon as he&apos;s
               available.
             </p>
+            <p className="mt-4 text-sm font-semibold leading-snug text-accent-deep">
+              Available 10:30 AM–9:00 PM PST, Tuesday–Sunday
+            </p>
+            <p className="mt-1.5 text-sm font-medium text-muted">
+              Closed Mondays. Outside these hours, chat with AI Yogi for menus and quotes —{" "}
+              {manager} will follow up afterwards.
+            </p>
             <a
               href="tel:+1-408-335-4055"
               className="mt-6 inline-flex bg-accent-deep px-7 py-3 text-base font-semibold text-white transition hover:bg-accent"

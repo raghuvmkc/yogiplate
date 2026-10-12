@@ -62,7 +62,7 @@ export function Footer() {
             <br />
             Delivery within 25 miles
             <br />
-            orders@yogiplate.com
+            support@yogiplate.com
           </p>
         </div>
       </div>

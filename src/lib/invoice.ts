@@ -98,7 +98,7 @@ export async function sendInvoiceEmail(input: {
   html: string;
 }) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.INVOICE_FROM_EMAIL || "Yogiplate <orders@yogiplate.com>";
+  const from = process.env.INVOICE_FROM_EMAIL || "Yogiplate <support@yogiplate.com>";
   if (!key) {
     console.info("[invoice] Resend not configured — skipping email send", {
       to: input.to,

@@ -62,5 +62,5 @@ insert into settings (
   free_delivery_threshold, tax_rate, service_radius_miles, business_name, business_email, business_phone
 ) values (
   1, 'Fremont, CA 94538', 37.5485, -121.9886, 15, 2.5, 250, 0.0975, 50,
-  'Yogiplate Catering', 'orders@yogiplate.com', '(510) 555-0199'
+  'Yogiplate Catering', 'support@yogiplate.com', '(510) 555-0199'
 ) on conflict (id) do update set kitchen_address = excluded.kitchen_address;
