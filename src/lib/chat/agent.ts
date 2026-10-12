@@ -14,6 +14,7 @@ import {
   type OrderDraft,
 } from "@/lib/chat/order-draft";
 import { touchChatSession } from "@/lib/chat/metrics";
+import { guestIsClosingAfterQuote } from "@/lib/chat/end-call";
 import {
   executeChatTool,
   parseToolCall,
@@ -183,6 +184,11 @@ export type AgentTurnResult = {
   off_topic: boolean;
   /** Website guest asked for a person and browser calling is set up: offer to ring the store manager. */
   transfer_call: boolean;
+  /**
+   * Voice/web: conversation is finished (quote sent + guest closing, or model farewell).
+   * Client should stop the mic and ignore further ambient speech until Talk is tapped again.
+   */
+  end_call: boolean;
 };
 
 function parseMenuLines(raw: unknown): AgentMenuLine[] {
@@ -711,7 +717,7 @@ export async function runFrontDeskTurn(
       ? `\nCHANNEL: This turn arrived via ${channel}. Keep replies concise for that medium.`
       : "",
     voiceMode
-      ? "\nVOICE MODE: The guest is talking to you with their microphone and hears your reply spoken aloud. reply is one or two short spoken sentences: a brief acknowledgment or one tip, then one question (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Name at most two dishes. Prefer empty lines[] unless they asked for the menu list. Keep JSON compact for speed. Never re-ask anything already in Order draft, GUEST_MEMORY, or [Resolved event_date]. The final recap may run a little longer, but keep it natural. Never say a URL, localhost address, or quote link out loud; say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation."
+      ? "\nVOICE MODE: The guest is talking to you with their microphone and hears your reply spoken aloud. reply is one or two short spoken sentences: a brief acknowledgment or one tip, then one question (after a human handoff you may use 2–3 short sentences: confirm transfer, they will contact shortly, offer to still help with order/quote). Name at most two dishes. Prefer empty lines[] unless they asked for the menu list. Keep JSON compact for speed. Never re-ask anything already in Order draft, GUEST_MEMORY, or [Resolved event_date]. The final recap may run a little longer, but keep it natural. Never say a URL, localhost address, or quote link out loud; say the quotation was emailed. Set off_topic true only when the guest's latest message is completely unrelated to Yogiplate catering. Greetings, yes or no, names, dates, counts, and anything about food or the event are not off topic. When off_topic is true, answer with one short sentence inviting them back to the catering conversation. ENDING THE CALL: After the quote has been emailed/texted, if the guest says thanks, bye, okay, sure, hmm, or anything that is not a new catering request, set end_call true, give one short warm goodbye with no question, and do not keep the conversation open. Never keep chatting with background noise or other languages after the goodbye."
       : "",
   ].join("\n");
 
@@ -1526,6 +1532,21 @@ export async function runFrontDeskTurn(
     ? voiceTurnIsOffTopic(String(lastUserText || ""), modelOffTopic)
     : false;
 
+  const quoteDeliveredEarlier = input.messages.some(
+    (m) =>
+      m.role === "assistant" &&
+      /\b(emailed|texted you the quote|quote for quote number|quotation was emailed|Q-\d{8})/i.test(
+        m.content
+      )
+  );
+  const quoteDelivered =
+    Boolean(quoteUrl) || Boolean(lastQuoteId) || quoteDeliveredEarlier;
+  const modelEndCall =
+    parsed.end_call === true || parsed.end_call === "true";
+  const end_call =
+    modelEndCall ||
+    (quoteDelivered && guestIsClosingAfterQuote(String(lastUserText || "")));
+
   return {
     reply,
     highlights,
@@ -1545,5 +1566,6 @@ export async function runFrontDeskTurn(
     verified_address,
     off_topic,
     transfer_call: transferCall,
+    end_call,
   };
 }

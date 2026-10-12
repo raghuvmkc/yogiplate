@@ -32,6 +32,14 @@ import { cartSubtotal } from "@/lib/pricing";
 import { ContinuousMic } from "@/lib/mic-recorder";
 import { OPEN_CHAT_EVENT } from "@/lib/chat-events";
 import {
+  guestIsClosingAfterQuote,
+  looksLikeAmbientNoise,
+} from "@/lib/chat/end-call";
+import {
+  isBeforeManagerAvailable,
+  MANAGER_EARLY_HOURS_NOTE,
+} from "@/lib/manager-hours";
+import {
   CALL_SPEECH_CHARS,
   CALL_SPEECH_SENTENCES,
   finishedSentences,
@@ -125,9 +133,14 @@ function welcomeFor(
 }
 
 const MIC_IDLE_MS = 60_000;
+/** After a quote is out, don't keep listening for room noise nearly as long. */
+const MIC_IDLE_AFTER_QUOTE_MS = 12_000;
 
 const MIC_IDLE_NOTE =
   "I turned the mic off after a quiet minute. Tap Talk whenever you're ready to continue — or just type.";
+
+const CALL_ENDED_NOTE =
+  "Mic is off — our chat for this quote is complete. Tap Talk if you need anything else, or use View quote & pay deposit above.";
 
 const MANAGER_CALLBACK_NOTE =
   "If our store manager couldn't pick up, our store manager will call you as soon as he is available.";
@@ -257,6 +270,9 @@ export function ChatWidget() {
   const [listening, setListening] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [callConnecting, setCallConnecting] = useState(false);
+  const [beforeManagerHours, setBeforeManagerHours] = useState(() =>
+    isBeforeManagerAvailable()
+  );
   const scrollerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -274,7 +290,10 @@ export function ChatWidget() {
   const speakDoneRef = useRef<(() => void) | null>(null);
   const summarySentRef = useRef(false);
   const silenceTimerRef = useRef<number | null>(null);
+  /** Stops mic after farewell; blocks further voice until Talk is tapped again. */
   const endingCallRef = useRef(false);
+  /** Quote email/SMS already delivered in this session. */
+  const quoteDeliveredRef = useRef(false);
   const [transfer, setTransfer] = useState<TransferState>(null);
   const transferRef = useRef<{ call: GuestCall | null; destroy: () => void } | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -328,6 +347,13 @@ export function ChatWidget() {
       })),
     };
   }, [pathname, diet, guestCount, eventDate, notes, items]);
+
+  useEffect(() => {
+    const tick = () => setBeforeManagerHours(isBeforeManagerAvailable());
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     listeningRef.current = listening;
@@ -527,6 +553,8 @@ export function ChatWidget() {
     setAppliedProposalKey(null);
     setIdentified(true);
     summarySentRef.current = false;
+    endingCallRef.current = false;
+    quoteDeliveredRef.current = false;
     setMessages([
       {
         role: "assistant",
@@ -635,6 +663,7 @@ export function ChatWidget() {
   function armSilenceTimer() {
     clearSilenceTimer();
     if (!listeningRef.current || endingCallRef.current) return;
+    const idleMs = quoteDeliveredRef.current ? MIC_IDLE_AFTER_QUOTE_MS : MIC_IDLE_MS;
     silenceTimerRef.current = window.setTimeout(() => {
       silenceTimerRef.current = null;
       if (!listeningRef.current || endingCallRef.current) return;
@@ -647,9 +676,24 @@ export function ChatWidget() {
         armSilenceTimer();
         return;
       }
+      // After the quote, quiet time means hang up — don't keep the mic open for room noise.
+      if (quoteDeliveredRef.current) {
+        finishVoiceCall(false);
+        return;
+      }
       stopListening();
       addAssistantNote(MIC_IDLE_NOTE);
-    }, MIC_IDLE_MS);
+    }, idleMs);
+  }
+
+  /** Stop mic, ignore ambient STT, and optionally leave a short note. */
+  function finishVoiceCall(showNote: boolean) {
+    if (endingCallRef.current && !listeningRef.current) return;
+    endingCallRef.current = true;
+    stopListening();
+    stopSpeaking();
+    sendChatEndSummary();
+    if (showNote) addAssistantNote(CALL_ENDED_NOTE);
   }
 
   function addAssistantNote(content: string, extra?: Partial<ChatMessage>) {
@@ -1026,6 +1070,11 @@ export function ChatWidget() {
       }
       const transcript = String(data.text || "").trim();
       if (!transcript) return;
+      // After the quote, hang up on room noise / other languages; allow one farewell turn.
+      if (quoteDeliveredRef.current && looksLikeAmbientNoise(transcript)) {
+        finishVoiceCall(true);
+        return;
+      }
       clearSilenceTimer();
       await send(transcript);
     } catch (e) {
@@ -1048,6 +1097,8 @@ export function ChatWidget() {
       stopSpeaking();
       return;
     }
+    // Guest intentionally reopened Talk — allow a new voice segment.
+    endingCallRef.current = false;
     setError(null);
     stopSpeaking();
     try {
@@ -1061,6 +1112,7 @@ export function ChatWidget() {
           ttsPlayingRef.current ||
           busyRef.current ||
           voiceBusyRef.current ||
+          endingCallRef.current ||
           !listeningRef.current,
       });
       continuousMicRef.current = mic;
@@ -1204,6 +1256,7 @@ export function ChatWidget() {
         quote_url?: string | null;
         verified_address?: VerifiedAddressCard | null;
         transfer_call?: boolean;
+        end_call?: boolean;
       };
       let data: ChatApiPayload = {};
       if (res.ok && res.body && /ndjson/.test(res.headers.get("content-type") || "")) {
@@ -1241,7 +1294,22 @@ export function ChatWidget() {
       setLiveStatus("");
       const reply = String(data.reply || "");
       const transferCall = data.transfer_call === true;
-      const autoTransfer = transferCall && listeningRef.current;
+      const shouldEndCall =
+        data.end_call === true ||
+        (quoteDeliveredRef.current &&
+          guestIsClosingAfterQuote(text) &&
+          listeningRef.current);
+      if (typeof data.quote_url === "string" && data.quote_url.trim()) {
+        quoteDeliveredRef.current = true;
+      }
+      if (
+        /\b(emailed|texted you the quote|quote for quote number|Q-\d{8})\b/i.test(
+          reply
+        )
+      ) {
+        quoteDeliveredRef.current = true;
+      }
+      const autoTransfer = transferCall && listeningRef.current && !shouldEndCall;
       const streamedSpeech = Boolean(speaker?.count);
       // Overlap TTS with state updates so speech starts sooner on calls.
       const ttsPrefetch =
@@ -1355,7 +1423,9 @@ export function ChatWidget() {
       }
       if (autoTransfer) {
         void startTransfer();
-      } else if (listeningRef.current) {
+      } else if (shouldEndCall) {
+        finishVoiceCall(true);
+      } else if (listeningRef.current && !endingCallRef.current) {
         armSilenceTimer();
       }
     } catch (e) {
@@ -1542,6 +1612,14 @@ export function ChatWidget() {
               </button>
             </div>
           </div>
+
+          {beforeManagerHours ? (
+            <div className="border-b border-logo-gold/35 bg-[#fff8e8] px-3 py-2.5">
+              <p className="text-[11px] font-medium leading-snug text-accent-deep sm:text-xs">
+                {MANAGER_EARLY_HOURS_NOTE}
+              </p>
+            </div>
+          ) : null}
 
           {!identified ? (
             <form
