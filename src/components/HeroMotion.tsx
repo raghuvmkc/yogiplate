@@ -146,7 +146,7 @@ export function HeroMotion() {
           {/* Brand / food carousel — explicit size on mobile so frames actually swap */}
           <div className="relative z-10 flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-white">
             <div
-              className={`relative aspect-square w-full max-w-[min(100%,420px)] overflow-hidden lg:h-full lg:max-h-full lg:w-auto lg:max-w-full ${
+              className={`relative aspect-square h-auto w-full max-h-full max-w-[min(100%,420px)] overflow-hidden ${
                 brand.contain ? "" : "soft-media"
               }`}
             >
@@ -206,7 +206,7 @@ export function HeroMotion() {
 
           </div>
         </div>
-        <div className="mt-4 lg:mt-3">
+        <div className="mt-4 shrink-0 lg:mt-3">
           <ClientLogoBand compact />
         </div>
       </div>

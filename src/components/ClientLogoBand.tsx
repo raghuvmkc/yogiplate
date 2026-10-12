@@ -15,7 +15,7 @@ function NameSequence({ copy }: { copy: string }) {
     <ul className="flex shrink-0 items-center">
       {names.map((name, index) => (
         <li key={`${copy}-${name}-${index}`} className="flex items-center">
-          <span className="font-display px-4 text-[1.35rem] font-semibold tracking-tight text-accent-deep sm:px-6 sm:text-[1.7rem]">
+          <span className="font-display px-4 text-[1.35rem] font-semibold leading-none tracking-tight text-accent-deep sm:px-6 sm:text-[1.7rem]">
             {name}
           </span>
         </li>
@@ -35,8 +35,8 @@ export function ClientLogoBand({ compact = false }: { compact?: boolean }) {
           <p className="flex shrink-0 items-center border-r border-logo-gold/40 px-4 font-display text-lg italic text-foreground sm:px-5 sm:text-xl">
             Proud caterer for
           </p>
-          <div className="client-marquee-window min-w-0 flex-1 overflow-hidden py-2 sm:py-2.5">
-            <div className="client-marquee-rtl flex w-max items-center">
+          <div className="client-marquee-window min-w-0 flex-1 overflow-hidden py-2.5 sm:py-3">
+            <div className="client-marquee-rtl flex w-max items-center leading-none">
               <NameSequence copy="a" />
               <div className="client-marquee-copy flex" aria-hidden>
                 <NameSequence copy="b" />
