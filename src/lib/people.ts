@@ -13,15 +13,41 @@ export type YogiPeople = {
   chefPrefix: string;
   managerName: string;
   managerTitle: string;
+  /** Guest-facing display, e.g. "(408) 335-4055" */
+  managerPhoneDisplay: string;
+  /** tel: href, e.g. "+14083354055" */
+  managerPhoneTel: string;
 };
 
+function digitsOnly(phone: string) {
+  return phone.replace(/\D/g, "");
+}
+
+/** Build a tel: value from display or E.164 env. */
+function managerTelFromEnv(display: string, e164Env: string): string {
+  const e164 = e164Env.replace(/\s+/g, "");
+  if (/^\+[1-9]\d{9,14}$/.test(e164)) return e164;
+  const digits = digitsOnly(display || e164Env);
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length >= 10) return `+${digits}`;
+  return "+14083354055";
+}
+
 export function getYogiPeople(): YogiPeople {
+  const managerPhoneDisplay = env("MANAGER_PHONE", "(408) 335-4055");
+  const managerPhoneTel = managerTelFromEnv(
+    managerPhoneDisplay,
+    env("MANAGER_PHONE_E164", "+14083354055")
+  );
   return {
     chefName: env("CHEF_FOUNDER_NAME", "Radhavallabh"),
     chefTitle: env("CHEF_FOUNDER_TITLE", "Chef and Founder"),
     chefPrefix: env("CHEF_FOUNDER_PREFIX", "Mr."),
     managerName: env("MANAGER_NAME", "Raghu"),
     managerTitle: env("MANAGER_TITLE", "Restaurant Manager"),
+    managerPhoneDisplay,
+    managerPhoneTel,
   };
 }
 

@@ -5,6 +5,7 @@ import {
   DIET_LABELS,
   PRIMARY_DIETS,
 } from "@/lib/data/diet-profiles";
+import { MANAGER_HOURS_FOR_AGENT } from "@/lib/manager-hours";
 import {
   chefFormalName,
   chefWithTitle,
@@ -138,7 +139,7 @@ export const CHAT_SKILL_CATALOG: {
     id: "business",
     title: "Yogiplate business basics",
     when:
-      "About the kitchen, chef, service area, brand story, or onion/garlic/mushroom policy (say it warmly and invitingly)",
+      "About the kitchen, chef, manager phone or hours, service area, brand story, or onion/garlic/mushroom policy (say it warmly and invitingly)",
   },
   {
     id: "diets",
@@ -227,7 +228,9 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
       "HOW TO SAY IT: Be polite and encouraging. Never shame guests who eat onion/garlic.",
       "Menus honor faith-based diets and fresh, order-cooked food — not steam-table leftovers.",
       "Italian path includes Stone Craft pizzas (same kitchen rules).",
-      `Manager contact for handoffs: ${managerWithTitle(people)}. Always use these env-configured names — never invent different staff names.`,
+      `Manager contact: ${managerWithTitle(people)}. Desk phone: ${people.managerPhoneDisplay}. Hours: ${MANAGER_HOURS_FOR_AGENT}.`,
+      "When the guest asks for the manager's number or hours, answer with those exact facts. Outside hours or on Mondays: AI Yogi can take the menu and quote; the manager will follow up afterwards.",
+      "Always use these env-configured names and this desk phone — never invent different staff names or other numbers.",
     ].join("\n");
   },
   diets: buildDiets,
@@ -245,8 +248,9 @@ const SKILL_LOADERS: Record<ChatSkillId, () => string> = {
     [
       "Offer WhatsApp when the guest wants a human, asks for WhatsApp/call/owner,",
       "the request is complex/custom, the party is large, pricing needs negotiation, or chat cannot fully help.",
-      "Set offer_whatsapp=true in the final JSON. Do not invent or type a phone number in reply;",
+      "Set offer_whatsapp=true in the final JSON. Do not invent WhatsApp or owner phone numbers;",
       "the website shows a green Continue on WhatsApp button that opens a chat to the owner with the guest's details prefilled.",
+      "The configured manager desk phone from PEOPLE / business is allowed when the guest asks for the manager's number.",
       "In reply, warmly say you can connect them on WhatsApp with the owner now — the button appears below.",
       "If WhatsApp is not configured, collect phone/email and point to Corporate catering or Build order.",
     ].join("\n"),
@@ -324,10 +328,17 @@ export function buildLeanFrontDeskSystemPrompt(whatsappConfigured: boolean): str
   // Skills file stays free of circular deps; tool text injected by chat route after import.
   return `You are AI Yogi, Yogiplate's catering manager. You sound like a warm, experienced catering manager who has fed thousands of events, not like a form.
 
-PEOPLE (from site config — use these exact names)
+PEOPLE (from site config — use these exact names and facts)
 - Chef: ${chefTitled}
 - Manager: ${managerWithTitle(people)}
+- Manager desk phone: ${people.managerPhoneDisplay}
+- Manager hours: ${MANAGER_HOURS_FOR_AGENT}
 - When referring to the handoff team together: ${team}
+
+MANAGER PHONE AND HOURS (when asked)
+- If the guest asks for the manager's phone number or working hours, answer with the exact facts above. Do not invent other numbers or hours.
+- Outside those hours or on Mondays: say AI Yogi can help build the menu and quote now, and ${manager} will follow up afterwards. You may still mention the desk number.
+- Wanting a live person right now still uses followthrough request_human (and browser call when available) — do not replace that handoff with only dumping the number unless they specifically asked for the number or hours.
 
 IDENTITY
 - Warm, relaxed, confident. Short sentences. Use the guest's first name now and then, not every turn.

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TalkToAiYogiButton } from "@/components/TalkToAiYogiButton";
+import { MANAGER_HOURS_LABEL } from "@/lib/manager-hours";
 import { getYogiPeople, managerFormalName } from "@/lib/people";
 
 export const metadata: Metadata = {
@@ -11,6 +12,8 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   const people = getYogiPeople();
   const manager = managerFormalName(people);
+  const phoneDisplay = people.managerPhoneDisplay;
+  const phoneTel = people.managerPhoneTel;
 
   return (
     <div className="bg-white">
@@ -42,17 +45,17 @@ export default function ContactPage() {
               available.
             </p>
             <p className="mt-4 text-sm font-semibold leading-snug text-accent-deep">
-              Available 10:30 AM–9:00 PM PST, Tuesday–Sunday
+              Available {MANAGER_HOURS_LABEL}, Tuesday–Sunday
             </p>
             <p className="mt-1.5 text-sm font-medium text-muted">
               Closed Mondays. Outside these hours, chat with AI Yogi for menus and quotes —{" "}
               {manager} will follow up afterwards.
             </p>
             <a
-              href="tel:+1-408-335-4055"
+              href={`tel:${phoneTel}`}
               className="mt-6 inline-flex bg-accent-deep px-7 py-3 text-base font-semibold text-white transition hover:bg-accent"
             >
-              Call (408) 335-4055
+              Call {phoneDisplay}
             </a>
           </div>
         </div>

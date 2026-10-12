@@ -38,6 +38,10 @@ export const MANAGER_END_MINUTES = 21 * 60; // 9:00 PM
 export const MANAGER_HOURS_LABEL = "10:30 AM–9:00 PM PST";
 export const MANAGER_CLOSED_DAY_LABEL = "Mondays";
 
+/** Exact phrasing for AI Yogi when guests ask about manager hours. */
+export const MANAGER_HOURS_FOR_AGENT =
+  "10:30 AM–9:00 PM PST, Tuesday–Sunday; closed Mondays";
+
 /** True on Mondays (Pacific). */
 export function isManagerClosedDay(now = new Date()): boolean {
   return pacificWeekday(now) === 1;
