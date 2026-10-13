@@ -83,6 +83,7 @@ export async function POST(req: Request) {
       order_number: result.order_number,
       invoice_number: result.invoice_number,
       email_sent: result.email_sent,
+      email_reason: result.email_reason,
       pay_url: result.pay_url,
     });
   } catch (err) {

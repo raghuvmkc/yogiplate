@@ -105,11 +105,15 @@ export function EmailInvoiceOption(props: {
         );
       } else if (data.pay_url) {
         props.onSent(
-          `Invoice ${data.invoice_number} is ready, but the email did not go through. You can pay here: ${data.pay_url}`
+          `Invoice ${data.invoice_number} is ready, but the email did not go through${
+            data.email_reason ? ` (${data.email_reason})` : ""
+          }. You can pay here: ${data.pay_url}`
         );
       } else {
         props.onSent(
-          `Invoice ${data.invoice_number} is saved, but email could not be sent from this environment. Call or WhatsApp us and we'll send the pay link.`
+          `Invoice ${data.invoice_number} is saved, but email could not be sent${
+            data.email_reason ? ` (${data.email_reason})` : ""
+          }. Call or WhatsApp us and we'll send the pay link.`
         );
       }
     } finally {

@@ -131,7 +131,7 @@ async function smtpSend(rawMessage: string, envelopeTo: string[]) {
   const port = Number(env("SMTP_PORT") || "465");
   const user = env("SMTP_USER");
   const password = env("SMTP_PASSWORD");
-  const fromEmail = user || env("KITCHEN_EMAIL", "support@stonecraftpizza.us");
+  const fromEmail = user || env("KITCHEN_EMAIL", "support@yogiplate.com");
 
   if (!user || !password) {
     throw new Error("SMTP is not configured.");
@@ -181,7 +181,7 @@ export async function sendContactMessageEmail(input: {
   const to = contactSupportEmails();
   if (!to.length) throw new Error("No support recipients configured.");
 
-  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromEmail = env("SMTP_USER") || "support@yogiplate.com";
   const fromName = env("SMTP_FROM_NAME") || "Yogiplate Contact";
   const from = `${fromName} <${fromEmail}>`;
 
@@ -253,7 +253,7 @@ export async function sendCorporateInquiryEmail(input: {
   const to = corporateNotifyEmails();
   if (!to.length) throw new Error("No notify recipients configured.");
 
-  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromEmail = env("SMTP_USER") || "support@yogiplate.com";
   const fromName = env("SMTP_FROM_NAME") || "Yogiplate Corporate Catering";
   const from = `${fromName} <${fromEmail}>`;
 
@@ -347,7 +347,7 @@ export async function sendChatSummaryEmail(input: {
   const to = chatSummaryNotifyEmails();
   if (!to.length) throw new Error("No chat-summary recipients configured.");
 
-  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromEmail = env("SMTP_USER") || "support@yogiplate.com";
   const fromName = env("SMTP_FROM_NAME") || "Yogiplate AI Yogi";
   const from = `${fromName} <${fromEmail}>`;
 
@@ -466,7 +466,7 @@ export function alertNotifyEmails(): string[] {
 export async function sendSystemAlertEmail(input: { subject: string; text: string }) {
   if (!smtpConfigured()) throw new Error("SMTP is not configured");
   const to = alertNotifyEmails();
-  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromEmail = env("SMTP_USER") || "support@yogiplate.com";
   const raw = buildMime({
     from: `Yogiplate Site Monitor <${fromEmail}>`,
     to,
@@ -501,7 +501,7 @@ export async function sendGuestQuoteSmtp(input: {
     ),
   ];
 
-  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromEmail = env("SMTP_USER") || "support@yogiplate.com";
   const fromName = env("SMTP_FROM_NAME") || "Yogiplate Catering";
   const from = `${fromName} <${fromEmail}>`;
 
@@ -534,7 +534,7 @@ export async function sendManagerHandoffEmail(input: {
   const to = managerNotifyEmails();
   if (!to.length) throw new Error("No manager notify emails configured.");
 
-  const fromEmail = env("SMTP_USER") || "support@stonecraftpizza.us";
+  const fromEmail = env("SMTP_USER") || "support@yogiplate.com";
   const fromName = env("SMTP_FROM_NAME") || "Yogiplate AI Yogi";
   const from = `${fromName} <${fromEmail}>`;
   const guestLabel = input.name || input.email || "Guest";

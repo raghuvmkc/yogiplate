@@ -106,15 +106,30 @@ export async function sendInvoiceEmail(input: {
     });
     return { sent: false as const, reason: "resend_not_configured" };
   }
-  const resend = new Resend(key);
-  await resend.emails.send({
-    from,
-    to: input.to,
-    cc: input.cc?.length ? input.cc : undefined,
-    subject: input.subject,
-    html: input.html,
-  });
-  return { sent: true as const };
+  try {
+    const resend = new Resend(key);
+    const result = await resend.emails.send({
+      from,
+      to: input.to,
+      cc: input.cc?.length ? input.cc : undefined,
+      subject: input.subject,
+      html: input.html,
+    });
+    if (result.error) {
+      console.error("[invoice] Resend error", result.error);
+      return {
+        sent: false as const,
+        reason: result.error.message || "resend_failed",
+      };
+    }
+    return { sent: true as const };
+  } catch (err) {
+    console.error("[invoice] Resend threw", err);
+    return {
+      sent: false as const,
+      reason: err instanceof Error ? err.message : "resend_failed",
+    };
+  }
 }
 
 export function buildPaymentConfirmationHtml(input: {
