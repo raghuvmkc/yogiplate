@@ -86,6 +86,8 @@ create table orders (
   subtotal numeric(10,2) not null,
   delivery_fee numeric(10,2) not null,
   discount numeric(10,2) not null default 0,
+  discount_percent numeric(6,2),
+  discount_reason text,
   tax numeric(10,2) not null,
   total numeric(10,2) not null,
   coupon_code text,

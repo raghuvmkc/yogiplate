@@ -285,6 +285,10 @@ export interface Order {
   /** On-site setup charge, when the guest asked for setup. */
   setup_fee?: number;
   discount: number;
+  /** Admin-entered percent off food subtotal (0–100). Dollar amount is stored in `discount`. */
+  discount_percent?: number | null;
+  /** Why the admin discount was given (shown on the invoice). */
+  discount_reason?: string | null;
   tax: number;
   total: number;
   coupon_code: string | null;

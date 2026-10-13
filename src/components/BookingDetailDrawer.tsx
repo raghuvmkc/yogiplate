@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin-time";
 import {
   chargeTotals,
+  discountFromPercent,
   formatMoney,
   fromCents,
   lineCents,
@@ -128,8 +129,10 @@ export function BookingDetailDrawer(props: {
   const [form, setForm] = useState<BookingForm | null>(null);
   const [lines, setLines] = useState<EditableLine[]>([]);
   const [deliveryFee, setDeliveryFee] = useState("0");
+  const [deliveryMiles, setDeliveryMiles] = useState("0");
   const [setupFee, setSetupFee] = useState("0");
-  const [discount, setDiscount] = useState("0");
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [discountReason, setDiscountReason] = useState("");
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("pending");
   const [menuQuery, setMenuQuery] = useState("");
   const [payAmount, setPayAmount] = useState("");
@@ -150,7 +153,18 @@ export function BookingDetailDrawer(props: {
         )
       );
       setSetupFee(String(next.order?.setup_fee ?? 0));
-      setDiscount(String(next.order?.discount ?? 0));
+      setDeliveryMiles(String(next.order?.delivery_miles ?? 0));
+      const pct = next.order?.discount_percent;
+      if (pct != null && pct > 0) {
+        setDiscountPercent(String(pct));
+      } else if (next.order && next.order.discount > 0 && next.order.subtotal > 0) {
+        setDiscountPercent(
+          String(Math.round((next.order.discount / next.order.subtotal) * 1000) / 10)
+        );
+      } else {
+        setDiscountPercent("");
+      }
+      setDiscountReason(next.order?.discount_reason || "");
       setOrderStatus(next.order?.status || "pending");
       onChanged(next.booking);
     },
@@ -196,17 +210,18 @@ export function BookingDetailDrawer(props: {
       0
     );
     const subtotal = fromCents(subtotalCents);
+    const pct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
     if (detail && orderMode && (detail.order || lines.length)) {
       return chargeTotals({
         subtotal,
-        discount: Number(discount) || 0,
+        discount: discountFromPercent(subtotal, pct),
         deliveryFee: Number(deliveryFee) || 0,
         setupFee: Number(setupFee) || 0,
         taxRate: detail.tax_rate,
       });
     }
     return { subtotal, discount: 0, delivery_fee: 0, setup_fee: 0, tax: 0, total: subtotal };
-  }, [lines, discount, deliveryFee, setupFee, detail, orderMode]);
+  }, [lines, discountPercent, deliveryFee, setupFee, detail, orderMode]);
 
   const addressCheck = useAddressCheck({
     address: form?.address || "",
@@ -287,14 +302,26 @@ export function BookingDetailDrawer(props: {
 
   async function save() {
     if (!form || !detail) return;
+    const pct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+    if (pct > 0 && !discountReason.trim()) {
+      setError("Add a reason when applying a discount.");
+      return;
+    }
     const patch: BookingDetailPatch = { booking: form };
     const startsOrder = !detail.order && !detail.quote && lines.length > 0;
     if (detail.order || startsOrder) {
+      const subtotalCents = lines.reduce(
+        (sum, line) => sum + lineCents(Number(line.unit_price) || 0, Number(line.quantity) || 0),
+        0
+      );
       patch.order = {
         items: lines,
         delivery_fee: Number(deliveryFee) || 0,
+        delivery_miles: Number(deliveryMiles) || 0,
         setup_fee: Number(setupFee) || 0,
-        discount: Number(discount) || 0,
+        discount: discountFromPercent(fromCents(subtotalCents), pct),
+        discount_percent: pct > 0 ? pct : null,
+        discount_reason: pct > 0 ? discountReason.trim() : null,
         status: orderStatus,
       };
     } else if (detail.quote) {
@@ -453,13 +480,16 @@ export function BookingDetailDrawer(props: {
                 <span />
                 <div className="space-y-2 sm:col-span-2">
                   <AddressCheckNote check={addressCheck} />
-                  {addressCheck.status === "ok" && orderMode && Number(deliveryFee) !== addressCheck.fee ? (
+                  {addressCheck.status === "ok" && orderMode ? (
                     <button
                       type="button"
-                      onClick={() => setDeliveryFee(String(addressCheck.fee))}
+                      onClick={() => {
+                        setDeliveryFee(String(addressCheck.fee));
+                        setDeliveryMiles(String(addressCheck.miles));
+                      }}
                       className="border border-accent-deep px-3 py-1.5 text-xs font-semibold text-accent-deep"
                     >
-                      Use {formatMoney(addressCheck.fee)} delivery fee
+                      Use {addressCheck.miles} mi · {formatMoney(addressCheck.fee)} delivery
                     </button>
                   ) : null}
                 </div>
@@ -607,8 +637,19 @@ export function BookingDetailDrawer(props: {
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {orderMode ? (
                       <>
+                        <Field label="Distance (mi)" type="number" value={deliveryMiles} onChange={setDeliveryMiles} />
                         <Field label="Delivery fee" type="number" value={deliveryFee} onChange={setDeliveryFee} />
-                        <Field label="Discount" type="number" value={discount} onChange={setDiscount} />
+                        <Field
+                          label="Discount %"
+                          type="number"
+                          value={discountPercent}
+                          onChange={setDiscountPercent}
+                        />
+                        <Field
+                          label="Discount reason"
+                          value={discountReason}
+                          onChange={setDiscountReason}
+                        />
                         <label className="flex items-center gap-2 text-sm sm:col-span-2">
                           <input
                             type="checkbox"
@@ -634,6 +675,10 @@ export function BookingDetailDrawer(props: {
                     {orderMode ? (
                       <>
                         <div className="flex justify-between">
+                          <dt>Distance</dt>
+                          <dd>{Number(deliveryMiles) || 0} mi</dd>
+                        </div>
+                        <div className="flex justify-between">
                           <dt>Delivery</dt>
                           <dd>{formatMoney(preview.delivery_fee)}</dd>
                         </div>
@@ -645,7 +690,14 @@ export function BookingDetailDrawer(props: {
                         ) : null}
                         {preview.discount > 0 ? (
                           <div className="flex justify-between">
-                            <dt>Discount</dt>
+                            <dt>
+                              Discount
+                              {Number(discountPercent) > 0 ? ` (${discountPercent}%` : ""}
+                              {Number(discountPercent) > 0 && discountReason.trim()
+                                ? ` — ${discountReason.trim()}`
+                                : ""}
+                              {Number(discountPercent) > 0 ? ")" : ""}
+                            </dt>
                             <dd>−{formatMoney(preview.discount)}</dd>
                           </div>
                         ) : null}

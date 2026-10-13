@@ -26,6 +26,8 @@ export async function POST(req: Request) {
       items,
       notes: String(body.notes || ""),
       setup_service: body.setup_service === true,
+      discount_percent: Number(body.discount_percent) || 0,
+      discount_reason: String(body.discount_reason || ""),
     });
     return NextResponse.json(result);
   } catch (err) {

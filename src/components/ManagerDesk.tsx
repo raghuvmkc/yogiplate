@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PhoneMissed } from "lucide-react";
 import { AdminCalendarPageClient } from "@/components/AdminCalendarPageClient";
+import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
 import {
   callbackNumber,
   callerLabel,
@@ -11,6 +12,7 @@ import {
   useAdminVoice,
 } from "@/components/AdminVoiceProvider";
 import { DeskTexts } from "@/components/DeskTexts";
+import { chargeTotals, discountFromPercent, formatMoney } from "@/lib/pricing";
 import type { CartLine, DietTag, MenuCategory } from "@/lib/types";
 
 export type DeskMenuItem = {
@@ -91,6 +93,8 @@ export function ManagerDesk({
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
   const [notes, setNotes] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [discountReason, setDiscountReason] = useState("");
   const [busy, setBusy] = useState<"quote" | "invoice" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -119,6 +123,32 @@ export function ManagerDesk({
 
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
   const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const discountPct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+  const discountDollars = discountFromPercent(subtotal, discountPct);
+
+  const addressCheck = useAddressCheck({
+    address,
+    city,
+    zip,
+    state: "CA",
+    subtotal,
+    enabled: service === "delivery" && (tab === "invoice" || tab === "quote"),
+  });
+
+  const invoicePreview = useMemo(() => {
+    if (tab !== "invoice") return null;
+    const deliveryFee =
+      service === "pickup" ? 0 : addressCheck.status === "ok" ? addressCheck.fee : 0;
+    const setup = service === "delivery" && setupService ? setupFee : 0;
+    const taxRate = addressCheck.status === "ok" ? addressCheck.taxRate : 0.0975;
+    return chargeTotals({
+      subtotal,
+      discount: discountDollars,
+      deliveryFee,
+      setupFee: setup,
+      taxRate,
+    });
+  }, [tab, service, addressCheck, setupService, setupFee, subtotal, discountDollars]);
 
   useEffect(() => {
     const call = incoming || active;
@@ -229,7 +259,7 @@ export function ManagerDesk({
     );
   }
 
-  function payload() {
+  function payload(kind: "quote" | "invoice") {
     return {
       customer_name: name,
       customer_email: email,
@@ -246,18 +276,36 @@ export function ManagerDesk({
       notes,
       setup_service: service === "delivery" && setupService,
       items: lines,
+      ...(kind === "invoice"
+        ? {
+            discount_percent: discountPct,
+            discount_reason: discountReason.trim(),
+          }
+        : {}),
     };
   }
 
   async function send(kind: "quote" | "invoice", event: FormEvent) {
     event.preventDefault();
+    if (kind === "invoice" && service === "delivery" && addressCheck.status !== "ok") {
+      setNotice(
+        addressCheck.status === "problem" || addressCheck.status === "error"
+          ? addressCheck.message
+          : "Wait for address verification (distance from the kitchen) before sending the invoice."
+      );
+      return;
+    }
+    if (kind === "invoice" && discountPct > 0 && !discountReason.trim()) {
+      setNotice("Add a reason when applying a discount.");
+      return;
+    }
     setBusy(kind);
     setNotice(null);
     try {
       const res = await fetch(`/api/admin/desk/${kind}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload()),
+        body: JSON.stringify(payload(kind)),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -681,6 +729,11 @@ export function ManagerDesk({
                 />
               </label>
               {service === "delivery" ? (
+                <div className="sm:col-span-2">
+                  <AddressCheckNote check={addressCheck} />
+                </div>
+              ) : null}
+              {service === "delivery" ? (
                 <label className="flex items-center gap-2 text-sm font-semibold text-foreground sm:col-span-2">
                   <input
                     type="checkbox"
@@ -689,6 +742,25 @@ export function ManagerDesk({
                   />
                   Full on-site setup (+${setupFee})
                 </label>
+              ) : null}
+              {tab === "invoice" ? (
+                <>
+                  <Field
+                    label="Discount %"
+                    value={discountPercent}
+                    onChange={setDiscountPercent}
+                    type="number"
+                  />
+                  <label className="text-sm font-semibold text-foreground">
+                    Discount reason
+                    <input
+                      value={discountReason}
+                      onChange={(event) => setDiscountReason(event.target.value)}
+                      placeholder={discountPct > 0 ? "Required when discounted" : "Optional"}
+                      className="mt-1 w-full border border-line px-3 py-2 font-medium"
+                    />
+                  </label>
+                </>
               ) : null}
               <label className="text-sm font-semibold text-foreground sm:col-span-2">
                 Notes
@@ -711,6 +783,65 @@ export function ManagerDesk({
               </button>
             </div>
             <div className="mt-1">{renderOrderLines(false)}</div>
+
+            {tab === "invoice" && invoicePreview ? (
+              <dl className="mt-4 space-y-1 border border-line bg-warm/40 px-3 py-3 text-sm">
+                <div className="flex justify-between">
+                  <dt>Food subtotal</dt>
+                  <dd>{formatMoney(invoicePreview.subtotal)}</dd>
+                </div>
+                {service === "delivery" ? (
+                  <>
+                    <div className="flex justify-between">
+                      <dt>Distance from kitchen</dt>
+                      <dd>
+                        {addressCheck.status === "ok" ? `${addressCheck.miles} mi` : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Delivery</dt>
+                      <dd>
+                        {addressCheck.status === "ok"
+                          ? formatMoney(addressCheck.fee)
+                          : "—"}
+                      </dd>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between text-muted">
+                    <dt>Pickup</dt>
+                    <dd>{formatMoney(0)}</dd>
+                  </div>
+                )}
+                {invoicePreview.setup_fee > 0 ? (
+                  <div className="flex justify-between">
+                    <dt>Setup</dt>
+                    <dd>{formatMoney(invoicePreview.setup_fee)}</dd>
+                  </div>
+                ) : null}
+                {invoicePreview.discount > 0 ? (
+                  <div className="flex justify-between">
+                    <dt>
+                      Discount
+                      {discountPct > 0 ? ` (${discountPct}%` : ""}
+                      {discountPct > 0 && discountReason.trim()
+                        ? ` — ${discountReason.trim()}`
+                        : ""}
+                      {discountPct > 0 ? ")" : ""}
+                    </dt>
+                    <dd>−{formatMoney(invoicePreview.discount)}</dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between">
+                  <dt>Tax</dt>
+                  <dd>{formatMoney(invoicePreview.tax)}</dd>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <dt>Invoice total</dt>
+                  <dd>{formatMoney(invoicePreview.total)}</dd>
+                </div>
+              </dl>
+            ) : null}
 
             {notice ? <p className="mt-4 text-sm text-accent-deep">{notice}</p> : null}
             <button

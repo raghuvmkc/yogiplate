@@ -6,6 +6,24 @@ import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
 import { getDb, updateDb } from "@/lib/store/local-db";
 import type { Order, OrderItem, SiteSettings } from "@/lib/types";
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function discountLabel(order: Order) {
+  const parts: string[] = [];
+  if (order.discount_percent != null && order.discount_percent > 0) {
+    parts.push(`${order.discount_percent}%`);
+  }
+  if (order.coupon_code) parts.push(escapeHtml(order.coupon_code));
+  if (order.discount_reason?.trim()) parts.push(escapeHtml(order.discount_reason.trim()));
+  return parts.length ? ` (${parts.join(" — ")})` : "";
+}
+
 export function buildInvoiceHtml(
   order: Order,
   items: OrderItem[],
@@ -44,7 +62,12 @@ export function buildInvoiceHtml(
       Order ${order.order_number}<br/>
       ${order.customer_name} · ${order.customer_email}<br/>
       Event: ${order.event_date}${order.event_time ? ` at ${formatEventTime(order.event_time)}` : ""} · ${order.guest_count} guests · ${order.diet_profile}<br/>
-      Deliver to: ${order.delivery_address}, ${order.delivery_city}, ${order.delivery_state} ${order.delivery_zip}
+      Deliver to: ${order.delivery_address}, ${order.delivery_city}, ${order.delivery_state} ${order.delivery_zip}<br/>
+      ${
+        order.delivery_miles > 0 || order.delivery_fee > 0
+          ? `Distance from kitchen: ${order.delivery_miles} mi`
+          : "Service: pickup"
+      }
     </p>
     <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;">
       <thead>
@@ -59,9 +82,18 @@ export function buildInvoiceHtml(
     </table>
     <div style="margin-top:24px;font-family:Arial,sans-serif;font-size:14px;text-align:right;">
       <p>Subtotal: ${formatMoney(order.subtotal)}</p>
-      <p>Delivery (${order.delivery_miles} mi): ${formatMoney(order.delivery_fee)}</p>
+      ${
+        order.delivery_miles > 0 || order.delivery_fee > 0
+          ? `<p>Distance from kitchen: ${order.delivery_miles} mi</p>
+      <p>Delivery charge: ${formatMoney(order.delivery_fee)}</p>`
+          : `<p>Delivery: pickup (no delivery charge)</p>`
+      }
       ${order.setup_fee ? `<p>Full on-site setup (serving utensils &amp; food warmers): ${formatMoney(order.setup_fee)}</p>` : ""}
-      ${order.discount > 0 ? `<p>Discount${order.coupon_code ? ` (${order.coupon_code})` : ""}: −${formatMoney(order.discount)}</p>` : ""}
+      ${
+        order.discount > 0
+          ? `<p>Discount${discountLabel(order)}: −${formatMoney(order.discount)}</p>`
+          : ""
+      }
       <p>Tax: ${formatMoney(order.tax)}</p>
       <p style="font-size:18px;font-weight:700;margin-top:12px;">Total: ${formatMoney(order.total)}</p>
     </div>

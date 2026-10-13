@@ -95,8 +95,11 @@ export type BookingDetailPatch = {
   order?: {
     status?: OrderStatus;
     delivery_fee?: number;
+    delivery_miles?: number;
     setup_fee?: number;
     discount?: number;
+    discount_percent?: number | null;
+    discount_reason?: string | null;
     notes?: string | null;
     items?: EditableLine[];
   };
@@ -321,6 +324,19 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
       }
       const items = db.order_items.filter((item) => item.order_id === order.id);
       const subtotal = fromCents(items.reduce((sum, item) => sum + lineCents(item.unit_price, item.quantity), 0));
+      if (edit.discount_percent !== undefined) {
+        order.discount_percent =
+          edit.discount_percent != null && edit.discount_percent > 0
+            ? Math.min(100, Math.max(0, Number(edit.discount_percent) || 0))
+            : null;
+      }
+      if (edit.discount_reason !== undefined) {
+        const reason = String(edit.discount_reason || "").trim().slice(0, 200);
+        order.discount_reason = reason || null;
+      }
+      if (edit.delivery_miles !== undefined) {
+        order.delivery_miles = Math.max(0, Number(edit.delivery_miles) || 0);
+      }
       const priced = chargeTotals({
         subtotal,
         discount: edit.discount ?? order.discount,

@@ -6,13 +6,14 @@ import { deliveryProblem, quoteDelivery } from "@/lib/delivery";
 import { GuestInputError } from "@/lib/guest-error";
 import { buildInvoiceHtml, emailPaymentReceived, sendInvoiceEmail } from "@/lib/invoice";
 import {
-  calcOrderTotals,
   cartSubtotal,
   chargeTotals,
+  discountFromPercent,
   formatMoney,
   fromCents,
   isPaidInFull,
   lineTotal,
+  setupFeeFor,
   setupNeedsLabel,
   toCents,
 } from "@/lib/pricing";
@@ -40,6 +41,10 @@ export type DeskBillInput = {
   notes: string;
   /** Full on-site setup (delivery only). */
   setup_service?: boolean;
+  /** Admin percent off food subtotal (0–100). */
+  discount_percent?: number;
+  /** Shown on the invoice when a discount is applied. */
+  discount_reason?: string;
 };
 
 export async function createDeskInvoice(input: DeskBillInput) {
@@ -51,40 +56,41 @@ export async function createDeskInvoice(input: DeskBillInput) {
 
   const db = await getDb();
   const pickup = input.delivery_or_pickup === "pickup";
+  const foodSubtotal = cartSubtotal(input.items);
   let miles = 0;
+  let deliveryFee = 0;
   if (!pickup) {
     const quote = await quoteDelivery({
       address: input.address,
       city: input.city,
       state: input.state,
       zip: input.zip,
-      subtotal: cartSubtotal(input.items),
+      subtotal: foodSubtotal,
       settings: db.settings,
     });
     const problem = deliveryProblem(quote);
     if (problem) throw new GuestInputError(problem);
     miles = quote.miles;
+    // Use the quoted delivery charge so the invoice matches address verification.
+    deliveryFee = quote.delivery_fee;
+    if (!(deliveryFee > 0)) {
+      throw new GuestInputError(
+        "Could not calculate a delivery charge for this address. Check the address or choose pickup."
+      );
+    }
   }
 
   const setup = !pickup && input.setup_service === true;
-  const totals = calcOrderTotals({
-    items: input.items,
-    miles,
-    coupon: null,
-    settings: db.settings,
-    setup,
+  const discountPercent = Math.min(100, Math.max(0, Number(input.discount_percent) || 0));
+  const discountReason = String(input.discount_reason || "").trim().slice(0, 200);
+  const adminDiscount = discountFromPercent(foodSubtotal, discountPercent);
+  const totals = chargeTotals({
+    subtotal: foodSubtotal,
+    discount: adminDiscount,
+    deliveryFee,
+    setupFee: setupFeeFor(db.settings, setup),
+    taxRate: db.settings.tax_rate,
   });
-  if (pickup) {
-    Object.assign(
-      totals,
-      chargeTotals({
-        subtotal: totals.subtotal,
-        discount: totals.discount,
-        deliveryFee: 0,
-        taxRate: db.settings.tax_rate,
-      })
-    );
-  }
 
   const now = new Date().toISOString();
   const orderId = uid("ord");
@@ -115,6 +121,8 @@ export async function createDeskInvoice(input: DeskBillInput) {
     delivery_fee: totals.delivery_fee,
     setup_fee: totals.setup_fee,
     discount: totals.discount,
+    discount_percent: discountPercent > 0 ? discountPercent : null,
+    discount_reason: discountPercent > 0 && discountReason ? discountReason : null,
     tax: totals.tax,
     total: totals.total,
     coupon_code: null,

@@ -40,6 +40,12 @@ export function applyCoupon(subtotal: number, coupon: Coupon | null) {
   return fromCents(Math.min(toCents(coupon.value), subtotalCents));
 }
 
+/** Cap admin percent at 0–100 and convert to dollars off the food subtotal. */
+export function discountFromPercent(subtotal: number, percent: number) {
+  const p = Math.min(100, Math.max(0, Number(percent) || 0));
+  return fromCents(percentCents(toCents(subtotal), p));
+}
+
 /** Distance tier fee (under 8 mi, 8–15, 15–25 by default), plus the large-order extra. */
 export function calcDeliveryFee(
   miles: number,
