@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminAuthedShell } from "@/components/AdminAuthedShell";
 import { AdminLogout } from "@/components/AdminLogout";
 import { isAdminAuthenticated } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "Admin",
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+};
 
 const nav = [
   { href: "/admin/desk", label: "Desk" },

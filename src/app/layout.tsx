@@ -4,7 +4,17 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { JsonLd } from "@/components/JsonLd";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
+import {
+  absoluteUrl,
+  DEFAULT_DESCRIPTION,
+  localBusinessJsonLd,
+  OG_IMAGE_PATH,
+  SITE_NAME,
+  websiteJsonLd,
+} from "@/lib/seo";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID =
@@ -26,13 +36,59 @@ const sans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Yogiplate Catering | Bay Area Indian Vegetarian",
-  description:
-    "Build online catering orders for Jain, Swaminarayan, Pushtimarg, Pure Vegetarian, Vegan, and Italian menus across the Bay Area. Pure, fresh ingredients.",
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: `${SITE_NAME} | Bay Area Indian Vegetarian`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "Bay Area vegetarian catering",
+    "Indian vegetarian catering San Jose",
+    "Jain catering",
+    "Swaminarayan catering",
+    "Pushtimarg catering",
+    "vegan catering Bay Area",
+    "pure vegetarian catering",
+    "corporate vegetarian catering",
+    "Yogiplate",
+  ],
+  authors: [{ name: "Radhavallabh", url: absoluteUrl("/about-the-chef") }],
+  creator: "Yogiplate",
+  publisher: SITE_NAME,
+  formatDetection: { telephone: true, email: true, address: true },
+  alternates: { canonical: absoluteUrl("/") },
   openGraph: {
-    title: "Yogiplate Catering",
-    description:
-      "Bay Area vegetarian catering you can order online — Jain, Swaminarayan, Pushtimarg, Pure Vegetarian, Vegan & Italian.",
+    type: "website",
+    locale: "en_US",
+    url: absoluteUrl("/"),
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} | Bay Area Indian Vegetarian`,
+    description: DEFAULT_DESCRIPTION,
+    images: [
+      {
+        url: OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: "Yogiplate pure vegetarian catering buffet",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} | Bay Area Indian Vegetarian`,
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE_PATH],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  icons: {
+    icon: [{ url: "/images/Yogiplate_Logo.png", type: "image/png" }],
+    apple: [{ url: "/images/Yogiplate_Logo.png" }],
   },
 };
 
@@ -50,6 +106,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-white text-foreground antialiased font-medium">
+        <JsonLd data={[localBusinessJsonLd(), websiteJsonLd()]} />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { JsonLd } from "@/components/JsonLd";
+import { pageMetadata, personJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About the Chef | Yogiplate",
+export const metadata: Metadata = pageMetadata({
+  title: "About the Chef",
   description:
     "Meet Radhavallabh — IIT Bombay graduate, monk, author, and Chef and Founder of Yogiplate. Sattvik food for mind, body, and soul.",
-};
+  path: "/about-the-chef",
+  ogImage: "/images/rvp-portrait.jpg",
+});
 
 const CHEF_PHOTOS = [
   {
@@ -43,6 +47,7 @@ const CHEF_PHOTOS = [
 export default function AboutTheChefPage() {
   return (
     <div className="bg-white">
+      <JsonLd data={personJsonLd()} />
       {/* Intro */}
       <section className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-14 lg:py-20">
         <div>

@@ -48,11 +48,6 @@ export function Footer() {
                 Privacy Policy
               </Link>
             </li>
-            <li>
-              <Link href="/admin" className="hover:text-accent-deep">
-                Admin
-              </Link>
-            </li>
           </ul>
         </div>
         <div>
@@ -60,9 +55,15 @@ export function Footer() {
           <p className="mt-4 text-base font-medium leading-relaxed text-muted">
             326 Commercial St, San Jose, CA 95112
             <br />
-            Delivery within 25 miles
+            Delivery within 25 miles across the Bay Area
             <br />
-            support@yogiplate.com
+            <a href="tel:+14083354055" className="hover:text-accent-deep">
+              (408) 335-4055
+            </a>
+            <br />
+            <a href="mailto:support@yogiplate.com" className="hover:text-accent-deep">
+              support@yogiplate.com
+            </a>
           </p>
         </div>
       </div>

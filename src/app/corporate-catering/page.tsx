@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClientLogoBand } from "@/components/ClientLogoBand";
 import { CorporateInquiryForm } from "@/components/CorporateInquiryForm";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Corporate Catering | Yogiplate",
+export const metadata: Metadata = pageMetadata({
+  title: "Corporate Catering",
   description:
     "Pure vegetarian corporate catering for Bay Area technology companies — Jain, Swaminarayan, Pushtimarg, Vegan, and Italian menus. Request a consultation.",
-};
+  path: "/corporate-catering",
+});
 
 const occasions = [
   "Team lunches",

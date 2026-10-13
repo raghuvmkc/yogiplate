@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { StripeSuccess } from "@/components/StripeSuccess";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Order Confirmed",
+  description: "Your Yogiplate catering payment was received.",
+  path: "/order/success",
+  noIndex: true,
+});
 
 export default async function OrderSuccessPage({
   searchParams,

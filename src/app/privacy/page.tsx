@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Yogiplate",
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
   description:
     "How Stone Craft Pizza LLC, operating Stone Craft Pizza and Yogiplate, collects, uses, and protects your information, including our SMS text messaging service.",
-};
+  path: "/privacy",
+});
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

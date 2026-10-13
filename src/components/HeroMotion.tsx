@@ -125,7 +125,13 @@ export function HeroMotion() {
     <>
       <section className="relative overflow-hidden bg-white">
         <div className="mx-auto flex w-full max-w-[1800px] flex-col px-3 py-4 sm:px-5 sm:py-5 lg:h-[calc(100svh-8rem)] lg:px-6 lg:py-3">
-          <div className="mx-auto w-full max-w-5xl shrink-0 px-1">
+          <h1 className="mx-auto max-w-5xl shrink-0 px-1 text-center font-display text-[clamp(2.4rem,7vw,4.25rem)] font-semibold leading-none tracking-tight text-foreground">
+            Yogiplate
+          </h1>
+          <p className="mx-auto mt-2 max-w-5xl shrink-0 px-1 text-center text-sm font-semibold tracking-wide text-accent-deep sm:text-base">
+            Bay Area pure vegetarian catering
+          </p>
+          <div className="mx-auto mt-3 w-full max-w-5xl shrink-0 px-1 sm:mt-4">
             <div className="grid place-items-center">
               <QuoteBlock quote={LONGEST_QUOTE} className="invisible" ariaHidden />
               <AnimatePresence mode="wait" initial={false}>

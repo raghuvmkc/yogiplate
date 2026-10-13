@@ -3,14 +3,16 @@ import { ContactMessageForm } from "@/components/ContactMessageForm";
 import { TalkToAiYogiButton } from "@/components/TalkToAiYogiButton";
 import { MANAGER_HOURS_LABEL } from "@/lib/manager-hours";
 import { getYogiPeople, managerFormalName } from "@/lib/people";
+import { pageMetadata } from "@/lib/seo";
 
 const SUPPORT_EMAIL = "support@yogiplate.com";
 
-export const metadata: Metadata = {
-  title: "Contact Us | Yogiplate",
+export const metadata: Metadata = pageMetadata({
+  title: "Contact Us",
   description:
     "Talk to Yogiplate about your catering: chat or speak with our AI Yogi agent any time, email support@yogiplate.com, or call our manager directly at (408) 335-4055.",
-};
+  path: "/contact",
+});
 
 export default function ContactPage() {
   const people = getYogiPeople();
