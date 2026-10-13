@@ -30,6 +30,7 @@ export type CallRow = {
   direction: string;
   duration: string;
   started_at: string;
+  missed?: boolean;
 };
 
 type DeviceLike = {
@@ -171,6 +172,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
         call.on("cancel", () => {
           setIncoming((current) => (current === call ? null : current));
           setStatus("Ready for calls");
+          void loadCalls();
         });
         call.on("disconnect", () => {
           setActive((current) => (current === call ? null : current));
@@ -257,7 +259,8 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
     incoming?.reject();
     setIncoming(null);
     setStatus("Ready for calls");
-  }, [incoming]);
+    void loadCalls();
+  }, [incoming, loadCalls]);
 
   const hangUp = useCallback(() => {
     active?.disconnect();

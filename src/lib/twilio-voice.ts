@@ -204,7 +204,15 @@ export type VoiceCallRow = {
   direction: string;
   duration: string;
   started_at: string;
+  /** True when the PSTN caller reached us but the desk never answered. */
+  missed: boolean;
 };
+
+const MISSED_STATUSES = new Set(["no-answer", "busy", "canceled", "cancelled", "failed"]);
+
+function isMissedStatus(status: string) {
+  return MISSED_STATUSES.has(String(status || "").toLowerCase());
+}
 
 export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
   const sid = env("TWILIO_ACCOUNT_SID");
@@ -213,6 +221,7 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
   if (!sid || !token || !from) return [];
   const auth = Buffer.from(`${sid}:${token}`).toString("base64");
   const base = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`;
+  const deskClient = `client:${MANAGER_VOICE_IDENTITY}`;
 
   async function page(query: string) {
     const res = await fetch(`${base}?PageSize=40&${query}`, {
@@ -225,23 +234,47 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
     return data.calls || [];
   }
 
-  const [inbound, outbound] = await Promise.all([
+  // Desk legs are child calls created by <Dial><Client>…</Client></Dial>.
+  // The parent PSTN call often ends as "completed" after the missed-call message,
+  // so we join on ParentCallSid to learn whether the desk actually answered.
+  const [inbound, outbound, deskLegs] = await Promise.all([
     page(`To=${encodeURIComponent(from)}`),
     page(`From=${encodeURIComponent(from)}`),
+    page(`To=${encodeURIComponent(deskClient)}`),
   ]);
+
+  const deskByParent = new Map<string, string>();
+  for (const leg of deskLegs) {
+    const parent = leg.parent_call_sid || "";
+    if (!parent) continue;
+    const prev = deskByParent.get(parent);
+    // Prefer an answered child if Twilio returns more than one leg.
+    if (!prev || prev !== "completed") {
+      deskByParent.set(parent, leg.status || "");
+    }
+  }
+
   const seen = new Set<string>();
   const rows: VoiceCallRow[] = [];
   for (const call of [...inbound, ...outbound]) {
     if (!call.sid || seen.has(call.sid)) continue;
     seen.add(call.sid);
+    const status = call.status || "";
+    const direction = call.direction || "";
+    const inboundToDesk = !direction.startsWith("outbound");
+    const deskStatus = deskByParent.get(call.sid);
+    const missed =
+      inboundToDesk &&
+      (isMissedStatus(status) || (deskStatus ? isMissedStatus(deskStatus) : false));
     rows.push({
       sid: call.sid,
       from: call.from || "",
       to: call.to || "",
-      status: call.status || "",
-      direction: call.direction || "",
+      status: missed ? "missed" : status,
+      direction,
       duration: call.duration || "0",
       started_at: call.start_time || call.date_created || "",
+      missed,
     });
   }
   rows.sort((a, b) => b.started_at.localeCompare(a.started_at));

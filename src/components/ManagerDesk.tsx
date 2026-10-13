@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { PhoneMissed } from "lucide-react";
 import { AdminCalendarPageClient } from "@/components/AdminCalendarPageClient";
 import {
   callbackNumber,
@@ -393,6 +394,8 @@ export function ManagerDesk({
           {calls.map((call) => {
             const who = callbackNumber(call);
             const outbound = call.direction.startsWith("outbound");
+            const missed = Boolean(call.missed) || call.status === "missed";
+            const kind = missed ? "Missed" : outbound ? "Outgoing" : "Incoming";
             return (
               <li key={call.sid}>
                 <button
@@ -401,16 +404,26 @@ export function ManagerDesk({
                     setDialNumber(who);
                     setPhone(who);
                   }}
-                  className="flex w-full items-baseline justify-between gap-3 py-2 text-left"
+                  className="flex w-full items-center justify-between gap-3 py-2 text-left"
                 >
-                  <span>
-                    <span className="block text-sm font-semibold text-foreground">{who}</span>
-                    <span className="text-xs text-muted">
-                      {outbound ? "Outgoing" : "Incoming"} · {call.status} ·{" "}
-                      {formatCallWhen(call.started_at)}
+                  <span className="flex min-w-0 items-start gap-2">
+                    {missed ? (
+                      <PhoneMissed
+                        className="mt-0.5 size-4 shrink-0 text-[#8d3b32]"
+                        aria-hidden
+                      />
+                    ) : null}
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-foreground">{who}</span>
+                      <span className={`text-xs ${missed ? "font-semibold text-[#8d3b32]" : "text-muted"}`}>
+                        {kind}
+                        {!missed && call.status ? ` · ${call.status}` : ""}
+                        {" · "}
+                        {formatCallWhen(call.started_at)}
+                      </span>
                     </span>
                   </span>
-                  <span className="text-xs text-muted">{call.duration}s</span>
+                  <span className="shrink-0 text-xs text-muted">{call.duration}s</span>
                 </button>
               </li>
             );
