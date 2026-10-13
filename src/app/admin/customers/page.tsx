@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { formatAdminDate } from "@/lib/admin-time";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getDb } from "@/lib/store/local-db";
 
@@ -34,7 +35,7 @@ export default async function AdminCustomersPage() {
                     c.source_channel && `source: ${c.source_channel}`,
                     c.last_channel && `last: ${c.last_channel}`,
                     c.last_contact_at &&
-                      `contacted ${new Date(c.last_contact_at).toLocaleDateString()}`,
+                      `contacted ${formatAdminDate(c.last_contact_at)}`,
                   ]
                     .filter(Boolean)
                     .join(" · ")}

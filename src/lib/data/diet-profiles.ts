@@ -2,10 +2,10 @@ import type { DietTag } from "@/lib/types";
 
 /** Primary dietary menus shown in the customer experience. */
 export const PRIMARY_DIETS: DietTag[] = [
+  "pure_vegetarian",
   "jain",
   "swaminarayan",
   "pushtimarg",
-  "pure_vegetarian",
   "vegan",
   "italian",
 ];

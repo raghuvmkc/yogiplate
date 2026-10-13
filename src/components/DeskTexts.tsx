@@ -2,6 +2,13 @@
 
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, MessageSquarePlus, Phone, Search, Send } from "lucide-react";
+import {
+  adminCivilIso,
+  adminTodayIso,
+  formatAdminDate,
+  formatAdminDateTime,
+  formatAdminTime,
+} from "@/lib/admin-time";
 
 type TextMessage = {
   id: string;
@@ -34,22 +41,12 @@ function prettyPhone(value: string) {
 function shortTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (adminCivilIso(date) === adminTodayIso()) return formatAdminTime(date);
+  return formatAdminDate(date, { year: undefined });
 }
 
 function bubbleTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatAdminDateTime(value, { year: undefined });
 }
 
 function initials(thread: TextThread) {

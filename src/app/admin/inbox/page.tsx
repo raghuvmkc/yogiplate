@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { formatAdminDateTime } from "@/lib/admin-time";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { listChannelThreads } from "@/lib/channels/inbound";
 
@@ -26,7 +27,7 @@ export default async function AdminInboxPage() {
                 {t.channel} · {t.lead_name || t.external_id}
               </p>
               <p className="text-xs text-muted">
-                {new Date(t.updated_at).toLocaleString()} · {t.status}
+                {formatAdminDateTime(t.updated_at)} Pacific · {t.status}
               </p>
             </div>
             <p className="text-muted">

@@ -8,6 +8,11 @@ import type {
   MenuChoice,
 } from "@/lib/booking-detail";
 import {
+  formatAdminCivilDate,
+  formatAdminDate,
+  formatAdminEventTime,
+} from "@/lib/admin-time";
+import {
   chargeTotals,
   formatMoney,
   fromCents,
@@ -338,8 +343,8 @@ export function BookingDetailDrawer(props: {
             </h3>
             {b ? (
               <p className="mt-1 text-sm text-muted">
-                {b.event_date}
-                {b.event_time ? ` ${b.event_time}` : ""}
+                {formatAdminCivilDate(b.event_date)}
+                {b.event_time ? ` · ${formatAdminEventTime(b.event_time)}` : ""}
                 {[detail?.order?.order_number, detail?.quote?.quote_number, detail?.invoice?.invoice_number]
                   .filter(Boolean)
                   .map((n) => ` · ${n}`)
@@ -671,7 +676,7 @@ export function BookingDetailDrawer(props: {
                   {(detail.order?.payments || detail.booking.payments || []).map((payment) => (
                     <li key={payment.id} className="flex justify-between border-b border-line/70 py-1">
                       <span>
-                        {payment.paid_at.slice(0, 10)} · {payment.note || "Payment"}
+                        {formatAdminDate(payment.paid_at)} · {payment.note || "Payment"}
                         {payment.stripe_session_id?.startsWith("cs_") ? " · Stripe" : ""}
                       </span>
                       <span className="font-semibold">{formatMoney(payment.amount)}</span>

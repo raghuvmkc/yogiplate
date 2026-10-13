@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { formatAdminDateTime } from "@/lib/admin-time";
 import { formatMoney } from "@/lib/pricing";
 import type { Quote, Reminder } from "@/lib/types";
 
@@ -115,7 +116,7 @@ export function AdminQuotesClient({
               {r.kind} · {r.status}
             </p>
             <p className="text-muted">
-              Due {new Date(r.due_at).toLocaleString()} → {r.to_email}
+              Due {formatAdminDateTime(r.due_at)} Pacific → {r.to_email}
             </p>
           </li>
         ))}

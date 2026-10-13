@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { OrderStatusSelect } from "@/components/OrderStatusSelect";
 import { ResendInvoiceButton } from "@/components/ResendInvoiceButton";
+import { formatAdminCivilDate } from "@/lib/admin-time";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { formatMoney } from "@/lib/pricing";
 import { getDb } from "@/lib/store/local-db";
@@ -52,10 +53,11 @@ export default async function AdminOrdersPage() {
                     <p className="text-xs text-muted">{o.customer_email}</p>
                   </td>
                   <td className="py-3">
-                    {o.event_date}
+                    {o.event_date ? formatAdminCivilDate(o.event_date) : "—"}
                     <br />
                     <span className="text-xs text-muted">
                       {o.guest_count} guests · {o.delivery_miles} mi
+                      {o.event_time ? ` · ${o.event_time} Pacific` : ""}
                     </span>
                   </td>
                   <td className="py-3">{formatMoney(o.total)}</td>

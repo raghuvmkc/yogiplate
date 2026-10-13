@@ -11,13 +11,13 @@ import {
   endOfWeek,
   endOfYear,
   format,
-  isSameDay,
   isSameMonth,
   startOfMonth,
   startOfWeek,
   startOfYear,
 } from "date-fns";
 import { BookingDetailDrawer } from "@/components/BookingDetailDrawer";
+import { adminTodayDate, adminTodayIso } from "@/lib/admin-time";
 import type { CalendarBlock, CateringBooking } from "@/lib/types";
 
 type ViewMode = "year" | "month" | "week" | "day";
@@ -146,7 +146,7 @@ const EMPTY_CREATE: CreateDraft = {
 
 export function AdminCateringCalendar() {
   const [view, setView] = useState<ViewMode>("month");
-  const [cursor, setCursor] = useState(() => new Date());
+  const [cursor, setCursor] = useState(() => adminTodayDate());
   const [bookings, setBookings] = useState<CateringBooking[]>([]);
   const [searchText, setSearchText] = useState("");
   const [searchHits, setSearchHits] = useState<CateringBooking[] | null>(null);
@@ -361,6 +361,9 @@ export function AdminCateringCalendar() {
 
   return (
     <div className="space-y-6">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+        All times Pacific (kitchen) — today is {adminTodayIso()}
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {(["year", "month", "week", "day"] as ViewMode[]).map((v) => (
@@ -401,7 +404,7 @@ export function AdminCateringCalendar() {
           </button>
           <button
             type="button"
-            onClick={() => setCursor(new Date())}
+            onClick={() => setCursor(adminTodayDate())}
             className="border border-line px-3 py-1.5 text-sm font-semibold"
           >
             Today
@@ -722,7 +725,9 @@ export function AdminCateringCalendar() {
               <div
                 key={day.toISOString()}
                 className={`min-h-[7.5rem] bg-white p-2 ${muted} ${
-                  isSameDay(day, new Date()) ? "ring-2 ring-inset ring-accent" : ""
+                  format(day, "yyyy-MM-dd") === adminTodayIso()
+                    ? "ring-2 ring-inset ring-accent"
+                    : ""
                 }`}
               >
                 <button

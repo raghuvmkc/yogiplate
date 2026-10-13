@@ -1,18 +1,13 @@
 import { redirect } from "next/navigation";
 import { TestAlertButton } from "@/components/TestAlertButton";
+import { formatAdminDateTime } from "@/lib/admin-time";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { runHealthChecks } from "@/lib/health";
 import { recentEvents } from "@/lib/monitor";
 import { alertNotifyEmails } from "@/lib/smtp";
 
 function pacific(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    timeZone: "America/Los_Angeles",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatAdminDateTime(iso, { year: undefined });
 }
 
 export default async function AdminHealthPage() {
