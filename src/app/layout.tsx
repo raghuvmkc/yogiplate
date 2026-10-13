@@ -4,7 +4,11 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { SiteAnalytics } from "@/components/SiteAnalytics";
 import "./globals.css";
+
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "G-YK5B9QRH2S";
 
 // Self-hosted (Latin variable fonts from Google Fonts) so builds never depend on fetching Google.
 const display = localFont({
@@ -51,6 +55,7 @@ export default function RootLayout({
         <Footer />
         <ChatWidget />
         <ErrorReporter />
+        <SiteAnalytics gaId={GA_MEASUREMENT_ID} />
       </body>
     </html>
   );
