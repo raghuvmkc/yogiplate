@@ -22,6 +22,7 @@ import {
   percentCents,
 } from "@/lib/pricing";
 import type { CateringBooking, OrderStatus } from "@/lib/types";
+import { AdminCardPayment } from "@/components/AdminCardPayment";
 import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
 
 const STATUS_OPTIONS: { value: CateringBooking["status"]; label: string }[] = [
@@ -751,6 +752,18 @@ export function BookingDetailDrawer(props: {
                 </button>
               </div>
             </section>
+
+            {detail ? (
+              <AdminCardPayment
+                bookingId={bookingId}
+                balance={balance}
+                hasOrder={Boolean(detail.order)}
+                onPaid={(next) => {
+                  apply(next);
+                  setNotice("Card payment accepted.");
+                }}
+              />
+            ) : null}
 
             <div className="sticky bottom-0 mt-8 flex flex-wrap gap-3 border-t border-line bg-warm py-4">
               <button

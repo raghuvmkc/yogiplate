@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { confirmBookingCardPayment } from "@/lib/admin-card-payment";
 import {
   emailBookingInvoice,
   getBookingDetail,
@@ -53,6 +54,7 @@ export async function POST(req: Request, ctx: Ctx) {
     amount?: number;
     note?: string;
     paid_at?: string;
+    payment_intent_id?: string;
   };
   try {
     if (body.action === "payment") {
@@ -62,6 +64,15 @@ export async function POST(req: Request, ctx: Ctx) {
           note: body.note,
           paid_at: body.paid_at,
         }),
+        noStore
+      );
+    }
+    if (body.action === "card_payment") {
+      if (!body.payment_intent_id) {
+        return failure(new Error("Missing payment_intent_id."));
+      }
+      return NextResponse.json(
+        await confirmBookingCardPayment(id, String(body.payment_intent_id)),
         noStore
       );
     }

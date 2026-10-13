@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { confirmBookingCardPayment } from "@/lib/admin-card-payment";
 import { applyPaidCheckout } from "@/lib/apply-payment";
 import { reportError } from "@/lib/monitor";
 import { serverEnv } from "@/lib/server-env";
@@ -46,6 +47,24 @@ export async function POST(req: Request) {
           customer: session.customer_details?.email || session.customer_email,
         });
         return NextResponse.json({ error: "Could not record payment" }, { status: 500 });
+      }
+    }
+  }
+
+  if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object as {
+      id?: string;
+      metadata?: { kind?: string; booking_id?: string };
+    };
+    if (intent.metadata?.kind === "admin_card" && intent.metadata.booking_id && intent.id) {
+      try {
+        await confirmBookingCardPayment(intent.metadata.booking_id, intent.id);
+      } catch (err) {
+        await reportError("stripe-webhook-admin-card", err, {
+          payment_intent: intent.id,
+          booking: intent.metadata.booking_id,
+        });
+        return NextResponse.json({ error: "Could not record card payment" }, { status: 500 });
       }
     }
   }

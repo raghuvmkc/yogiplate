@@ -3,7 +3,7 @@ import { reportError } from "@/lib/monitor";
 
 export const runtime = "nodejs";
 
-/** Noise from browser extensions and harmless browser quirks; not our bugs. */
+/** Noise from browser extensions, in-app browsers, and harmless quirks; not our bugs. */
 const IGNORE = [
   /ResizeObserver loop/i,
   /^Script error\.?$/i,
@@ -12,6 +12,13 @@ const IGNORE = [
   /NetworkError when attempting to fetch/i,
   /Failed to fetch$/i,
   /AbortError/i,
+  // Android / Facebook / Instagram in-app WebViews inject iabjs bridges that
+  // throw when the native side is torn down on navigation or close.
+  /iabjs:/i,
+  /navigation_performance_logger_android/i,
+  /Java object is gone/i,
+  /Error invoking postMessage/i,
+  /cecurrentvideometricspassword/i,
 ];
 
 export async function POST(req: Request) {
@@ -24,14 +31,16 @@ export async function POST(req: Request) {
   } | null;
   const message = String(body?.message || "").slice(0, 400);
   const source = String(body?.source || "");
-  if (!message || IGNORE.some((re) => re.test(message) || re.test(source))) {
+  const stack = String(body?.stack || "");
+  const haystack = `${message}\n${source}\n${stack}`;
+  if (!message || IGNORE.some((re) => re.test(haystack))) {
     return NextResponse.json({ ok: true, ignored: true });
   }
   await reportError("browser", message, {
     kind: String(body?.kind || "error").slice(0, 40),
     path: String(body?.path || "").slice(0, 200),
     source: source.slice(0, 200),
-    stack: String(body?.stack || "").split("\n").slice(0, 4).join(" | ").slice(0, 600),
+    stack: stack.split("\n").slice(0, 4).join(" | ").slice(0, 600),
     browser: (req.headers.get("user-agent") || "").slice(0, 160),
   });
   return NextResponse.json({ ok: true });
