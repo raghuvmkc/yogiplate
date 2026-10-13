@@ -54,9 +54,24 @@ export async function createDeskInvoice(input: DeskBillInput) {
   }
   if (!input.event_date) throw new GuestInputError("Event date is required.");
 
+  const items: CartLine[] = input.items.map((item) => ({
+    ...item,
+    name: String(item.name || "").trim().slice(0, 120),
+    price: Math.max(0, Number(item.price) || 0),
+    quantity: Math.max(1, Math.floor(Number(item.quantity) || 0)),
+    unit: item.unit || "each",
+    menu_item_id: item.menu_item_id || "custom",
+    line_id: item.line_id || item.menu_item_id || "custom",
+  }));
+  for (const item of items) {
+    if (!item.name || !(item.price > 0)) {
+      throw new GuestInputError("Every invoice line needs a name and a price greater than zero.");
+    }
+  }
+
   const db = await getDb();
   const pickup = input.delivery_or_pickup === "pickup";
-  const foodSubtotal = cartSubtotal(input.items);
+  const foodSubtotal = cartSubtotal(items);
   let miles = 0;
   let deliveryFee = 0;
   if (!pickup) {
@@ -139,7 +154,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
       customer_email: order.customer_email,
       amount: order.total,
       product_name: `Yogiplate invoice ${invNum}`,
-      description: `Order ${ordNum}. ${input.items
+      description: `Order ${ordNum}. ${items
         .map((item) => `${item.name} × ${item.quantity}`)
         .join(", ")}`,
       success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -154,7 +169,7 @@ export async function createDeskInvoice(input: DeskBillInput) {
     if (!payUrl) throw new Error("Stripe did not return a pay link.");
   }
 
-  const orderItems: OrderItem[] = input.items.map((item) => ({
+  const orderItems: OrderItem[] = items.map((item) => ({
     id: uid("oi"),
     order_id: orderId,
     menu_item_id: item.menu_item_id,

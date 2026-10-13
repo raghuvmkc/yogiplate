@@ -191,9 +191,44 @@ export function ManagerDesk({
       current
         .map((row) => {
           if (row.line_id !== lineId) return row;
-          const min = minFor(itemById.get(row.menu_item_id));
+          const min =
+            row.menu_item_id === "custom" ? 1 : minFor(itemById.get(row.menu_item_id));
           const next = row.quantity + delta;
           return { ...row, quantity: next < min ? 0 : next };
+        })
+        .filter((row) => row.quantity > 0)
+    );
+  }
+
+  function addCustomLine() {
+    const lineId = `custom:${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setLines((current) => [
+      ...current,
+      {
+        menu_item_id: "custom",
+        line_id: lineId,
+        name: "",
+        price: 0,
+        quantity: 1,
+        unit: "each",
+      },
+    ]);
+  }
+
+  function patchLine(lineId: string, patch: Partial<Pick<CartLine, "name" | "price" | "quantity">>) {
+    setLines((current) =>
+      current
+        .map((row) => {
+          if (row.line_id !== lineId) return row;
+          const next = { ...row, ...patch };
+          if (patch.quantity != null) {
+            next.quantity = Math.max(1, Math.floor(Number(patch.quantity) || 0));
+          }
+          if (patch.price != null) {
+            next.price = Math.max(0, Math.round((Number(patch.price) || 0) * 100) / 100);
+          }
+          if (patch.name != null) next.name = String(patch.name).slice(0, 120);
+          return next;
         })
         .filter((row) => row.quantity > 0)
     );
@@ -205,48 +240,119 @@ export function ManagerDesk({
         <ul className="divide-y divide-line">
           {lines.length === 0 ? (
             <li className="py-3 text-sm text-muted">
-              No dishes yet. Pick a tray size and tap Add on the Menu tab.
+              No dishes yet. Pick a tray on the Menu tab, or add a custom item below.
             </li>
           ) : null}
-          {lines.map((line) => (
-            <li key={line.line_id} className="flex items-center justify-between gap-3 py-2">
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">{line.name}</span>
-                <span className="text-xs text-muted">
-                  {money(line.price)} each · {money(line.price * line.quantity)}
+          {lines.map((line) => {
+            const custom = line.menu_item_id === "custom";
+            if (!compact && custom) {
+              return (
+                <li key={line.line_id} className="grid gap-2 py-3 sm:grid-cols-[1fr_5.5rem_5.5rem_auto]">
+                  <label className="text-xs font-semibold text-muted">
+                    Custom item
+                    <input
+                      value={line.name}
+                      onChange={(event) => patchLine(line.line_id, { name: event.target.value })}
+                      placeholder="Item name"
+                      className="mt-1 w-full border border-line px-2 py-1.5 text-sm font-medium text-foreground"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-muted">
+                    Qty
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={line.quantity}
+                      onChange={(event) =>
+                        patchLine(line.line_id, { quantity: Number(event.target.value) })
+                      }
+                      className="mt-1 w-full border border-line px-2 py-1.5 text-sm font-medium text-foreground"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-muted">
+                    Price
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={line.price || ""}
+                      onChange={(event) =>
+                        patchLine(line.line_id, { price: Number(event.target.value) })
+                      }
+                      className="mt-1 w-full border border-line px-2 py-1.5 text-sm font-medium text-foreground"
+                    />
+                  </label>
+                  <div className="flex items-end justify-between gap-2 sm:flex-col sm:items-end">
+                    <span className="text-xs font-semibold text-foreground">
+                      {money(line.price * line.quantity)}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-muted hover:text-[#8d3b32]"
+                      onClick={() => changeLine(line.line_id, -line.quantity)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              );
+            }
+            return (
+              <li key={line.line_id} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground">
+                    {line.name || (custom ? "Custom item" : "Item")}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {money(line.price)} each · {money(line.price * line.quantity)}
+                    {custom ? " · custom" : ""}
+                  </span>
                 </span>
-              </span>
-              <span className="flex shrink-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  aria-label={`Fewer ${line.name}`}
-                  className="h-7 w-7 border border-line text-sm"
-                  onClick={() => changeLine(line.line_id, -1)}
-                >
-                  −
-                </button>
-                <span className="w-7 text-center text-sm font-semibold">{line.quantity}</span>
-                <button
-                  type="button"
-                  aria-label={`More ${line.name}`}
-                  className="h-7 w-7 border border-line text-sm"
-                  onClick={() => changeLine(line.line_id, 1)}
-                >
-                  +
-                </button>
-                {compact ? null : (
+                <span className="flex shrink-0 items-center gap-1.5">
                   <button
                     type="button"
-                    className="ml-1 text-xs font-semibold text-muted hover:text-[#8d3b32]"
-                    onClick={() => changeLine(line.line_id, -line.quantity)}
+                    aria-label={`Fewer ${line.name || "item"}`}
+                    className="h-7 w-7 border border-line text-sm"
+                    onClick={() => changeLine(line.line_id, -1)}
                   >
-                    Remove
+                    −
                   </button>
-                )}
-              </span>
-            </li>
-          ))}
+                  <span className="w-7 text-center text-sm font-semibold">{line.quantity}</span>
+                  <button
+                    type="button"
+                    aria-label={`More ${line.name || "item"}`}
+                    className="h-7 w-7 border border-line text-sm"
+                    onClick={() => changeLine(line.line_id, 1)}
+                  >
+                    +
+                  </button>
+                  {compact ? null : (
+                    <button
+                      type="button"
+                      className="ml-1 text-xs font-semibold text-muted hover:text-[#8d3b32]"
+                      onClick={() => changeLine(line.line_id, -line.quantity)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
+        {compact ? null : (
+          <button
+            type="button"
+            onClick={addCustomLine}
+            className="mt-3 inline-flex items-center gap-1.5 border border-dashed border-line px-3 py-2 text-sm font-semibold text-foreground hover:border-accent-deep hover:text-accent-deep"
+          >
+            <span aria-hidden className="text-lg leading-none">
+              +
+            </span>
+            Add custom item
+          </button>
+        )}
         {lines.length ? (
           <p className="mt-2 flex justify-between border-t border-line pt-2 text-sm font-semibold text-foreground">
             <span>
@@ -297,6 +403,15 @@ export function ManagerDesk({
     }
     if (kind === "invoice" && discountPct > 0 && !discountReason.trim()) {
       setNotice("Add a reason when applying a discount.");
+      return;
+    }
+    const badCustom = lines.find(
+      (line) =>
+        line.menu_item_id === "custom" &&
+        (!line.name.trim() || !(line.price > 0) || !(line.quantity > 0))
+    );
+    if (badCustom) {
+      setNotice("Each custom item needs a name, quantity, and price greater than zero.");
       return;
     }
     setBusy(kind);
@@ -772,15 +887,24 @@ export function ManagerDesk({
               </label>
             </div>
 
-            <div className="mt-6 flex items-baseline justify-between">
+            <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-semibold text-foreground">Dishes</p>
-              <button
-                type="button"
-                onClick={() => setTab("menu")}
-                className="text-sm font-semibold text-accent-deep hover:underline"
-              >
-                + Add more dishes
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={addCustomLine}
+                  className="text-sm font-semibold text-accent-deep hover:underline"
+                >
+                  + Add custom item
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("menu")}
+                  className="text-sm font-semibold text-accent-deep hover:underline"
+                >
+                  + Add menu dishes
+                </button>
+              </div>
             </div>
             <div className="mt-1">{renderOrderLines(false)}</div>
 
