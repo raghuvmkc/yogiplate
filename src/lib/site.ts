@@ -14,25 +14,33 @@ function hostOf(url: string) {
   }
 }
 
-/** Public site origin for emails, Stripe, sitemap, and canonical SEO URLs. */
-export function siteUrl() {
-  const explicit = (process.env.NEXT_PUBLIC_SITE_URL || "").trim();
-  if (explicit) return stripTrailingSlash(explicit);
+function isNetlifyAppHost(url: string) {
+  const host = hostOf(url);
+  return Boolean(host && host.endsWith(".netlify.app"));
+}
 
-  // Netlify sets URL to *.netlify.app even when a custom domain is attached.
-  // Prefer the production domain so Google gets the right sitemap/canonicals.
-  const netlifyUrl = (process.env.URL || "").trim();
-  const host = hostOf(netlifyUrl);
-  if (host && !host.endsWith(".netlify.app")) {
-    return stripTrailingSlash(netlifyUrl);
+/**
+ * Public site origin for emails, Stripe, sitemap, and canonical SEO URLs.
+ * Never publish *.netlify.app as the customer-facing host — Google and Stripe
+ * should see www.yogiplate.com.
+ */
+export function siteUrl() {
+  const candidates = [
+    (process.env.NEXT_PUBLIC_SITE_URL || "").trim(),
+    (process.env.URL || "").trim(),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (!isNetlifyAppHost(candidate)) {
+      return stripTrailingSlash(candidate);
+    }
   }
-  if (
-    process.env.CONTEXT === "production" ||
-    process.env.NODE_ENV === "production"
-  ) {
-    return PRODUCTION_SITE;
+
+  // Local next dev (no Netlify CONTEXT) keeps localhost; everything else uses the real domain.
+  if (!process.env.CONTEXT && process.env.NODE_ENV !== "production") {
+    return "http://localhost:3000";
   }
-  return stripTrailingSlash(netlifyUrl || "http://localhost:3000");
+  return PRODUCTION_SITE;
 }
 
 export function publicQuoteUrl(quote: Pick<Quote, "id" | "public_token">) {
