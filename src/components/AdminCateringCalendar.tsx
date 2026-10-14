@@ -1,6 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import {
   addDays,
   addMonths,
@@ -17,7 +27,11 @@ import {
   startOfYear,
 } from "date-fns";
 import { BookingDetailDrawer } from "@/components/BookingDetailDrawer";
-import { adminTodayDate, adminTodayIso } from "@/lib/admin-time";
+import {
+  adminTodayDate,
+  adminTodayIso,
+  formatAdminCivilDate,
+} from "@/lib/admin-time";
 import type { CalendarBlock, CateringBooking } from "@/lib/types";
 
 type ViewMode = "year" | "month" | "week" | "day";
@@ -144,6 +158,8 @@ const EMPTY_CREATE: CreateDraft = {
   notes: "",
 };
 
+type DayMenu = { x: number; y: number; date: string };
+
 export function AdminCateringCalendar() {
   const [view, setView] = useState<ViewMode>("month");
   const [cursor, setCursor] = useState(() => adminTodayDate());
@@ -157,6 +173,11 @@ export function AdminCateringCalendar() {
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateDraft>(EMPTY_CREATE);
+  const [dayMenu, setDayMenu] = useState<DayMenu | null>(null);
+  const [copyBusy, setCopyBusy] = useState(false);
+  const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
 
   const range = useMemo(() => {
     if (view === "year") {
@@ -264,7 +285,143 @@ export function AdminCateringCalendar() {
 
   const closeDetail = useCallback(() => setSelected(null), []);
 
-  async function createBooking(e: React.FormEvent) {
+  useEffect(() => {
+    if (!dayMenu) return;
+    function close() {
+      setDayMenu(null);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    // Delay so the opening tap/long-press does not instantly dismiss the sheet.
+    const timer = window.setTimeout(() => {
+      window.addEventListener("click", close);
+      window.addEventListener("scroll", close, true);
+    }, 0);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [dayMenu]);
+
+  function clearLongPress() {
+    if (longPressTimer.current != null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function openDayMenuAt(day: Date, x: number, y: number) {
+    setDayMenu({
+      x,
+      y,
+      date: format(day, "yyyy-MM-dd"),
+    });
+    try {
+      navigator.vibrate?.(15);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function openDayMenu(event: MouseEvent, day: Date) {
+    event.preventDefault();
+    event.stopPropagation();
+    openDayMenuAt(day, event.clientX, event.clientY);
+  }
+
+  /** Phone-friendly: long-press a date (~0.5s) opens the same copy menu. */
+  function dayPressHandlers(day: Date) {
+    let startX = 0;
+    let startY = 0;
+    return {
+      onContextMenu: (event: MouseEvent) => openDayMenu(event, day),
+      onPointerDown: (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        longPressFired.current = false;
+        clearLongPress();
+        startX = event.clientX;
+        startY = event.clientY;
+        const x = event.clientX;
+        const y = event.clientY;
+        longPressTimer.current = window.setTimeout(() => {
+          longPressFired.current = true;
+          openDayMenuAt(day, x, y);
+        }, 480);
+      },
+      onPointerUp: () => clearLongPress(),
+      onPointerCancel: () => clearLongPress(),
+      onPointerLeave: () => clearLongPress(),
+      onPointerMove: (event: PointerEvent) => {
+        if (
+          Math.abs(event.clientX - startX) + Math.abs(event.clientY - startY) >
+          12
+        ) {
+          clearLongPress();
+        }
+      },
+    };
+  }
+
+  function openDayView(day: Date) {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    setCursor(day);
+    setView("day");
+  }
+
+  async function copyDaySummary(dateIso: string) {
+    setDayMenu(null);
+    setCopyBusy(true);
+    setCopyNotice(null);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/admin/bookings/day-summary?date=${encodeURIComponent(dateIso)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not build day summary");
+        return;
+      }
+      const text = String(data.text || "");
+      if (!text) {
+        setError("Day summary was empty");
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        document.body.removeChild(area);
+      }
+      const count = Number(data.booking_count) || 0;
+      setCopyNotice(
+        count
+          ? `Copied full day summary (${count} booking${count === 1 ? "" : "s"}) — paste into WhatsApp or email.`
+          : "Copied day summary (no bookings) — paste into WhatsApp or email."
+      );
+    } catch {
+      setError("Could not copy day summary");
+    } finally {
+      setCopyBusy(false);
+    }
+  }
+
+  async function createBooking(e: FormEvent) {
     e.preventDefault();
     setCreating(true);
     setError(null);
@@ -323,7 +480,7 @@ export function AdminCateringCalendar() {
     );
   }
 
-  async function searchBookings(e: React.FormEvent) {
+  async function searchBookings(e: FormEvent) {
     e.preventDefault();
     const q = searchText.trim();
     if (!q) {
@@ -364,6 +521,14 @@ export function AdminCateringCalendar() {
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         All times Pacific (kitchen) — today is {adminTodayIso()}
       </p>
+      <p className="text-sm text-muted">
+        Copy day summary: on phone, open the day then tap the button — or long-press any
+        date. On desktop, right-click a date.
+        {copyBusy ? " Building summary…" : ""}
+      </p>
+      {copyNotice ? (
+        <p className="text-sm font-medium text-emerald-800">{copyNotice}</p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {(["year", "month", "week", "day"] as ViewMode[]).map((v) => (
@@ -624,7 +789,19 @@ export function AdminCateringCalendar() {
       ) : null}
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="font-display text-2xl text-foreground">{title}</h2>
+        <div className="flex flex-wrap items-end gap-3">
+          <h2 className="font-display text-2xl text-foreground">{title}</h2>
+          {view === "day" ? (
+            <button
+              type="button"
+              disabled={copyBusy}
+              onClick={() => void copyDaySummary(format(cursor, "yyyy-MM-dd"))}
+              className="w-full border border-accent-deep bg-accent-deep px-4 py-3 text-sm font-semibold text-white sm:w-auto sm:py-1.5"
+            >
+              {copyBusy ? "Copying…" : "Copy day summary"}
+            </button>
+          ) : null}
+        </div>
         <div className="flex flex-wrap gap-3 text-xs font-semibold">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-3 w-3 border border-amber-400 bg-amber-100" />
@@ -687,7 +864,9 @@ export function AdminCateringCalendar() {
                     return (
                       <span
                         key={d.toISOString()}
-                        className={`flex h-5 items-center justify-center ${
+                        {...dayPressHandlers(d)}
+                        title="Long-press or right-click to copy day summary"
+                        className={`flex h-5 items-center justify-center touch-manipulation ${
                           !inMonth ? "text-muted/40" : dayTone(hits)
                         }`}
                       >
@@ -724,22 +903,38 @@ export function AdminCateringCalendar() {
             return (
               <div
                 key={day.toISOString()}
-                className={`min-h-[7.5rem] bg-white p-2 ${muted} ${
+                {...dayPressHandlers(day)}
+                title="Long-press or right-click to copy day summary"
+                className={`min-h-[7.5rem] touch-manipulation bg-white p-2 ${muted} ${
                   format(day, "yyyy-MM-dd") === adminTodayIso()
                     ? "ring-2 ring-inset ring-accent"
                     : ""
                 }`}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCursor(day);
-                    setView("day");
-                  }}
-                  className="text-xs font-semibold text-foreground"
-                >
-                  {format(day, view === "day" ? "EEEE MMM d" : "d")}
-                </button>
+                <div className="flex items-start justify-between gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openDayView(day)}
+                    className="text-xs font-semibold text-foreground"
+                  >
+                    {format(day, view === "day" ? "EEEE MMM d" : "d")}
+                  </button>
+                  {view !== "day" ? (
+                    <button
+                      type="button"
+                      disabled={copyBusy}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void copyDaySummary(format(day, "yyyy-MM-dd"));
+                      }}
+                      className="shrink-0 px-1.5 py-1 text-[10px] font-semibold text-accent-deep underline"
+                      aria-label={`Copy summary for ${formatAdminCivilDate(format(day, "yyyy-MM-dd"))}`}
+                    >
+                      Copy
+                    </button>
+                  ) : null}
+                </div>
                 <div className="mt-1 space-y-1">
                   {dayBlocks.map((b) => (
                     <div
@@ -772,6 +967,17 @@ export function AdminCateringCalendar() {
                     );
                   })}
                 </div>
+                {view === "day" ? (
+                  <button
+                    type="button"
+                    disabled={copyBusy}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => void copyDaySummary(format(day, "yyyy-MM-dd"))}
+                    className="mt-3 w-full bg-accent-deep px-4 py-3.5 text-sm font-semibold text-white"
+                  >
+                    {copyBusy ? "Copying…" : "Copy day summary"}
+                  </button>
+                ) : null}
               </div>
             );
           })}
@@ -784,6 +990,50 @@ export function AdminCateringCalendar() {
           onClose={closeDetail}
           onChanged={onBookingChanged}
         />
+      ) : null}
+
+      {dayMenu ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close"
+            className="fixed inset-0 z-40 bg-black/30 sm:hidden"
+            onClick={() => setDayMenu(null)}
+          />
+          {/* Phone: bottom sheet. Desktop: menu near the cursor. */}
+          <div
+            role="menu"
+            className="fixed inset-x-0 bottom-0 z-50 border border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg sm:inset-x-auto sm:bottom-auto sm:min-w-[14rem] sm:p-0 sm:pb-0 sm:left-[var(--menu-x)] sm:top-[var(--menu-y)]"
+            style={
+              {
+                "--menu-x": `${Math.max(8, dayMenu.x - 20)}px`,
+                "--menu-y": `${Math.max(8, dayMenu.y)}px`,
+              } as CSSProperties
+            }
+            onClick={(event) => event.stopPropagation()}
+            onContextMenu={(event) => event.preventDefault()}
+          >
+            <p className="border-b border-line px-1 pb-2 text-sm font-semibold text-foreground sm:px-3 sm:py-1.5 sm:text-[11px] sm:text-muted">
+              {formatAdminCivilDate(dayMenu.date)}
+            </p>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={copyBusy}
+              onClick={() => void copyDaySummary(dayMenu.date)}
+              className="mt-3 block w-full bg-accent-deep px-4 py-3.5 text-center text-base font-semibold text-white sm:mt-0 sm:bg-transparent sm:px-3 sm:py-2.5 sm:text-left sm:text-sm sm:text-foreground sm:hover:bg-warm"
+            >
+              {copyBusy ? "Copying…" : "Copy day summary"}
+            </button>
+            <button
+              type="button"
+              className="mt-2 w-full px-4 py-2 text-center text-sm font-semibold text-muted sm:hidden"
+              onClick={() => setDayMenu(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
       ) : null}
     </div>
   );
