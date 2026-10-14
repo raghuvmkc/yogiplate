@@ -8,7 +8,7 @@ function stripTrailingSlash(url: string) {
 
 function hostOf(url: string) {
   try {
-    return new URL(url).hostname;
+    return new URL(url).hostname.toLowerCase();
   } catch {
     return "";
   }
@@ -19,10 +19,19 @@ function isNetlifyAppHost(url: string) {
   return Boolean(host && host.endsWith(".netlify.app"));
 }
 
+/** Collapse apex / www / netlify hosts to the canonical customer URL. */
+function canonicalizePublicOrigin(url: string) {
+  const host = hostOf(url);
+  if (!host) return "";
+  if (host === "yogiplate.com" || host === "www.yogiplate.com" || host.endsWith(".netlify.app")) {
+    return PRODUCTION_SITE;
+  }
+  return stripTrailingSlash(url);
+}
+
 /**
  * Public site origin for emails, Stripe, sitemap, and canonical SEO URLs.
- * Never publish *.netlify.app as the customer-facing host — Google and Stripe
- * should see www.yogiplate.com.
+ * Always prefer https://www.yogiplate.com in production.
  */
 export function siteUrl() {
   const candidates = [
@@ -31,12 +40,11 @@ export function siteUrl() {
   ].filter(Boolean);
 
   for (const candidate of candidates) {
-    if (!isNetlifyAppHost(candidate)) {
-      return stripTrailingSlash(candidate);
-    }
+    if (isNetlifyAppHost(candidate)) continue;
+    const canonical = canonicalizePublicOrigin(candidate);
+    if (canonical) return canonical;
   }
 
-  // Local next dev (no Netlify CONTEXT) keeps localhost; everything else uses the real domain.
   if (!process.env.CONTEXT && process.env.NODE_ENV !== "production") {
     return "http://localhost:3000";
   }
