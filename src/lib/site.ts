@@ -1,6 +1,7 @@
 import type { Quote } from "@/lib/types";
 
-const PRODUCTION_SITE = "https://www.yogiplate.com";
+/** Live Netlify primary host (www currently redirects here). */
+const PRODUCTION_SITE = "https://yogiplate.com";
 
 function stripTrailingSlash(url: string) {
   return url.replace(/\/$/, "");
@@ -23,6 +24,7 @@ function isNetlifyAppHost(url: string) {
 function canonicalizePublicOrigin(url: string) {
   const host = hostOf(url);
   if (!host) return "";
+  // Match the host Netlify actually serves after redirects.
   if (host === "yogiplate.com" || host === "www.yogiplate.com" || host.endsWith(".netlify.app")) {
     return PRODUCTION_SITE;
   }
