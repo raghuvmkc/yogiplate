@@ -8,10 +8,14 @@ const IGNORE = [
   /ResizeObserver loop/i,
   /^Script error\.?$/i,
   /chrome-extension:|moz-extension:|safari-extension:/i,
-  /Load failed$/i,
+  // iOS/WebKit: fetch dropped when the tab backgrounds, signal drops, or the
+  // user navigates away — often surfaces as bare "Load failed".
+  /\bLoad failed\b/i,
+  /The Internet connection appears to be offline/i,
   /NetworkError when attempting to fetch/i,
-  /Failed to fetch$/i,
+  /\bFailed to fetch\b/i,
   /AbortError/i,
+  /The operation was aborted/i,
   // Android / Facebook / Instagram in-app WebViews inject iabjs bridges that
   // throw when the native side is torn down on navigation or close.
   /iabjs:/i,
@@ -29,7 +33,10 @@ export async function POST(req: Request) {
     stack?: unknown;
     kind?: unknown;
   } | null;
-  const message = String(body?.message || "").slice(0, 400);
+  const message = String(body?.message || "")
+    .replace(/\u00a0/g, " ")
+    .trim()
+    .slice(0, 400);
   const source = String(body?.source || "");
   const stack = String(body?.stack || "");
   const haystack = `${message}\n${source}\n${stack}`;

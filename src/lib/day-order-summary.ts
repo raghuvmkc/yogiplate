@@ -66,9 +66,8 @@ function paymentLines(payments: PaymentRecord[] | undefined): string[] {
   if (!payments?.length) return [];
   return payments.map((p, i) => {
     const when = formatAdminDateTime(p.paid_at);
-    const note = p.note ? ` · ${p.note}` : "";
-    const stripe = p.stripe_session_id ? " · card/Stripe" : "";
-    return `  ${i + 1}. ${formatMoney(p.amount)} on ${when}${stripe}${note}`;
+    const how = p.note || p.method || (p.stripe_session_id ? "card/Stripe" : "payment");
+    return `  ${i + 1}. ${formatMoney(p.amount)} on ${when} · ${how}`;
   });
 }
 

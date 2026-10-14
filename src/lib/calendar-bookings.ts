@@ -30,6 +30,7 @@ export type BookingUpsertInput = {
     amount: number;
     stripe_session_id?: string | null;
     paid_at?: string | null;
+    method?: string | null;
     note?: string | null;
   } | null;
   /** Force status; default keeps existing or unconfirmed. Money overrides this. */
@@ -60,6 +61,7 @@ export function appendPaymentRecord(
     amount: round2(payment.amount),
     paid_at: payment.paid_at || new Date().toISOString(),
     stripe_session_id: sid || null,
+    method: payment.method?.trim() || null,
     note: payment.note || null,
   });
   return list;

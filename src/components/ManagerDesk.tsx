@@ -428,6 +428,35 @@ export function ManagerDesk({
     };
   }
 
+  /** Clear the desk form only — never deletes orders or calendar events already saved. */
+  function clearDeskFormForNextInvoice() {
+    setLines([]);
+    setPriceDrafts({});
+    setName("");
+    setEmail("");
+    setPhone("");
+    setEventDate("");
+    setEventTime("");
+    setGuests("");
+    setDiet("pure_vegetarian");
+    setService("delivery");
+    setSetupService(false);
+    setAddress("");
+    setCity("");
+    setZip("");
+    setNotes("");
+    setDiscountPercent("");
+    setDiscountReason("");
+    setQuery("");
+    setPicks({});
+    setQtys({});
+    setJustAdded(null);
+    // Keep caller ID filled if a call is still live.
+    const call = incoming || active;
+    const from = call ? callerPhone(call) : "";
+    if (from) setPhone(from);
+  }
+
   async function send(kind: "quote" | "invoice", event: FormEvent) {
     event.preventDefault();
     if (kind === "invoice" && service === "delivery" && addressCheck.status !== "ok") {
@@ -473,10 +502,11 @@ export function ManagerDesk({
             : `Quotation ${data.quote_number} was saved. Email was not sent (${data.email_reason || "mail"}).`
         );
       } else {
+        clearDeskFormForNextInvoice();
         setNotice(
           data.email_sent
-            ? `Invoice ${data.invoice_number} was emailed with a pay link. The order stays unpaid until they pay.`
-            : `Invoice ${data.invoice_number} was saved. Email was not sent (${data.email_reason || "mail"}).`
+            ? `Invoice ${data.invoice_number} was emailed with a pay link. Form cleared for the next invoice — calendar event kept.`
+            : `Invoice ${data.invoice_number} was saved. Form cleared for the next invoice — calendar event kept. Email was not sent (${data.email_reason || "mail"}).`
         );
       }
     } finally {

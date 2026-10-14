@@ -52,6 +52,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const body = (await req.json().catch(() => ({}))) as {
     action?: string;
     amount?: number;
+    method?: string;
     note?: string;
     paid_at?: string;
     payment_intent_id?: string;
@@ -61,6 +62,7 @@ export async function POST(req: Request, ctx: Ctx) {
       return NextResponse.json(
         await recordManualPayment(id, {
           amount: Number(body.amount),
+          method: String(body.method || ""),
           note: body.note,
           paid_at: body.paid_at,
         }),

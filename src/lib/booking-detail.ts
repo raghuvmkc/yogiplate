@@ -1,6 +1,10 @@
 import { appendPaymentRecord, upsertCateringBooking } from "@/lib/calendar-bookings";
 import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
 import {
+  isManualPaymentMethod,
+  paymentMethodLabel,
+} from "@/lib/payment-methods";
+import {
   chargeTotals,
   DEFAULT_SETUP_FEE,
   formatMoney,
@@ -485,19 +489,35 @@ async function refreshPayLink(orderId: string) {
 /** Cash, check, Zelle, or any payment taken outside Stripe. */
 export async function recordManualPayment(
   id: string,
-  input: { amount: number; note?: string | null; paid_at?: string | null }
+  input: {
+    amount: number;
+    method: string;
+    note?: string | null;
+    paid_at?: string | null;
+  }
 ) {
   const cents = toCents(Number(input.amount) || 0);
   if (cents <= 0) throw new Error("Enter a payment amount greater than zero.");
+  const method = String(input.method || "").trim();
+  if (!method) {
+    throw new Error("Choose how the payment was collected (cash, Zelle, check, …).");
+  }
+  if (!isManualPaymentMethod(method)) {
+    throw new Error("Choose a valid payment collection method.");
+  }
   const db = await getDb();
   const booking = (db.catering_bookings || []).find((row) => row.id === id);
   if (!booking) throw new Error("Booking not found");
   const { order } = linked(db, booking);
+  const extra = input.note?.trim() || "";
   const payment = {
     amount: fromCents(cents),
     stripe_session_id: `manual:${uid("pay")}`,
     paid_at: input.paid_at || new Date().toISOString(),
-    note: input.note?.trim() || "Manual payment",
+    method,
+    note: extra
+      ? `${paymentMethodLabel(method)} — ${extra}`
+      : paymentMethodLabel(method),
   };
 
   if (order) {

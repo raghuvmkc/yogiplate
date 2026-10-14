@@ -13,6 +13,10 @@ import {
   formatAdminEventTime,
 } from "@/lib/admin-time";
 import {
+  MANUAL_PAYMENT_METHODS,
+  paymentMethodLabel,
+} from "@/lib/payment-methods";
+import {
   chargeTotals,
   discountFromPercent,
   formatMoney,
@@ -25,13 +29,12 @@ import type { CateringBooking, OrderStatus } from "@/lib/types";
 import { AdminCardPayment } from "@/components/AdminCardPayment";
 import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
 
+/** Paid / partial are set automatically when a payment is recorded (with method). */
 const STATUS_OPTIONS: { value: CateringBooking["status"]; label: string }[] = [
   { value: "unconfirmed", label: "Unconfirmed (amber)" },
   { value: "quote_sent", label: "Quote sent (blue)" },
   { value: "order_placed", label: "Order placed (teal)" },
   { value: "invoice_sent", label: "Invoice sent (violet)" },
-  { value: "partial", label: "Partial payment (orange)" },
-  { value: "paid", label: "Paid in full (green)" },
   { value: "confirmed", label: "Confirmed (green)" },
   { value: "cancelled", label: "Cancelled" },
 ];
@@ -137,6 +140,7 @@ export function BookingDetailDrawer(props: {
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("pending");
   const [menuQuery, setMenuQuery] = useState("");
   const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("");
   const [payNote, setPayNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -334,15 +338,31 @@ export function BookingDetailDrawer(props: {
   }
 
   async function recordPayment() {
+    if (!(Number(payAmount) > 0)) {
+      setError("Enter a payment amount greater than zero.");
+      return;
+    }
+    if (!payMethod) {
+      setError("Choose how the payment was collected before recording it.");
+      return;
+    }
     const ok = await send(
       "POST",
-      { action: "payment", amount: Number(payAmount), note: payNote },
+      {
+        action: "payment",
+        amount: Number(payAmount),
+        method: payMethod,
+        note: payNote.trim() || undefined,
+      },
       "payment"
     );
     if (ok) {
       setPayAmount("");
+      setPayMethod("");
       setPayNote("");
-      setNotice("Payment recorded.");
+      setNotice(
+        "Payment recorded. Calendar color updates to partial (orange) or paid in full (green)."
+      );
     }
   }
 
@@ -425,12 +445,22 @@ export function BookingDetailDrawer(props: {
                     onChange={(e) => update({ status: e.target.value as CateringBooking["status"] })}
                     className="mt-1 w-full border border-line bg-white px-3 py-2"
                   >
+                    {form.status === "partial" ? (
+                      <option value="partial">Partial payment (orange) — from payments</option>
+                    ) : null}
+                    {form.status === "paid" ? (
+                      <option value="paid">Paid in full (green) — from payments</option>
+                    ) : null}
                     {STATUS_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
+                  <span className="mt-1 block text-xs text-muted">
+                    Orange / green payment colors update when you record a payment below (collection
+                    method required).
+                  </span>
                 </label>
                 {detail.order ? (
                   <label className="block text-sm">
@@ -724,13 +754,21 @@ export function BookingDetailDrawer(props: {
 
             <section className="mt-8">
               <h4 className="font-display text-xl text-foreground">Payments</h4>
+              <p className="mt-1 text-sm text-muted">
+                Record cash, Zelle, check, and other offline payments here. You must say how it was
+                collected. Partial → orange on the calendar; paid in full → green.
+              </p>
               {(detail.order?.payments || detail.booking.payments || []).length ? (
                 <ul className="mt-3 space-y-1 text-sm">
                   {(detail.order?.payments || detail.booking.payments || []).map((payment) => (
                     <li key={payment.id} className="flex justify-between border-b border-line/70 py-1">
                       <span>
-                        {formatAdminDate(payment.paid_at)} · {payment.note || "Payment"}
-                        {payment.stripe_session_id?.startsWith("cs_") ? " · Stripe" : ""}
+                        {formatAdminDate(payment.paid_at)} ·{" "}
+                        {payment.note ||
+                          paymentMethodLabel(payment.method) ||
+                          (payment.stripe_session_id?.startsWith("cs_")
+                            ? "Card (Stripe)"
+                            : "Payment")}
                       </span>
                       <span className="font-semibold">{formatMoney(payment.amount)}</span>
                     </li>
@@ -739,14 +777,45 @@ export function BookingDetailDrawer(props: {
               ) : (
                 <p className="mt-2 text-sm text-muted">No payments yet.</p>
               )}
-              <div className="mt-4 grid gap-3 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
-                <Field label="Amount" type="number" value={payAmount} onChange={setPayAmount} placeholder="0.00" />
-                <Field label="Note" value={payNote} onChange={setPayNote} placeholder="Cash, check, Zelle…" />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Amount"
+                  type="number"
+                  value={payAmount}
+                  onChange={setPayAmount}
+                  placeholder="0.00"
+                />
+                <label className="block text-sm">
+                  <span className="font-semibold">
+                    Collected via <span className="text-red-700">*</span>
+                  </span>
+                  <select
+                    required
+                    value={payMethod}
+                    onChange={(e) => setPayMethod(e.target.value)}
+                    className="mt-1 w-full border border-line bg-white px-3 py-2"
+                  >
+                    <option value="">Select how payment was collected…</option>
+                    {MANUAL_PAYMENT_METHODS.map((row) => (
+                      <option key={row.value} value={row.value}>
+                        {row.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="sm:col-span-2">
+                  <Field
+                    label="Extra note (optional)"
+                    value={payNote}
+                    onChange={setPayNote}
+                    placeholder="Check #, Zelle name, last 4 digits…"
+                  />
+                </div>
                 <button
                   type="button"
-                  disabled={busy !== null || !(Number(payAmount) > 0)}
+                  disabled={busy !== null || !(Number(payAmount) > 0) || !payMethod}
                   onClick={() => void recordPayment()}
-                  className="border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  className="bg-accent-deep px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:col-span-2"
                 >
                   {busy === "payment" ? "Recording…" : "Record payment"}
                 </button>

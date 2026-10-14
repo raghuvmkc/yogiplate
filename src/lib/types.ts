@@ -376,6 +376,8 @@ export interface PaymentRecord {
   amount: number;
   paid_at: string;
   stripe_session_id?: string | null;
+  /** How the payment was collected, e.g. cash, zelle, stripe_card. */
+  method?: string | null;
   note?: string | null;
 }
 

@@ -114,6 +114,7 @@ export async function confirmBookingCardPayment(bookingId: string, paymentIntent
     amount,
     stripe_session_id: intent.id,
     paid_at: paidAt,
+    method: "stripe_card",
     note: "Card (entered at desk)",
   };
 
