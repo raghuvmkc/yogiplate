@@ -1,9 +1,22 @@
 import type { CartLine, Coupon, SiteSettings } from "@/lib/types";
 
 /** Whole cents, so $10.10 is 1010 and not a binary float. */
-export function toCents(amount: number): number {
-  if (!Number.isFinite(amount)) return 0;
-  return Math.round(amount * 100);
+/** Parse admin-entered money: "$1,200.50", "1200", "1 200" → number. */
+export function parseMoneyInput(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/[$\s]/g, "")
+    .replace(/,/g, "");
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function toCents(amount: number | string): number {
+  const n = parseMoneyInput(amount);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100);
 }
 
 export function fromCents(cents: number): number {
@@ -28,7 +41,13 @@ export function isPaidInFull(amountPaid: number, amountDue: number): boolean {
 }
 
 export function cartSubtotal(items: CartLine[]) {
-  return fromCents(items.reduce((sum, item) => sum + lineCents(item.price, item.quantity), 0));
+  return fromCents(
+    items.reduce(
+      (sum, item) =>
+        sum + lineCents(parseMoneyInput(item.price), Math.max(0, Number(item.quantity) || 0)),
+      0
+    )
+  );
 }
 
 export function applyCoupon(subtotal: number, coupon: Coupon | null) {

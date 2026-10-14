@@ -15,6 +15,7 @@ import {
   isPaidInFull,
   lineCents,
   lineTotal,
+  parseMoneyInput,
   percentCents,
   toCents,
 } from "@/lib/pricing";
@@ -64,8 +65,8 @@ export function linesFromProposal(proposal: CartProposal): QuoteLine[] {
     menu_item_id: i.menu_item_id,
     variant_id: i.variant_id,
     name: i.name,
-    quantity: Math.max(1, i.quantity),
-    unit_price: i.price,
+    quantity: Math.max(1, Number(i.quantity) || 1),
+    unit_price: parseMoneyInput(i.price),
     unit: i.unit || "tray",
   }));
 }

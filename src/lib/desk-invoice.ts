@@ -13,6 +13,7 @@ import {
   fromCents,
   isPaidInFull,
   lineTotal,
+  parseMoneyInput,
   setupFeeFor,
   setupNeedsLabel,
   toCents,
@@ -54,15 +55,19 @@ export async function createDeskInvoice(input: DeskBillInput) {
   }
   if (!input.event_date) throw new GuestInputError("Event date is required.");
 
-  const items: CartLine[] = input.items.map((item) => ({
-    ...item,
-    name: String(item.name || "").trim().slice(0, 120),
-    price: Math.max(0, Number(item.price) || 0),
-    quantity: Math.max(1, Math.floor(Number(item.quantity) || 0)),
-    unit: item.unit || "each",
-    menu_item_id: item.menu_item_id || "custom",
-    line_id: item.line_id || item.menu_item_id || "custom",
-  }));
+  const items: CartLine[] = input.items.map((item) => {
+    const raw = item as CartLine & { unit_price?: number };
+    const price = Math.max(0, parseMoneyInput(raw.price ?? raw.unit_price));
+    return {
+      ...item,
+      name: String(item.name || "").trim().slice(0, 120),
+      price,
+      quantity: Math.max(1, Math.floor(Number(item.quantity) || 0)),
+      unit: item.unit || "each",
+      menu_item_id: item.menu_item_id || "custom",
+      line_id: item.line_id || item.menu_item_id || "custom",
+    };
+  });
   for (const item of items) {
     if (!item.name || !(item.price > 0)) {
       throw new GuestInputError("Every invoice line needs a name and a price greater than zero.");

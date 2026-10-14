@@ -8,6 +8,7 @@ import {
   isPaidInFull,
   lineCents,
   lineTotal,
+  parseMoneyInput,
   percentCents,
   toCents,
 } from "@/lib/pricing";
@@ -253,7 +254,7 @@ function cleanLines(lines: EditableLine[]): EditableLine[] {
     .map((line) => ({
       ...line,
       name: String(line.name || "").trim(),
-      unit_price: fromCents(Math.max(0, toCents(Number(line.unit_price) || 0))),
+      unit_price: fromCents(Math.max(0, toCents(parseMoneyInput(line.unit_price)))),
       quantity: Math.max(0, Math.floor(Number(line.quantity) || 0)),
     }))
     .filter((line) => line.name && line.quantity > 0);

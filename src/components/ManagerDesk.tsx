@@ -12,7 +12,13 @@ import {
   useAdminVoice,
 } from "@/components/AdminVoiceProvider";
 import { DeskTexts } from "@/components/DeskTexts";
-import { chargeTotals, discountFromPercent, formatMoney } from "@/lib/pricing";
+import {
+  chargeTotals,
+  discountFromPercent,
+  formatMoney,
+  lineTotal,
+  parseMoneyInput,
+} from "@/lib/pricing";
 import type { CartLine, DietTag, MenuCategory } from "@/lib/types";
 
 export type DeskMenuItem = {
@@ -102,6 +108,8 @@ export function ManagerDesk({
   const [picks, setPicks] = useState<Record<string, string>>({});
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [justAdded, setJustAdded] = useState<string | null>(null);
+  /** Draft text while typing custom unit prices so decimals like "12." stay editable. */
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
 
   const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
@@ -121,8 +129,11 @@ export function ManagerDesk({
       .filter((group) => group.items.length > 0);
   }, [items, categories, query, diet, allDiets]);
 
-  const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
-  const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const itemCount = lines.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+  const subtotal = lines.reduce(
+    (sum, line) => sum + lineTotal(parseMoneyInput(line.price), Number(line.quantity) || 0),
+    0
+  );
   const discountPct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
   const discountDollars = discountFromPercent(subtotal, discountPct);
 
@@ -215,17 +226,20 @@ export function ManagerDesk({
     ]);
   }
 
-  function patchLine(lineId: string, patch: Partial<Pick<CartLine, "name" | "price" | "quantity">>) {
+  function patchLine(
+    lineId: string,
+    patch: Partial<{ name: string; price: string | number; quantity: string | number }>
+  ) {
     setLines((current) =>
       current
         .map((row) => {
           if (row.line_id !== lineId) return row;
-          const next = { ...row, ...patch };
+          const next = { ...row };
           if (patch.quantity != null) {
             next.quantity = Math.max(1, Math.floor(Number(patch.quantity) || 0));
           }
           if (patch.price != null) {
-            next.price = Math.max(0, Math.round((Number(patch.price) || 0) * 100) / 100);
+            next.price = Math.max(0, Math.round(parseMoneyInput(patch.price) * 100) / 100);
           }
           if (patch.name != null) next.name = String(patch.name).slice(0, 120);
           return next;
@@ -271,21 +285,35 @@ export function ManagerDesk({
                     />
                   </label>
                   <label className="text-xs font-semibold text-muted">
-                    Price
+                    Unit price ($)
                     <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={line.price || ""}
-                      onChange={(event) =>
-                        patchLine(line.line_id, { price: Number(event.target.value) })
+                      type="text"
+                      inputMode="decimal"
+                      value={
+                        priceDrafts[line.line_id] ??
+                        (line.price ? String(line.price) : "")
                       }
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        setPriceDrafts((current) => ({ ...current, [line.line_id]: raw }));
+                        patchLine(line.line_id, { price: raw });
+                      }}
+                      onBlur={(event) => {
+                        const raw = event.target.value;
+                        setPriceDrafts((current) => {
+                          const next = { ...current };
+                          delete next[line.line_id];
+                          return next;
+                        });
+                        patchLine(line.line_id, { price: parseMoneyInput(raw) });
+                      }}
+                      placeholder="0.00"
                       className="mt-1 w-full border border-line px-2 py-1.5 text-sm font-medium text-foreground"
                     />
                   </label>
                   <div className="flex items-end justify-between gap-2 sm:flex-col sm:items-end">
                     <span className="text-xs font-semibold text-foreground">
-                      {money(line.price * line.quantity)}
+                      {money(lineTotal(parseMoneyInput(line.price), Number(line.quantity) || 0))}
                     </span>
                     <button
                       type="button"
@@ -305,7 +333,10 @@ export function ManagerDesk({
                     {line.name || (custom ? "Custom item" : "Item")}
                   </span>
                   <span className="text-xs text-muted">
-                    {money(line.price)} each · {money(line.price * line.quantity)}
+                    {money(parseMoneyInput(line.price))} each ·{" "}
+                    {money(
+                      lineTotal(parseMoneyInput(line.price), Number(line.quantity) || 0)
+                    )}
                     {custom ? " · custom" : ""}
                   </span>
                 </span>
@@ -381,7 +412,13 @@ export function ManagerDesk({
       zip,
       notes,
       setup_service: service === "delivery" && setupService,
-      items: lines,
+      items: lines.map((line) => ({
+        ...line,
+        name: String(line.name || "").trim(),
+        price: parseMoneyInput(line.price),
+        quantity: Math.max(1, Math.floor(Number(line.quantity) || 0)),
+        unit: line.unit || (line.menu_item_id === "custom" ? "each" : "tray"),
+      })),
       ...(kind === "invoice"
         ? {
             discount_percent: discountPct,
@@ -408,7 +445,9 @@ export function ManagerDesk({
     const badCustom = lines.find(
       (line) =>
         line.menu_item_id === "custom" &&
-        (!line.name.trim() || !(line.price > 0) || !(line.quantity > 0))
+        (!line.name.trim() ||
+          !(parseMoneyInput(line.price) > 0) ||
+          !(Number(line.quantity) > 0))
     );
     if (badCustom) {
       setNotice("Each custom item needs a name, quantity, and price greater than zero.");
