@@ -32,6 +32,10 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session) {
   const meta = sessionOrderMeta(session);
 
   if (meta.kind === "desk_invoice" && meta.order_id) {
+    const existing = (await getDb()).orders.find((row) => row.id === meta.order_id);
+    if (existing?.status === "cancelled") {
+      throw new Error("This invoice was cancelled and cannot accept payment.");
+    }
     await markDeskInvoicePaid(meta.order_id, session.id, checkoutAmount(session));
     const summary = await paidSummary(meta.order_id);
     if (!summary) throw new Error("Order not found");

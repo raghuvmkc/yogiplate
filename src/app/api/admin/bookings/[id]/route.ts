@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { confirmBookingCardPayment } from "@/lib/admin-card-payment";
 import {
+  cancelBookingInvoice,
   emailBookingInvoice,
   getBookingDetail,
   recordManualPayment,
@@ -80,6 +81,9 @@ export async function POST(req: Request, ctx: Ctx) {
     }
     if (body.action === "email_invoice") {
       return NextResponse.json(await emailBookingInvoice(id), noStore);
+    }
+    if (body.action === "cancel_invoice") {
+      return NextResponse.json(await cancelBookingInvoice(id), noStore);
     }
     return failure(new Error("Unknown action"));
   } catch (err) {

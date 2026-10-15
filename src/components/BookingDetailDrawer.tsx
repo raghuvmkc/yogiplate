@@ -372,7 +372,26 @@ export function BookingDetailDrawer(props: {
     }
   }
 
+  async function cancelInvoice() {
+    if (
+      !window.confirm(
+        "Cancel this invoice? The pay link will stop working and the calendar event will show as cancelled."
+      )
+    ) {
+      return;
+    }
+    if (await send("POST", { action: "cancel_invoice" }, "cancel")) {
+      setNotice("Invoice cancelled. Pay link closed.");
+    }
+  }
+
   const b = detail?.booking;
+  const invoiceCancelled =
+    detail?.booking.status === "cancelled" || detail?.order?.status === "cancelled";
+  const canCancelInvoice =
+    Boolean(detail?.invoice) &&
+    !invoiceCancelled &&
+    balance > 0;
   const update = (patch: Partial<BookingForm>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
   return (
@@ -843,7 +862,7 @@ export function BookingDetailDrawer(props: {
               >
                 {busy === "save" ? "Saving…" : "Save changes"}
               </button>
-              {detail.invoice ? (
+              {detail.invoice && !invoiceCancelled ? (
                 <button
                   type="button"
                   disabled={busy !== null}
@@ -853,7 +872,7 @@ export function BookingDetailDrawer(props: {
                   {busy === "email" ? "Sending…" : "Email invoice to guest"}
                 </button>
               ) : null}
-              {detail.invoice?.pay_url && balance > 0 ? (
+              {detail.invoice?.pay_url && balance > 0 && !invoiceCancelled ? (
                 <a
                   href={detail.invoice.pay_url}
                   target="_blank"
@@ -862,6 +881,21 @@ export function BookingDetailDrawer(props: {
                 >
                   Open pay link
                 </a>
+              ) : null}
+              {canCancelInvoice ? (
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => void cancelInvoice()}
+                  className="border border-red-700 px-4 py-2.5 text-sm font-semibold text-red-800 disabled:opacity-50"
+                >
+                  {busy === "cancel" ? "Cancelling…" : "Cancel invoice"}
+                </button>
+              ) : null}
+              {invoiceCancelled ? (
+                <p className="w-full text-sm font-medium text-red-800">
+                  Invoice cancelled — pay link closed.
+                </p>
               ) : null}
             </div>
           </>

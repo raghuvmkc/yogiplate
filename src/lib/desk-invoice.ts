@@ -298,7 +298,7 @@ export async function markDeskInvoicePaid(
 ) {
   const db = await getDb();
   const order = db.orders.find((row) => row.id === orderId);
-  if (!order) return;
+  if (!order || order.status === "cancelled") return;
   const paidNow = amount != null && amount > 0 ? amount : order.total;
   const invoice = db.invoices.find((row) => row.order_id === orderId);
   const items = db.order_items.filter((row) => row.order_id === orderId);

@@ -18,7 +18,7 @@ import {
 } from "@/lib/pricing";
 import { siteUrl } from "@/lib/site";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
-import { stripeConfigured } from "@/lib/stripe";
+import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { createCateringPaymentLink } from "@/lib/stripe-checkout";
 import {
   getDb,
@@ -458,7 +458,9 @@ async function refreshPayLink(orderId: string) {
   const db = await getDb();
   const order = db.orders.find((row) => row.id === orderId);
   const invoice = db.invoices.find((row) => row.order_id === orderId);
-  if (!order || !invoice) return;
+  if (!order || !invoice || order.status === "cancelled") return;
+  const booking = (db.catering_bookings || []).find((row) => row.order_id === orderId);
+  if (booking?.status === "cancelled") return;
   const balanceCents = toCents(order.total) - toCents(paidOn(order));
   if (balanceCents < 50) return;
   const items = db.order_items.filter((row) => row.order_id === orderId);
@@ -508,7 +510,13 @@ export async function recordManualPayment(
   const db = await getDb();
   const booking = (db.catering_bookings || []).find((row) => row.id === id);
   if (!booking) throw new Error("Booking not found");
+  if (booking.status === "cancelled") {
+    throw new Error("This booking is cancelled. Reopen it before recording a payment.");
+  }
   const { order } = linked(db, booking);
+  if (order?.status === "cancelled") {
+    throw new Error("This invoice is cancelled. It cannot accept payments.");
+  }
   const extra = input.note?.trim() || "";
   const payment = {
     amount: fromCents(cents),
@@ -565,6 +573,9 @@ export async function recordManualPayment(
 export async function emailBookingInvoice(id: string) {
   const detail = await getBookingDetail(id);
   if (!detail?.order || !detail.invoice) throw new Error("This booking has no invoice yet.");
+  if (detail.booking.status === "cancelled" || detail.order.status === "cancelled") {
+    throw new Error("This invoice is cancelled. It cannot be emailed.");
+  }
   const db = await getDb();
   const invoice = db.invoices.find((row) => row.id === detail.invoice!.id)!;
   const order = detail.order;
@@ -605,5 +616,81 @@ export async function emailBookingInvoice(id: string) {
     amount_due: order.total,
     status: "invoice_sent",
   });
+  return getBookingDetail(id);
+}
+
+/**
+ * Cancel an outstanding invoice: close the pay link, mark order + calendar cancelled,
+ * and expire any open Stripe Checkout session.
+ */
+export async function cancelBookingInvoice(id: string) {
+  const detail = await getBookingDetail(id);
+  if (!detail?.order || !detail.invoice) {
+    throw new Error("This booking has no invoice to cancel.");
+  }
+  if (detail.booking.status === "cancelled" && detail.order.status === "cancelled") {
+    throw new Error("This invoice is already cancelled.");
+  }
+  if (isPaidInFull(detail.amount_paid, detail.order.total)) {
+    throw new Error("This invoice is paid in full. Cancel is only for unpaid or partial invoices.");
+  }
+
+  const orderId = detail.order.id;
+  const invoiceId = detail.invoice.id;
+  const sessionId = detail.order.stripe_session_id;
+  const quoteId = detail.booking.quote_id || detail.quote?.id || null;
+
+  await updateDb((db) => {
+    const booking = (db.catering_bookings || []).find((row) => row.id === id);
+    const order = db.orders.find((row) => row.id === orderId);
+    const invoice = db.invoices.find((row) => row.id === invoiceId);
+    if (!booking || !order || !invoice) throw new Error("Booking not found");
+
+    const now = new Date().toISOString();
+    order.status = "cancelled";
+    booking.status = "cancelled";
+    booking.updated_at = now;
+    invoice.pay_url = null;
+
+    const items = db.order_items.filter((row) => row.order_id === orderId);
+    const paidNote =
+      toCents(paidOn(order)) > 0
+        ? `Invoice cancelled · ${formatMoney(paidOn(order))} already received`
+        : "Invoice cancelled";
+    invoice.html = buildInvoiceHtml(order, items, db.settings, invoice.invoice_number, null, {
+      paidLabel: paidNote,
+    });
+
+    if (quoteId) {
+      const quote = (db.quotes || []).find((row) => row.id === quoteId);
+      if (
+        quote &&
+        quote.status !== "deposit_paid" &&
+        quote.status !== "accepted"
+      ) {
+        quote.status = "cancelled";
+        quote.updated_at = now;
+      }
+    }
+
+    for (const rem of db.reminders || []) {
+      if (rem.status !== "pending") continue;
+      if (rem.order_id === orderId || (quoteId && rem.quote_id === quoteId)) {
+        rem.status = "cancelled";
+      }
+    }
+  });
+
+  if (sessionId?.startsWith("cs_")) {
+    const stripe = getStripe();
+    if (stripe) {
+      try {
+        await stripe.checkout.sessions.expire(sessionId);
+      } catch {
+        // Session may already be expired or completed — pay_url is cleared either way.
+      }
+    }
+  }
+
   return getBookingDetail(id);
 }
