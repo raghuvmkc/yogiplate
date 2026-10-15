@@ -1,8 +1,19 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { FeatureFade } from "@/components/FeatureFade";
 import { HeroMotion } from "@/components/HeroMotion";
 import { DIET_BLURBS, DIET_LABELS, PRIMARY_DIETS } from "@/lib/data/menu-seed";
+import { DEFAULT_DESCRIPTION, pageMetadata, SITE_NAME } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  ...pageMetadata({
+    title: "Bay Area Indian Vegetarian",
+    description: DEFAULT_DESCRIPTION,
+    path: "/",
+  }),
+  title: { absolute: `${SITE_NAME} | Bay Area Indian Vegetarian` },
+};
 
 export default function HomePage() {
   return (

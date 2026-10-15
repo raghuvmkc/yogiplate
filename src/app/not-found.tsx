@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = pageMetadata({
+export const metadata: Metadata = {
   title: "Page Not Found",
-  description: "That page is not on Yogiplate. Build an order or contact us for Bay Area vegetarian catering.",
-  path: "/",
-  noIndex: true,
-});
+  description:
+    "That page is not on Yogiplate. Build an order or contact us for Bay Area vegetarian catering.",
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+};
 
 export default function NotFound() {
   return (

@@ -43,28 +43,33 @@ export function pageMetadata(input: {
   const url = absoluteUrl(input.path);
   const fullTitle = `${input.title} | ${SITE_NAME}`;
   const image = absoluteUrl(input.ogImage || OG_IMAGE_PATH);
+  // noIndex pages must not claim another URL's canonical (e.g. 404 → homepage).
   return {
     title: input.title,
     description: input.description,
-    alternates: { canonical: url },
-    robots: input.noIndex
-      ? { index: false, follow: false, googleBot: { index: false, follow: false } }
-      : { index: true, follow: true },
-    openGraph: {
-      type: "website",
-      locale: "en_US",
-      url,
-      siteName: SITE_NAME,
-      title: fullTitle,
-      description: input.description,
-      images: [{ url: image, width: 1200, height: 630, alt: SITE_NAME }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: fullTitle,
-      description: input.description,
-      images: [image],
-    },
+    ...(input.noIndex
+      ? {
+          robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+        }
+      : {
+          alternates: { canonical: url },
+          robots: { index: true, follow: true },
+          openGraph: {
+            type: "website",
+            locale: "en_US",
+            url,
+            siteName: SITE_NAME,
+            title: fullTitle,
+            description: input.description,
+            images: [{ url: image, width: 1200, height: 630, alt: SITE_NAME }],
+          },
+          twitter: {
+            card: "summary_large_image",
+            title: fullTitle,
+            description: input.description,
+            images: [image],
+          },
+        }),
   };
 }
 

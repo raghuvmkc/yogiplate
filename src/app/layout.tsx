@@ -58,7 +58,7 @@ export const metadata: Metadata = {
   creator: "Yogiplate",
   publisher: SITE_NAME,
   formatDetection: { telephone: true, email: true, address: true },
-  alternates: { canonical: absoluteUrl("/") },
+  // Canonical is set per page via pageMetadata — do not default every URL to "/".
   openGraph: {
     type: "website",
     locale: "en_US",

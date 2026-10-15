@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@netlify/blobs", "ws"],
   turbopack: {},
+  async redirects() {
+    return [
+      // Legacy URLs — permanent so Search Console "Page with redirect" consolidates to /order.
+      { source: "/menus", destination: "/order", permanent: true },
+      { source: "/catering-menu", destination: "/order", permanent: true },
+    ];
+  },
   webpack: (config, { dev }) => {
     if (!dev) {
       // Avoid writing .next/cache/webpack/*.pack, which Netlify's secret scan reads.
