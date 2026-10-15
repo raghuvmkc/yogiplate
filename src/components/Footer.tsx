@@ -55,7 +55,7 @@ export function Footer() {
           <p className="mt-4 text-base font-medium leading-relaxed text-muted">
             326 Commercial St, San Jose, CA 95112
             <br />
-            Delivery within 25 miles across the Bay Area
+            Delivery across the Bay Area and beyond
             <br />
             <a href="tel:+14083354055" className="hover:text-accent-deep">
               (408) 335-4055

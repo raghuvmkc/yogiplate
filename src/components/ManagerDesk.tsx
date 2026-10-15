@@ -902,16 +902,17 @@ export function ManagerDesk({
                   <option value="pickup">Pickup</option>
                 </select>
               </label>
-              <Field label="City" value={city} onChange={setCity} />
-              <Field label="ZIP" value={zip} onChange={setZip} />
               <label className="text-sm font-semibold text-foreground sm:col-span-2">
-                Address
+                Street address
                 <input
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
+                  autoComplete="street-address"
                   className="mt-1 w-full border border-line px-3 py-2 font-medium"
                 />
               </label>
+              <Field label="City" value={city} onChange={setCity} />
+              <Field label="ZIP" value={zip} onChange={setZip} />
               {service === "delivery" ? (
                 <div className="sm:col-span-2">
                   <AddressCheckNote check={addressCheck} />

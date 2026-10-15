@@ -65,7 +65,7 @@ export function discountFromPercent(subtotal: number, percent: number) {
   return fromCents(percentCents(toCents(subtotal), p));
 }
 
-/** Distance tier fee (under 8 mi, 8–15, 15–25 by default), plus the large-order extra. */
+/** Distance tier fee (under 8 mi, 8–15, 15+ by default), plus the large-order extra. */
 export function calcDeliveryFee(
   miles: number,
   subtotal: number,

@@ -148,12 +148,12 @@ export async function quoteDelivery(input: {
   }
 
   miles = Math.round(miles * 10) / 10;
-  const inService = miles <= settings.service_radius_miles;
+  // Beyond the listed Bay Area radius is still allowed — fee uses the outermost tier.
   return {
     ...base,
     miles,
-    delivery_fee: inService ? calcDeliveryFee(miles, input.subtotal, settings) : 0,
-    in_service: inService,
+    delivery_fee: calcDeliveryFee(miles, input.subtotal, settings),
+    in_service: true,
     address_verified: geo.status === "ok",
     address_error: null as string | null,
     formatted_address: geo.status === "ok" ? geo.formatted : null,
@@ -163,8 +163,5 @@ export async function quoteDelivery(input: {
 /** Guest-facing reason a delivery address cannot be used, or null when it is fine. */
 export function deliveryProblem(quote: Awaited<ReturnType<typeof quoteDelivery>>) {
   if (quote.address_error) return quote.address_error;
-  if (!quote.in_service) {
-    return `That address is ${quote.miles} miles from our San Jose kitchen. We deliver within ${quote.service_radius_miles} miles; pickup is available, or call us to arrange it.`;
-  }
   return null;
 }

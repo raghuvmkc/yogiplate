@@ -101,7 +101,7 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
           onChange={(v) => num("setup_fee", v)}
         />
         <Field
-          label="Delivery radius (mi)"
+          label="Listed service area (mi, not a hard cutoff)"
           value={String(settings.service_radius_miles)}
           onChange={(v) => num("service_radius_miles", v)}
         />
