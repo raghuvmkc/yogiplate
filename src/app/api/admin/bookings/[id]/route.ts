@@ -55,6 +55,7 @@ export async function POST(req: Request, ctx: Ctx) {
     amount?: number;
     method?: string;
     note?: string;
+    reason?: string;
     paid_at?: string;
     payment_intent_id?: string;
   };
@@ -83,7 +84,10 @@ export async function POST(req: Request, ctx: Ctx) {
       return NextResponse.json(await emailBookingInvoice(id), noStore);
     }
     if (body.action === "cancel_invoice") {
-      return NextResponse.json(await cancelBookingInvoice(id), noStore);
+      return NextResponse.json(
+        await cancelBookingInvoice(id, String(body.reason || "")),
+        noStore
+      );
     }
     return failure(new Error("Unknown action"));
   } catch (err) {

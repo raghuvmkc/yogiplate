@@ -142,6 +142,7 @@ export function BookingDetailDrawer(props: {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("");
   const [payNote, setPayNote] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -373,15 +374,21 @@ export function BookingDetailDrawer(props: {
   }
 
   async function cancelInvoice() {
+    const reason = cancelReason.trim();
+    if (!reason) {
+      setError("Enter a reason for cancelling this invoice. The guest will receive it by email.");
+      return;
+    }
     if (
       !window.confirm(
-        "Cancel this invoice? The pay link will stop working and the calendar event will show as cancelled."
+        "Cancel this invoice? The guest will be emailed the reason, the pay link will stop working, and the calendar event will show as cancelled."
       )
     ) {
       return;
     }
-    if (await send("POST", { action: "cancel_invoice" }, "cancel")) {
-      setNotice("Invoice cancelled. Pay link closed.");
+    if (await send("POST", { action: "cancel_invoice", reason }, "cancel")) {
+      setCancelReason("");
+      setNotice("Invoice cancelled. Guest emailed and pay link closed.");
     }
   }
 
@@ -883,14 +890,26 @@ export function BookingDetailDrawer(props: {
                 </a>
               ) : null}
               {canCancelInvoice ? (
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => void cancelInvoice()}
-                  className="border border-red-700 px-4 py-2.5 text-sm font-semibold text-red-800 disabled:opacity-50"
-                >
-                  {busy === "cancel" ? "Cancelling…" : "Cancel invoice"}
-                </button>
+                <div className="w-full space-y-2 border border-red-200 bg-white p-3">
+                  <label className="block text-sm font-semibold text-red-900">
+                    Reason for cancelling (required — emailed to guest)
+                    <textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Event date changed; guest asked to hold; kitchen cannot fulfill"
+                      className="mt-1 w-full border border-line px-3 py-2 font-medium text-foreground"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={busy !== null || !cancelReason.trim()}
+                    onClick={() => void cancelInvoice()}
+                    className="border border-red-700 px-4 py-2.5 text-sm font-semibold text-red-800 disabled:opacity-50"
+                  >
+                    {busy === "cancel" ? "Cancelling…" : "Cancel invoice & email guest"}
+                  </button>
+                </div>
               ) : null}
               {invoiceCancelled ? (
                 <p className="w-full text-sm font-medium text-red-800">

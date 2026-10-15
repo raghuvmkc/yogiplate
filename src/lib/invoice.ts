@@ -209,6 +209,81 @@ export function buildPaymentConfirmationHtml(input: {
 </html>`;
 }
 
+export function buildInvoiceCancelledHtml(input: {
+  name: string;
+  orderNumber: string;
+  invoiceNumber: string;
+  eventDate: string;
+  reason: string;
+}) {
+  const safeName = escapeHtml(input.name);
+  const safeReason = escapeHtml(input.reason).replace(/\n/g, "<br/>");
+  return `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ffffff;color:#1c1c1c;font-family:Georgia,serif;">
+  <div style="max-width:640px;margin:0 auto;padding:40px 24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+      <tr>
+        <td style="padding-right:16px;vertical-align:middle;">${emailLogoHtml(72)}</td>
+        <td style="vertical-align:middle;">
+          <h1 style="font-size:32px;margin:0 0 4px;">Yogiplate</h1>
+          <p style="margin:0;color:#4a6b52;font-family:Arial,sans-serif;font-size:14px;">Invoice cancelled</p>
+        </td>
+      </tr>
+    </table>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">Dear ${safeName},</p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">
+      Invoice ${escapeHtml(input.invoiceNumber)} for order ${escapeHtml(input.orderNumber)} has been cancelled.
+      Any payment link for this invoice is no longer active.
+    </p>
+    <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;">
+      Event: ${escapeHtml(input.eventDate || "to be confirmed")}<br/>
+      Reason: ${safeReason}
+    </p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;">
+      If you still need catering for this date, reply to this email or call us and we will be glad to help.
+    </p>
+    <p style="margin-top:28px;font-family:Arial,sans-serif;font-size:14px;color:#555;">Thank you for considering Yogiplate.</p>
+  </div>
+</body>
+</html>`;
+}
+
+/** Notify the guest that an unpaid invoice was cancelled, with the admin reason. */
+export async function emailInvoiceCancelled(input: {
+  to: string;
+  name: string;
+  orderNumber: string;
+  invoiceNumber: string;
+  eventDate: string;
+  reason: string;
+}) {
+  const subject = `Invoice ${input.invoiceNumber} cancelled — Order ${input.orderNumber}`;
+  const html = buildInvoiceCancelledHtml(input);
+  const text = `${subject}. Reason: ${input.reason}. Event: ${input.eventDate || "TBD"}.`;
+  let sent = false;
+  let failReason: string | undefined;
+  try {
+    const resend = await sendInvoiceEmail({ to: input.to, subject, html });
+    sent = resend.sent;
+    if (!resend.sent) failReason = resend.reason;
+  } catch (err) {
+    failReason = err instanceof Error ? err.message : "send_failed";
+  }
+  if (!sent && smtpConfigured()) {
+    await sendGuestQuoteSmtp({
+      to: input.to,
+      name: input.name,
+      subject,
+      html,
+      text,
+    });
+    sent = true;
+  }
+  if (!sent) throw new Error(failReason || "Email is not configured.");
+  return { sent: true as const };
+}
+
 /** Email the guest once after Stripe marks the payment paid. */
 export async function emailPaymentReceived(
   orderId: string,

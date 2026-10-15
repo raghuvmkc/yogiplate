@@ -1,5 +1,5 @@
 import { appendPaymentRecord, upsertCateringBooking } from "@/lib/calendar-bookings";
-import { buildInvoiceHtml, sendInvoiceEmail } from "@/lib/invoice";
+import { buildInvoiceHtml, emailInvoiceCancelled, sendInvoiceEmail } from "@/lib/invoice";
 import {
   isManualPaymentMethod,
   paymentMethodLabel,
@@ -620,10 +620,13 @@ export async function emailBookingInvoice(id: string) {
 }
 
 /**
- * Cancel an outstanding invoice: close the pay link, mark order + calendar cancelled,
- * and expire any open Stripe Checkout session.
+ * Cancel an outstanding invoice: require a reason, email the guest, close the pay link,
+ * mark order + calendar cancelled, and expire any open Stripe Checkout session.
  */
-export async function cancelBookingInvoice(id: string) {
+export async function cancelBookingInvoice(id: string, reasonInput: string) {
+  const reason = String(reasonInput || "").trim();
+  if (!reason) throw new Error("Enter a reason for cancelling this invoice.");
+
   const detail = await getBookingDetail(id);
   if (!detail?.order || !detail.invoice) {
     throw new Error("This booking has no invoice to cancel.");
@@ -634,11 +637,17 @@ export async function cancelBookingInvoice(id: string) {
   if (isPaidInFull(detail.amount_paid, detail.order.total)) {
     throw new Error("This invoice is paid in full. Cancel is only for unpaid or partial invoices.");
   }
+  const to = (detail.order.customer_email || detail.booking.customer_email || "").trim();
+  if (!to) throw new Error("This order has no customer email for the cancellation notice.");
 
   const orderId = detail.order.id;
   const invoiceId = detail.invoice.id;
   const sessionId = detail.order.stripe_session_id;
   const quoteId = detail.booking.quote_id || detail.quote?.id || null;
+  const invoiceNumber = detail.invoice.invoice_number;
+  const orderNumber = detail.order.order_number;
+  const customerName = detail.order.customer_name || detail.booking.customer_name || "Guest";
+  const eventDate = detail.order.event_date || detail.booking.event_date || "";
 
   await updateDb((db) => {
     const booking = (db.catering_bookings || []).find((row) => row.id === id);
@@ -647,16 +656,23 @@ export async function cancelBookingInvoice(id: string) {
     if (!booking || !order || !invoice) throw new Error("Booking not found");
 
     const now = new Date().toISOString();
+    const cancelNote = `Invoice cancelled: ${reason}`;
     order.status = "cancelled";
+    order.notes = order.notes?.trim()
+      ? `${order.notes.trim()}\n${cancelNote}`
+      : cancelNote;
     booking.status = "cancelled";
     booking.updated_at = now;
+    booking.admin_notes = booking.admin_notes?.trim()
+      ? `${booking.admin_notes.trim()}\n${cancelNote}`
+      : cancelNote;
     invoice.pay_url = null;
 
     const items = db.order_items.filter((row) => row.order_id === orderId);
     const paidNote =
       toCents(paidOn(order)) > 0
-        ? `Invoice cancelled · ${formatMoney(paidOn(order))} already received`
-        : "Invoice cancelled";
+        ? `Invoice cancelled · ${formatMoney(paidOn(order))} already received · ${reason}`
+        : `Invoice cancelled · ${reason}`;
     invoice.html = buildInvoiceHtml(order, items, db.settings, invoice.invoice_number, null, {
       paidLabel: paidNote,
     });
@@ -691,6 +707,15 @@ export async function cancelBookingInvoice(id: string) {
       }
     }
   }
+
+  await emailInvoiceCancelled({
+    to,
+    name: customerName,
+    orderNumber,
+    invoiceNumber,
+    eventDate,
+    reason,
+  });
 
   return getBookingDetail(id);
 }
