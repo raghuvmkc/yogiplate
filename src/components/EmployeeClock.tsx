@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
@@ -75,8 +76,16 @@ export function EmployeeClock() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#1e3d2f] px-4 py-10 text-white">
-      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#d4b483]">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#1e3d2f] px-4 py-6 text-white">
+      <Image
+        src="/images/Yogiplate_Logo_transparent.png"
+        alt="Yogiplate"
+        width={140}
+        height={140}
+        priority
+        className="h-20 w-20 object-contain sm:h-28 sm:w-28"
+      />
+      <p className="mt-3 text-sm font-semibold uppercase tracking-[0.22em] text-[#d4b483]">
         Yogiplate kitchen
       </p>
       <h1
@@ -89,7 +98,7 @@ export function EmployeeClock() {
         Two digits for your birth month, then two for the day. March 5 is 0305.
       </p>
 
-      <div className="mt-8 flex gap-3" aria-label="Code">
+      <div className="mt-5 flex gap-3" aria-label="Code">
         {[0, 1, 2, 3].map((index) => (
           <span
             key={index}
@@ -118,7 +127,7 @@ export function EmployeeClock() {
           ))}
         </div>
       ) : (
-        <div className="mt-8 grid w-full max-w-xs grid-cols-3 gap-3">
+        <div className="mt-5 grid w-full max-w-xs grid-cols-3 gap-3">
           {KEYS.map((key) => (
             <button
               key={key}
