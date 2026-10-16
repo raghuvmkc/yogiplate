@@ -427,6 +427,24 @@ export interface CateringBooking {
   updated_at: string;
 }
 
+/** Kitchen staff recognized by month + birthday (MMDD). */
+export interface KitchenEmployee {
+  id: string;
+  name: string;
+  /** Four digits: month and day, e.g. March 5 is 0305. */
+  pin: string;
+  active: boolean;
+  created_at: string;
+}
+
+/** One shift. out_at is empty while the person is still in the kitchen. */
+export interface TimePunch {
+  id: string;
+  employee_id: string;
+  in_at: string;
+  out_at: string | null;
+}
+
 export interface CartState {
   diet: DietTag | null;
   guestCount: number;

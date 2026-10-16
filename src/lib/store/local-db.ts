@@ -23,9 +23,11 @@ import type {
   MenuItem,
   Order,
   OrderItem,
+  KitchenEmployee,
   Quote,
   Reminder,
   SiteSettings,
+  TimePunch,
 } from "@/lib/types";
 import type { GuestEventMemory } from "@/lib/planning/guest-memory";
 import type { PendingCheckout } from "@/lib/store/pending";
@@ -47,6 +49,8 @@ export interface LocalDatabase {
   chat_sessions?: ChatSessionLog[];
   channel_threads?: ChannelThread[];
   guest_events?: GuestEventMemory[];
+  employees?: KitchenEmployee[];
+  time_punches?: TimePunch[];
   call_tickets?: CallTicket[];
   pending_checkouts?: Record<string, PendingCheckout>;
   admin: { email: string; password_hash: string };
@@ -211,6 +215,14 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
   }
   if (!db.guest_events) {
     db.guest_events = [];
+    changed = true;
+  }
+  if (!db.employees) {
+    db.employees = [];
+    changed = true;
+  }
+  if (!db.time_punches) {
+    db.time_punches = [];
     changed = true;
   }
   return changed;

@@ -317,7 +317,7 @@ export function ChatWidget() {
     }[];
   } | null>(null);
 
-  const hidden = pathname?.startsWith("/admin");
+  const hidden = pathname?.startsWith("/admin") || pathname === "/employee";
   const onOrderPage = pathname === "/order" || pathname?.startsWith("/order?");
 
   const orderContext = useMemo(() => {
