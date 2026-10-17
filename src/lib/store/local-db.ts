@@ -232,6 +232,16 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
     });
     changed = true;
   }
+  if (!db.employees.some((row) => row.id === "emp_shivani")) {
+    db.employees.push({
+      id: "emp_shivani",
+      name: "Shivani",
+      pin: "0301",
+      active: true,
+      created_at: "2026-10-17T00:00:00.000Z",
+    });
+    changed = true;
+  }
   if (!db.time_punches) {
     db.time_punches = [];
     changed = true;
