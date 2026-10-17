@@ -52,6 +52,7 @@ export interface LocalDatabase {
   employees?: KitchenEmployee[];
   time_punches?: TimePunch[];
   call_tickets?: CallTicket[];
+  missed_calls?: { sid: string; from: string; to: string; at: string }[];
   pending_checkouts?: Record<string, PendingCheckout>;
   admin: { email: string; password_hash: string };
 }
@@ -233,6 +234,10 @@ function applySeedIfNeeded(db: LocalDatabase): boolean {
   }
   if (!db.time_punches) {
     db.time_punches = [];
+    changed = true;
+  }
+  if (!db.missed_calls) {
+    db.missed_calls = [];
     changed = true;
   }
   return changed;

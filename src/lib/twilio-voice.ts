@@ -214,11 +214,42 @@ function isMissedStatus(status: string) {
   return MISSED_STATUSES.has(String(status || "").toLowerCase());
 }
 
+/** Remember a ring the desk did not answer, even if Twilio later marks the parent call completed. */
+export async function recordMissedCall(input: { sid: string; from: string; to: string }) {
+  const sid = String(input.sid || "").trim();
+  if (!sid) return;
+  const at = new Date().toISOString();
+  await updateDb((db) => {
+    const list = db.missed_calls || (db.missed_calls = []);
+    if (list.some((row) => row.sid === sid)) return;
+    list.unshift({
+      sid,
+      from: String(input.from || ""),
+      to: String(input.to || ""),
+      at,
+    });
+    db.missed_calls = list.slice(0, 80);
+  });
+}
+
 export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
   const sid = env("TWILIO_ACCOUNT_SID");
   const token = env("TWILIO_AUTH_TOKEN");
   const from = voiceFromNumber();
-  if (!sid || !token || !from) return [];
+  const db = await getDb();
+  const saved = db.missed_calls || [];
+  if (!sid || !token || !from) {
+    return saved.slice(0, 40).map((row) => ({
+      sid: row.sid,
+      from: row.from,
+      to: row.to,
+      status: "missed",
+      direction: "inbound",
+      duration: "0",
+      started_at: row.at,
+      missed: true,
+    }));
+  }
   const auth = Buffer.from(`${sid}:${token}`).toString("base64");
   const base = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`;
   const deskClient = `client:${MANAGER_VOICE_IDENTITY}`;
@@ -226,6 +257,7 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
   async function page(query: string) {
     const res = await fetch(`${base}?PageSize=40&${query}`, {
       headers: { Authorization: `Basic ${auth}` },
+      cache: "no-store",
     });
     if (!res.ok) return [];
     const data = (await res.json()) as {
@@ -234,21 +266,26 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
     return data.calls || [];
   }
 
-  // Desk legs are child calls created by <Dial><Client>…</Client></Dial>.
-  // The parent PSTN call often ends as "completed" after the missed-call message,
-  // so we join on ParentCallSid to learn whether the desk actually answered.
-  const [inbound, outbound, deskLegs] = await Promise.all([
+  // The parent PSTN call often ends as "completed" after the missed-call message.
+  // Unanswered desk legs stay no-answer/busy/canceled, so collect those too.
+  const [inbound, outbound, deskLegs, ...unanswered] = await Promise.all([
     page(`To=${encodeURIComponent(from)}`),
     page(`From=${encodeURIComponent(from)}`),
     page(`To=${encodeURIComponent(deskClient)}`),
+    page("Status=no-answer"),
+    page("Status=busy"),
+    page("Status=canceled"),
+    page("Status=failed"),
   ]);
 
+  const missedSids = new Set(saved.map((row) => row.sid));
   const deskByParent = new Map<string, string>();
-  for (const leg of deskLegs) {
+  for (const leg of [...deskLegs, ...unanswered.flat()]) {
+    if (leg.sid && isMissedStatus(leg.status || "")) missedSids.add(leg.sid);
     const parent = leg.parent_call_sid || "";
     if (!parent) continue;
+    if (isMissedStatus(leg.status || "")) missedSids.add(parent);
     const prev = deskByParent.get(parent);
-    // Prefer an answered child if Twilio returns more than one leg.
     if (!prev || prev !== "completed") {
       deskByParent.set(parent, leg.status || "");
     }
@@ -265,7 +302,9 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
     const deskStatus = deskByParent.get(call.sid);
     const missed =
       inboundToDesk &&
-      (isMissedStatus(status) || (deskStatus ? isMissedStatus(deskStatus) : false));
+      (isMissedStatus(status) ||
+        missedSids.has(call.sid) ||
+        (deskStatus ? isMissedStatus(deskStatus) : false));
     rows.push({
       sid: call.sid,
       from: call.from || "",
@@ -275,6 +314,20 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
       duration: call.duration || "0",
       started_at: call.start_time || call.date_created || "",
       missed,
+    });
+  }
+  for (const row of saved) {
+    if (seen.has(row.sid)) continue;
+    seen.add(row.sid);
+    rows.push({
+      sid: row.sid,
+      from: row.from,
+      to: row.to,
+      status: "missed",
+      direction: "inbound",
+      duration: "0",
+      started_at: row.at,
+      missed: true,
     });
   }
   rows.sort((a, b) => b.started_at.localeCompare(a.started_at));

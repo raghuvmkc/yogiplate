@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { managerNotifyPhones, sendSmsMany } from "@/lib/sms";
 import {
   readTwilioForm,
+  recordMissedCall,
   twilioWebhookUrl,
   twiml,
   validTwilioSignature,
@@ -27,6 +28,13 @@ export async function POST(req: Request) {
   const name = url.searchParams.get("name") || "Website guest";
   const phone = url.searchParams.get("phone") || "";
   const phones = managerNotifyPhones();
+  after(() =>
+    recordMissedCall({
+      sid: params.CallSid || params.DialCallSid || "",
+      from: phone || params.From || name,
+      to: params.To || "",
+    }).catch((err) => console.error("[voice] could not save missed call", err))
+  );
   if (phones.length) {
     after(() =>
       sendSmsMany(

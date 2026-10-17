@@ -115,7 +115,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
   const [calls, setCalls] = useState<CallRow[]>([]);
 
   const loadCalls = useCallback(async () => {
-    const res = await fetch("/api/admin/voice/calls");
+    const res = await fetch("/api/admin/voice/calls", { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
     setCalls(data.calls || []);
@@ -123,8 +123,13 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void loadCalls();
-    const timer = window.setInterval(() => void loadCalls(), 20000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => void loadCalls(), 8000);
+    const onFocus = () => void loadCalls();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [loadCalls]);
 
   useEffect(() => {
