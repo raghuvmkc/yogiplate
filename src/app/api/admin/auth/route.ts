@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  canIssueRefunds,
   clearAdminSession,
   isAdminAuthenticated,
   setAdminSession,
@@ -8,20 +9,21 @@ import {
 } from "@/lib/auth";
 
 export async function GET() {
-  return NextResponse.json({ authenticated: await isAdminAuthenticated() });
+  return NextResponse.json({
+    authenticated: await isAdminAuthenticated(),
+    can_refund: await canIssueRefunds(),
+  });
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const ok = await verifyAdmin(
-    String(body.email || ""),
-    String(body.password || "")
-  );
+  const email = String(body.email || "");
+  const ok = await verifyAdmin(email, String(body.password || ""));
   if (!ok) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
-  await setAdminSession();
-  return NextResponse.json({ ok: true });
+  await setAdminSession(email);
+  return NextResponse.json({ ok: true, can_refund: await canIssueRefunds() });
 }
 
 /** Activity ping from the admin idle lock. */

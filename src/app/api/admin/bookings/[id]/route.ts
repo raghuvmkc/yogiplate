@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthenticated } from "@/lib/auth";
+import { canIssueRefunds, isAdminAuthenticated } from "@/lib/auth";
 import { confirmBookingCardPayment } from "@/lib/admin-card-payment";
 import {
   cancelBookingInvoice,
   emailBookingInvoice,
   getBookingDetail,
+  recordBookingRefund,
   recordManualPayment,
   saveBookingDetail,
   type BookingDetailPatch,
@@ -56,6 +57,7 @@ export async function POST(req: Request, ctx: Ctx) {
     method?: string;
     note?: string;
     reason?: string;
+    full?: boolean;
     paid_at?: string;
     payment_intent_id?: string;
   };
@@ -86,6 +88,22 @@ export async function POST(req: Request, ctx: Ctx) {
     if (body.action === "cancel_invoice") {
       return NextResponse.json(
         await cancelBookingInvoice(id, String(body.reason || "")),
+        noStore
+      );
+    }
+    if (body.action === "refund") {
+      if (!(await canIssueRefunds())) {
+        return NextResponse.json(
+          { error: "Only the owner account can issue refunds." },
+          { status: 403 }
+        );
+      }
+      return NextResponse.json(
+        await recordBookingRefund(id, {
+          amount: Number(body.amount),
+          note: body.note || body.reason,
+          full: Boolean(body.full),
+        }),
         noStore
       );
     }

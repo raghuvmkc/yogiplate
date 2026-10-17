@@ -255,15 +255,25 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
   const deskClient = `client:${MANAGER_VOICE_IDENTITY}`;
 
   async function page(query: string) {
-    const res = await fetch(`${base}?PageSize=40&${query}`, {
+    const res = await fetch(`${base}?PageSize=50&${query}`, {
       headers: { Authorization: `Basic ${auth}` },
       cache: "no-store",
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error("[voice] Twilio calls list failed", res.status, query);
+      return [];
+    }
     const data = (await res.json()) as {
       calls?: Array<Record<string, string>>;
     };
     return data.calls || [];
+  }
+
+  // Twilio start_time is RFC 2822 ("Fri, 16 Oct …"). Sorting that as text
+  // puts Fridays at the bottom and drops today's calls from the desk list.
+  function callTimeMs(value: string) {
+    const t = Date.parse(value);
+    return Number.isFinite(t) ? t : 0;
   }
 
   // The parent PSTN call often ends as "completed" after the missed-call message.
@@ -330,6 +340,6 @@ export async function listVoiceCalls(): Promise<VoiceCallRow[]> {
       missed: true,
     });
   }
-  rows.sort((a, b) => b.started_at.localeCompare(a.started_at));
-  return rows.slice(0, 40);
+  rows.sort((a, b) => callTimeMs(b.started_at) - callTimeMs(a.started_at));
+  return rows.slice(0, 50);
 }

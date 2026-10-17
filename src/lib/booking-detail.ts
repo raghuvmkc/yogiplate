@@ -1,4 +1,9 @@
-import { appendPaymentRecord, upsertCateringBooking } from "@/lib/calendar-bookings";
+import { canIssueRefunds } from "@/lib/auth";
+import {
+  appendPaymentRecord,
+  appendRefundRecord,
+  upsertCateringBooking,
+} from "@/lib/calendar-bookings";
 import { buildInvoiceHtml, emailInvoiceCancelled, sendInvoiceEmail } from "@/lib/invoice";
 import {
   isManualPaymentMethod,
@@ -63,6 +68,8 @@ export type BookingDetail = {
   base_delivery_fee: number;
   setup_fee: number;
   menu: MenuChoice[];
+  /** Only the owner admin may refund from the calendar. */
+  can_refund: boolean;
 };
 
 export type EditableLine = {
@@ -159,6 +166,7 @@ export async function getBookingDetail(id: string): Promise<BookingDetail | null
     base_delivery_fee: db.settings.base_delivery_fee,
     setup_fee: db.settings.setup_fee ?? DEFAULT_SETUP_FEE,
     menu: menuChoices(db),
+    can_refund: await canIssueRefunds(),
   };
 }
 
@@ -616,6 +624,150 @@ export async function emailBookingInvoice(id: string) {
     amount_due: order.total,
     status: "invoice_sent",
   });
+  return getBookingDetail(id);
+}
+
+async function refundStripeCharges(
+  payments: { amount: number; stripe_session_id?: string | null }[],
+  amountCents: number
+) {
+  if (!stripeConfigured() || amountCents <= 0) {
+    return { refundedCents: 0, refs: [] as string[] };
+  }
+  const stripe = getStripe();
+  if (!stripe) return { refundedCents: 0, refs: [] as string[] };
+
+  let left = amountCents;
+  const refs: string[] = [];
+  const cardPays = [...payments]
+    .filter((row) => row.amount > 0 && row.stripe_session_id)
+    .reverse();
+
+  for (const pay of cardPays) {
+    if (left <= 0) break;
+    let intentId = String(pay.stripe_session_id || "");
+    try {
+      if (intentId.startsWith("cs_")) {
+        const session = await stripe.checkout.sessions.retrieve(intentId);
+        const pi = session.payment_intent;
+        intentId = typeof pi === "string" ? pi : pi?.id || "";
+      }
+      if (!intentId.startsWith("pi_")) continue;
+
+      const already = payments
+        .filter(
+          (row) =>
+            row.amount < 0 &&
+            (row.stripe_session_id === pay.stripe_session_id ||
+              row.stripe_session_id === intentId)
+        )
+        .reduce((sum, row) => sum + Math.abs(toCents(row.amount)), 0);
+      const available = toCents(pay.amount) - already;
+      if (available <= 0) continue;
+      const take = Math.min(left, available);
+      const refund = await stripe.refunds.create({
+        payment_intent: intentId,
+        amount: take,
+      });
+      refs.push(refund.id);
+      left -= take;
+    } catch (err) {
+      console.error("[refund] Stripe refund failed for", intentId, err);
+    }
+  }
+  return { refundedCents: amountCents - left, refs };
+}
+
+/**
+ * Owner-only: refund any amount up to what has been paid on this calendar event.
+ * Card charges go back through Stripe when possible; the ledger always records the refund.
+ */
+export async function recordBookingRefund(
+  id: string,
+  input: { amount: number; note?: string | null; full?: boolean }
+) {
+  if (!(await canIssueRefunds())) {
+    throw new Error("Only the owner account can issue refunds.");
+  }
+  const detail = await getBookingDetail(id);
+  if (!detail) throw new Error("Booking not found");
+  if (!detail.order) throw new Error("Save this event as an order before refunding.");
+
+  const paidCents = toCents(detail.amount_paid);
+  if (paidCents <= 0) throw new Error("Nothing has been paid on this event yet.");
+
+  const requestedCents = input.full
+    ? paidCents
+    : toCents(Number(input.amount) || 0);
+  if (requestedCents <= 0) throw new Error("Enter a refund amount greater than zero.");
+  if (requestedCents > paidCents) {
+    throw new Error(`Refund cannot exceed the amount paid (${formatMoney(detail.amount_paid)}).`);
+  }
+
+  const note = String(input.note || "").trim();
+  if (!note) throw new Error("Enter a reason for this refund.");
+
+  const orderId = detail.order.id;
+  const stripeResult = await refundStripeCharges(detail.order.payments || [], requestedCents);
+  const paidAt = new Date().toISOString();
+  const refundNote = [
+    input.full ? "Full refund" : "Partial refund",
+    note,
+    stripeResult.refs.length ? `Stripe ${stripeResult.refs.join(", ")}` : null,
+    stripeResult.refundedCents < requestedCents && stripeResult.refundedCents > 0
+      ? `Card portion ${formatMoney(fromCents(stripeResult.refundedCents))}; remainder offline`
+      : stripeResult.refundedCents === 0 && requestedCents > 0
+        ? "Recorded offline (no Stripe charge to reverse, or Stripe refund failed)"
+        : null,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+
+  await updateDb((db) => {
+    const order = db.orders.find((row) => row.id === orderId);
+    const booking = (db.catering_bookings || []).find((row) => row.id === id);
+    if (!order || !booking) throw new Error("Booking not found");
+
+    const refund = {
+      amount: fromCents(requestedCents),
+      paid_at: paidAt,
+      stripe_session_id: stripeResult.refs[0] || null,
+      note: refundNote,
+    };
+    order.payments = appendRefundRecord(order.payments, refund);
+    const paid = paidOn(order);
+    order.amount_paid = paid;
+    if (toCents(paid) <= 0) {
+      order.paid_at = null;
+      if (order.status === "paid") order.status = "pending";
+    }
+
+    const invoice = db.invoices.find((row) => row.order_id === order.id);
+    if (invoice) {
+      const label = invoiceLabel(order);
+      invoice.html = buildInvoiceHtml(
+        order,
+        db.order_items.filter((row) => row.order_id === order.id),
+        db.settings,
+        invoice.invoice_number,
+        label === "Paid in full" ? null : invoice.pay_url,
+        { paidLabel: label || `Refunded ${formatMoney(fromCents(requestedCents))}` }
+      );
+    }
+
+    booking.payments = appendRefundRecord(booking.payments, refund);
+    booking.amount_paid = fromCents(
+      (booking.payments || []).reduce((sum, row) => sum + toCents(row.amount), 0)
+    );
+    booking.amount_due = order.total;
+    if (booking.status !== "cancelled") {
+      if (isPaidInFull(booking.amount_paid, order.total)) booking.status = "paid";
+      else if (toCents(booking.amount_paid) > 0) booking.status = "partial";
+      else booking.status = booking.invoice_number ? "invoice_sent" : "order_placed";
+    }
+    booking.updated_at = paidAt;
+  });
+
   return getBookingDetail(id);
 }
 

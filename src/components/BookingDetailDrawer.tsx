@@ -142,6 +142,8 @@ export function BookingDetailDrawer(props: {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("");
   const [payNote, setPayNote] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundNote, setRefundNote] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -370,6 +372,47 @@ export function BookingDetailDrawer(props: {
   async function emailInvoice() {
     if (await send("POST", { action: "email_invoice" }, "email")) {
       setNotice("Invoice emailed to the guest.");
+    }
+  }
+
+  async function issueRefund(full: boolean) {
+    if (!detail?.can_refund) {
+      setError("Only the owner account can issue refunds.");
+      return;
+    }
+    const amount = full ? paid : Number(refundAmount);
+    if (!(amount > 0)) {
+      setError("Enter a refund amount greater than zero.");
+      return;
+    }
+    if (amount > paid + 0.001) {
+      setError(`Refund cannot exceed the amount paid (${formatMoney(paid)}).`);
+      return;
+    }
+    const note = refundNote.trim();
+    if (!note) {
+      setError("Enter a reason for this refund.");
+      return;
+    }
+    if (
+      !window.confirm(
+        full
+          ? `Refund the full ${formatMoney(paid)} paid on this event?`
+          : `Refund ${formatMoney(amount)} of the ${formatMoney(paid)} paid on this event?`
+      )
+    ) {
+      return;
+    }
+    if (
+      await send(
+        "POST",
+        { action: "refund", amount, note, full },
+        "refund"
+      )
+    ) {
+      setRefundAmount("");
+      setRefundNote("");
+      setNotice(full ? "Full refund recorded." : `Refund of ${formatMoney(amount)} recorded.`);
     }
   }
 
@@ -792,11 +835,19 @@ export function BookingDetailDrawer(props: {
                         {formatAdminDate(payment.paid_at)} ·{" "}
                         {payment.note ||
                           paymentMethodLabel(payment.method) ||
-                          (payment.stripe_session_id?.startsWith("cs_")
-                            ? "Card (Stripe)"
-                            : "Payment")}
+                          (payment.amount < 0
+                            ? "Refund"
+                            : payment.stripe_session_id?.startsWith("cs_")
+                              ? "Card (Stripe)"
+                              : "Payment")}
                       </span>
-                      <span className="font-semibold">{formatMoney(payment.amount)}</span>
+                      <span
+                        className={`font-semibold ${
+                          payment.amount < 0 ? "text-red-800" : ""
+                        }`}
+                      >
+                        {formatMoney(payment.amount)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -847,6 +898,55 @@ export function BookingDetailDrawer(props: {
                 </button>
               </div>
             </section>
+
+            {detail.can_refund && paid > 0 && detail.order ? (
+              <section className="mt-8 border border-red-200 bg-white p-4">
+                <h4 className="font-display text-xl text-red-900">Refund (owner only)</h4>
+                <p className="mt-1 text-sm text-muted">
+                  Refund any amount up to {formatMoney(paid)} paid on this event. Card charges go
+                  back through Stripe when possible; cash/Zelle refunds are recorded on the ledger.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Refund amount"
+                    type="number"
+                    value={refundAmount}
+                    onChange={setRefundAmount}
+                    placeholder="0.00"
+                  />
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-semibold text-foreground">
+                      Reason (required)
+                      <textarea
+                        value={refundNote}
+                        onChange={(e) => setRefundNote(e.target.value)}
+                        rows={2}
+                        placeholder="e.g. Guest cancelled; overcharge; menu change"
+                        className="mt-1 w-full border border-line px-3 py-2 font-medium"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      busy !== null || !(Number(refundAmount) > 0) || !refundNote.trim()
+                    }
+                    onClick={() => void issueRefund(false)}
+                    className="border border-red-700 px-3 py-2.5 text-sm font-semibold text-red-800 disabled:opacity-50"
+                  >
+                    {busy === "refund" ? "Refunding…" : "Refund this amount"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy !== null || !refundNote.trim()}
+                    onClick={() => void issueRefund(true)}
+                    className="bg-red-800 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {busy === "refund" ? "Refunding…" : `Refund all paid (${formatMoney(paid)})`}
+                  </button>
+                </div>
+              </section>
+            ) : null}
 
             {detail ? (
               <AdminCardPayment

@@ -67,6 +67,30 @@ export function appendPaymentRecord(
   return list;
 }
 
+/** Ledger a refund as a negative payment (cash/Zelle or after a Stripe refund). */
+export function appendRefundRecord(
+  existing: PaymentRecord[] | undefined,
+  refund: {
+    amount: number;
+    paid_at?: string | null;
+    stripe_session_id?: string | null;
+    note?: string | null;
+  }
+): PaymentRecord[] {
+  const list = [...(existing || [])];
+  const cents = Math.round(Math.abs(Number(refund.amount) || 0) * 100);
+  if (cents <= 0) return list;
+  list.push({
+    id: uid("refund"),
+    amount: -fromCents(cents),
+    paid_at: refund.paid_at || new Date().toISOString(),
+    stripe_session_id: refund.stripe_session_id?.trim() || null,
+    method: "refund",
+    note: refund.note || "Refund",
+  });
+  return list;
+}
+
 function preferStatus(
   prev: CateringBookingStatus | undefined,
   next: CateringBookingStatus

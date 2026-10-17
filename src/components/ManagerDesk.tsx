@@ -74,6 +74,7 @@ export function ManagerDesk({
     muted,
     tones,
     calls,
+    loadCalls,
     placeCall,
     answer,
     decline,
@@ -620,7 +621,16 @@ export function ManagerDesk({
           ) : null}
         </div>
 
-        <p className="mt-6 text-sm font-semibold text-foreground">Previous calls</p>
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground">Previous calls</p>
+          <button
+            type="button"
+            onClick={() => void loadCalls()}
+            className="text-xs font-semibold text-accent-deep underline"
+          >
+            Refresh
+          </button>
+        </div>
         <ul className="mt-2 divide-y divide-line">
           {calls.length === 0 ? <li className="py-3 text-sm text-muted">No calls yet.</li> : null}
           {calls.map((call) => {
