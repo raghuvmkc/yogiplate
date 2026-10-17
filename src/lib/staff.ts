@@ -8,6 +8,7 @@ export type PunchResult =
       action: "in" | "out";
       name: string;
       message: string;
+      at: string;
       shift?: string;
     };
 
@@ -51,17 +52,20 @@ export async function clockByPin(pin: string, employeeId?: string): Promise<Punc
     }
   });
 
+  const when = formatKitchenTime(now);
   if (outcome.action === "out") {
     return {
       action: "out" as const,
       name: employee.name,
       shift: outcome.shift,
+      at: when,
       message: `See you, ${employee.name}. Today: ${outcome.shift}.`,
     };
   }
   return {
     action: "in" as const,
     name: employee.name,
+    at: when,
     message: `Welcome, ${employee.name}. Have a good day.`,
   };
 }

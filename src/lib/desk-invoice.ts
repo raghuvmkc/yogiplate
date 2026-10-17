@@ -19,7 +19,7 @@ import {
   toCents,
 } from "@/lib/pricing";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
-import { stripeConfigured } from "@/lib/stripe";
+import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { createCateringPaymentLink } from "@/lib/stripe-checkout";
 import { siteUrl } from "@/lib/site";
 import { getDb, invoiceNumber, orderNumber, uid, updateDb } from "@/lib/store/local-db";
@@ -46,7 +46,22 @@ export type DeskBillInput = {
   discount_percent?: number;
   /** Shown on the invoice when a discount is applied. */
   discount_reason?: string;
+  /** Update this saved invoice instead of creating another one. */
+  order_id?: string;
+  /** When false, store the invoice and do not email the guest. */
+  send?: boolean;
 };
+
+function invoiceLocked(order: Order, invoice: Invoice) {
+  if (order.status === "cancelled") return "This invoice is cancelled.";
+  if (invoice.email_sent_at) return "This invoice was already emailed. Start a new one to bill something else.";
+  const paid =
+    order.status === "paid" ||
+    (order.amount_paid || 0) > 0 ||
+    (order.payments || []).some((row) => row.amount > 0);
+  if (paid) return "This invoice already has a payment, so it can no longer be edited here.";
+  return "";
+}
 
 export async function createDeskInvoice(input: DeskBillInput) {
   if (!input.items.length) throw new GuestInputError("Add at least one menu item.");
@@ -112,14 +127,29 @@ export async function createDeskInvoice(input: DeskBillInput) {
     taxRate: db.settings.tax_rate,
   });
 
+  const send = input.send !== false;
   const now = new Date().toISOString();
-  const orderId = uid("ord");
-  const invNum = invoiceNumber();
-  const ordNum = orderNumber();
+  const priorOrder = input.order_id
+    ? db.orders.find((row) => row.id === input.order_id)
+    : undefined;
+  const priorInvoice = priorOrder
+    ? db.invoices.find((row) => row.order_id === priorOrder.id)
+    : undefined;
+  if (input.order_id && (!priorOrder || !priorInvoice)) {
+    throw new GuestInputError("That saved invoice could not be found.");
+  }
+  if (priorOrder && priorInvoice) {
+    const locked = invoiceLocked(priorOrder, priorInvoice);
+    if (locked) throw new GuestInputError(locked);
+  }
+
+  const orderId = priorOrder?.id || uid("ord");
+  const invNum = priorInvoice?.invoice_number || invoiceNumber();
+  const ordNum = priorOrder?.order_number || orderNumber();
   const existing = db.customers.find(
     (customer) => customer.email.toLowerCase() === input.customer_email.toLowerCase()
   );
-  const customerId = existing?.id || uid("cust");
+  const customerId = priorOrder?.customer_id || existing?.id || uid("cust");
 
   const order: Order = {
     id: orderId,
@@ -149,12 +179,20 @@ export async function createDeskInvoice(input: DeskBillInput) {
     status: "pending",
     stripe_session_id: null,
     notes: input.notes || null,
-    created_at: now,
+    created_at: priorOrder?.created_at || now,
     paid_at: null,
+    amount_paid: 0,
+    payments: [],
   };
 
   let payUrl: string | null = null;
-  if (stripeConfigured()) {
+  if (priorOrder?.stripe_session_id && stripeConfigured()) {
+    const stripe = getStripe();
+    if (stripe) {
+      await stripe.checkout.sessions.expire(priorOrder.stripe_session_id).catch(() => null);
+    }
+  }
+  if (send && stripeConfigured()) {
     const session = await createCateringPaymentLink({
       customer_email: order.customer_email,
       amount: order.total,
@@ -185,13 +223,13 @@ export async function createDeskInvoice(input: DeskBillInput) {
   }));
   const html = buildInvoiceHtml(order, orderItems, db.settings, invNum, payUrl);
   const invoice: Invoice = {
-    id: uid("inv"),
+    id: priorInvoice?.id || uid("inv"),
     order_id: orderId,
     invoice_number: invNum,
     html,
     pay_url: payUrl,
     email_sent_at: null,
-    created_at: now,
+    created_at: priorInvoice?.created_at || now,
   };
 
   await updateDb((next) => {
@@ -210,9 +248,14 @@ export async function createDeskInvoice(input: DeskBillInput) {
     };
     if (!customer) next.customers.push(record);
     else Object.assign(customer, record);
-    next.orders.unshift(order);
+    const orderIndex = next.orders.findIndex((row) => row.id === orderId);
+    if (orderIndex >= 0) next.orders[orderIndex] = order;
+    else next.orders.unshift(order);
+    next.order_items = next.order_items.filter((row) => row.order_id !== orderId);
     next.order_items.push(...orderItems);
-    next.invoices.push(invoice);
+    const invoiceIndex = next.invoices.findIndex((row) => row.order_id === orderId);
+    if (invoiceIndex >= 0) next.invoices[invoiceIndex] = invoice;
+    else next.invoices.push(invoice);
   });
 
   if (order.event_date) {
@@ -246,8 +289,19 @@ export async function createDeskInvoice(input: DeskBillInput) {
       order_number: order.order_number,
       invoice_number: invNum,
       amount_due: order.total,
-      status: "invoice_sent",
+      status: send ? "invoice_sent" : "order_placed",
     }).catch(() => null);
+  }
+
+  if (!send) {
+    return {
+      order_id: orderId,
+      order_number: ordNum,
+      invoice_number: invNum,
+      pay_url: null,
+      email_sent: false,
+      saved: true,
+    };
   }
 
   const subject = `Yogiplate Invoice ${invNum} — Order ${ordNum}`;
@@ -283,12 +337,114 @@ export async function createDeskInvoice(input: DeskBillInput) {
   }
 
   return {
+    order_id: orderId,
     order_number: ordNum,
     invoice_number: invNum,
     pay_url: payUrl,
     email_sent: email.sent,
     email_reason: email.sent ? undefined : email.reason,
+    saved: true,
   };
+}
+
+export async function listUnsentDeskInvoices() {
+  const db = await getDb();
+  return db.invoices
+    .filter((invoice) => !invoice.email_sent_at)
+    .map((invoice) => {
+      const order = db.orders.find((row) => row.id === invoice.order_id);
+      if (!order || order.status === "cancelled" || order.status === "paid") return null;
+      if ((order.amount_paid || 0) > 0) return null;
+      return {
+        order_id: order.id,
+        invoice_number: invoice.invoice_number,
+        order_number: order.order_number,
+        customer_name: order.customer_name,
+        event_date: order.event_date,
+        total: order.total,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => b.event_date.localeCompare(a.event_date));
+}
+
+export async function getDeskInvoiceDraft(orderId: string) {
+  const db = await getDb();
+  const order = db.orders.find((row) => row.id === orderId);
+  const invoice = db.invoices.find((row) => row.order_id === orderId);
+  if (!order || !invoice) throw new GuestInputError("That saved invoice could not be found.");
+  const locked = invoiceLocked(order, invoice);
+  if (locked) throw new GuestInputError(locked);
+  const booking = (db.catering_bookings || []).find((row) => row.order_id === order.id);
+  const pickup =
+    booking?.delivery_or_pickup === "pickup" ||
+    (order.delivery_fee <= 0 && order.delivery_miles <= 0);
+  const items = db.order_items
+    .filter((row) => row.order_id === order.id)
+    .map((row) => ({
+      line_id: row.id,
+      menu_item_id: row.menu_item_id,
+      name: row.name,
+      price: row.unit_price,
+      quantity: row.quantity,
+      unit: row.menu_item_id === "custom" ? "each" : "tray",
+    }));
+  return {
+    order_id: order.id,
+    invoice_number: invoice.invoice_number,
+    order_number: order.order_number,
+    customer_name: order.customer_name,
+    customer_email: order.customer_email,
+    customer_phone: order.customer_phone,
+    diet_profile: order.diet_profile,
+    event_date: order.event_date,
+    event_time: order.event_time || booking?.event_time || "",
+    guest_count: order.guest_count,
+    delivery_or_pickup: pickup ? "pickup" : "delivery",
+    address: pickup && order.delivery_address === "Pickup" ? "" : order.delivery_address,
+    city: order.delivery_city,
+    zip: order.delivery_zip,
+    notes: order.notes || "",
+    setup_service: (order.setup_fee || 0) > 0,
+    discount_percent: order.discount_percent || 0,
+    discount_reason: order.discount_reason || "",
+    items,
+  };
+}
+
+/** Create a pay link for a saved invoice that has not been emailed yet. */
+export async function ensureInvoicePayLink(orderId: string) {
+  const db = await getDb();
+  const order = db.orders.find((row) => row.id === orderId);
+  const invoice = db.invoices.find((row) => row.order_id === orderId);
+  if (!order || !invoice || invoice.pay_url || order.status === "cancelled") return;
+  if (!stripeConfigured()) return;
+  const items = db.order_items.filter((row) => row.order_id === orderId);
+  const session = await createCateringPaymentLink({
+    customer_email: order.customer_email,
+    amount: order.total,
+    product_name: `Yogiplate invoice ${invoice.invoice_number}`,
+    description: `Order ${order.order_number}. ${items
+      .map((item) => `${item.name} × ${item.quantity}`)
+      .join(", ")}`,
+    success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: siteUrl(),
+    order_id: order.id,
+    order_number: order.order_number,
+    invoice_number: invoice.invoice_number,
+    kind: "desk_invoice",
+  });
+  if (!session.url) throw new Error("Stripe did not return a pay link.");
+  const html = buildInvoiceHtml(order, items, db.settings, invoice.invoice_number, session.url);
+  await updateDb((next) => {
+    const row = next.orders.find((item) => item.id === orderId);
+    const inv = next.invoices.find((item) => item.order_id === orderId);
+    if (row) row.stripe_session_id = session.id;
+    if (inv) {
+      inv.pay_url = session.url;
+      inv.html = html;
+    }
+  });
 }
 
 export async function markDeskInvoicePaid(

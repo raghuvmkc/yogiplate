@@ -45,6 +45,7 @@ export function AdminStaffClient({ initial }: { initial: StaffSnapshot }) {
           </h1>
           <p className="mt-2 text-sm text-muted">
             Clock is at /employee. The code is the birth month and day, such as 0305 for March 5.
+            Every time is Pacific (PST or PDT).
           </p>
         </div>
         <a
@@ -178,8 +179,8 @@ export function AdminStaffClient({ initial }: { initial: StaffSnapshot }) {
             <thead>
               <tr className="border-b border-line text-muted">
                 <th className="py-2 pr-3 font-semibold">Name</th>
-                <th className="py-2 pr-3 font-semibold">In</th>
-                <th className="py-2 pr-3 font-semibold">Out</th>
+                <th className="py-2 pr-3 font-semibold">In (Pacific)</th>
+                <th className="py-2 pr-3 font-semibold">Out (Pacific)</th>
                 <th className="py-2 font-semibold">Hours</th>
               </tr>
             </thead>

@@ -296,7 +296,7 @@ async function syncDocumentsOntoCalendar() {
       order,
       invoice_number: invoice.invoice_number,
       amount_due: order.total,
-      document: "invoice_sent",
+      document: invoice.email_sent_at ? "invoice_sent" : "order_placed",
       items_summary: null,
       food_subtotal: order.subtotal,
     });
@@ -315,7 +315,7 @@ async function paintDocument(input: {
   order?: Order;
   invoice_number?: string | null;
   amount_due: number;
-  document: "quote_sent" | "invoice_sent";
+  document: "quote_sent" | "order_placed" | "invoice_sent";
   items_summary: string | null;
   food_subtotal: number | null;
 }) {

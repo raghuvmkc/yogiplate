@@ -1,4 +1,5 @@
 import { canIssueRefunds } from "@/lib/auth";
+import { ensureInvoicePayLink } from "@/lib/desk-invoice";
 import {
   appendPaymentRecord,
   appendRefundRecord,
@@ -584,6 +585,7 @@ export async function emailBookingInvoice(id: string) {
   if (detail.booking.status === "cancelled" || detail.order.status === "cancelled") {
     throw new Error("This invoice is cancelled. It cannot be emailed.");
   }
+  await ensureInvoicePayLink(detail.order.id);
   const db = await getDb();
   const invoice = db.invoices.find((row) => row.id === detail.invoice!.id)!;
   const order = detail.order;

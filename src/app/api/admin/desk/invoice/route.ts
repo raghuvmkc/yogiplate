@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { createDeskInvoice } from "@/lib/desk-invoice";
+import { createDeskInvoice, getDeskInvoiceDraft, listUnsentDeskInvoices } from "@/lib/desk-invoice";
 import type { CartLine, DietTag } from "@/lib/types";
+
+export async function GET(req: Request) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const orderId = new URL(req.url).searchParams.get("order_id");
+    if (orderId) return NextResponse.json(await getDeskInvoiceDraft(orderId));
+    return NextResponse.json({ invoices: await listUnsentDeskInvoices() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not load invoices.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
 
 export async function POST(req: Request) {
   if (!(await isAdminAuthenticated())) {
@@ -28,10 +42,12 @@ export async function POST(req: Request) {
       setup_service: body.setup_service === true,
       discount_percent: Number(body.discount_percent) || 0,
       discount_reason: String(body.discount_reason || ""),
+      order_id: body.order_id ? String(body.order_id) : undefined,
+      send: body.send === true,
     });
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not send the invoice.";
+    const message = err instanceof Error ? err.message : "Could not save the invoice.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

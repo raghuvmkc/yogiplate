@@ -969,6 +969,23 @@ export function BookingDetailDrawer(props: {
               >
                 {busy === "save" ? "Saving…" : "Save changes"}
               </button>
+              {detail.invoice && !invoiceCancelled && !detail.invoice.email_sent_at && detail.order ? (
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    const orderId = detail.order!.id;
+                    if (window.location.pathname.startsWith("/admin/desk")) {
+                      window.dispatchEvent(new CustomEvent("yogiplate-edit-invoice", { detail: orderId }));
+                      return;
+                    }
+                    window.location.href = `/admin/desk?invoice=${encodeURIComponent(orderId)}`;
+                  }}
+                  className="border border-line px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                >
+                  Edit on desk
+                </button>
+              ) : null}
               {detail.invoice && !invoiceCancelled ? (
                 <button
                   type="button"

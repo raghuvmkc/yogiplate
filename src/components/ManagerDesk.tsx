@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PhoneMissed } from "lucide-react";
 import { AdminCalendarPageClient } from "@/components/AdminCalendarPageClient";
 import { AddressCheckNote, useAddressCheck } from "@/components/AddressCheck";
@@ -102,8 +102,19 @@ export function ManagerDesk({
   const [notes, setNotes] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountReason, setDiscountReason] = useState("");
-  const [busy, setBusy] = useState<"quote" | "invoice" | null>(null);
+  const [busy, setBusy] = useState<"quote" | "save" | "send" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [draftOrderId, setDraftOrderId] = useState<string | null>(null);
+  const [draftInvoiceNumber, setDraftInvoiceNumber] = useState<string | null>(null);
+  const [unsent, setUnsent] = useState<
+    {
+      order_id: string;
+      invoice_number: string;
+      customer_name: string;
+      event_date: string;
+      total: number;
+    }[]
+  >([]);
 
   const [allDiets, setAllDiets] = useState(false);
   const [picks, setPicks] = useState<Record<string, string>>({});
@@ -424,6 +435,7 @@ export function ManagerDesk({
         ? {
             discount_percent: discountPct,
             discount_reason: discountReason.trim(),
+            order_id: draftOrderId || undefined,
           }
         : {}),
     };
@@ -448,6 +460,8 @@ export function ManagerDesk({
     setNotes("");
     setDiscountPercent("");
     setDiscountReason("");
+    setDraftOrderId(null);
+    setDraftInvoiceNumber(null);
     setQuery("");
     setPicks({});
     setQtys({});
@@ -458,7 +472,89 @@ export function ManagerDesk({
     if (from) setPhone(from);
   }
 
-  async function send(kind: "quote" | "invoice", event: FormEvent) {
+  async function refreshUnsent() {
+    const res = await fetch("/api/admin/desk/invoice", { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.invoices)) setUnsent(data.invoices);
+  }
+
+  async function openSavedInvoice(orderId: string) {
+    setBusy("save");
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/admin/desk/invoice?order_id=${encodeURIComponent(orderId)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotice(data.error || "Could not open that invoice.");
+        return;
+      }
+      setTab("invoice");
+      setDraftOrderId(data.order_id);
+      setDraftInvoiceNumber(data.invoice_number);
+      setName(data.customer_name || "");
+      setEmail(data.customer_email || "");
+      setPhone(data.customer_phone || "");
+      setEventDate(data.event_date || "");
+      setEventTime(data.event_time || "");
+      setGuests(data.guest_count ? String(data.guest_count) : "");
+      setDiet(data.diet_profile || "pure_vegetarian");
+      setService(data.delivery_or_pickup === "pickup" ? "pickup" : "delivery");
+      setSetupService(data.setup_service === true);
+      setAddress(data.address || "");
+      setCity(data.city || "");
+      setZip(data.zip || "");
+      setNotes(data.notes || "");
+      setDiscountPercent(data.discount_percent ? String(data.discount_percent) : "");
+      setDiscountReason(data.discount_reason || "");
+      setLines(
+        (data.items || []).map(
+          (line: {
+            line_id?: string;
+            menu_item_id: string;
+            name: string;
+            price: number;
+            quantity: number;
+            unit?: string;
+          }) => ({
+            line_id: line.line_id || line.menu_item_id,
+            menu_item_id: line.menu_item_id,
+            name: line.name,
+            price: line.price,
+            quantity: line.quantity,
+            unit: line.unit || "each",
+          })
+        )
+      );
+      setPriceDrafts({});
+      setNotice(`Editing ${data.invoice_number}. It has not been emailed yet.`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  useEffect(() => {
+    if (tab !== "invoice") return;
+    void refreshUnsent();
+  }, [tab]);
+
+  useEffect(() => {
+    function onEdit(event: Event) {
+      const orderId = (event as CustomEvent<string>).detail;
+      if (orderId) void openSavedInvoice(orderId);
+    }
+    window.addEventListener("yogiplate-edit-invoice", onEdit);
+    const fromCalendar = new URLSearchParams(window.location.search).get("invoice");
+    if (fromCalendar) void openSavedInvoice(fromCalendar);
+    return () => window.removeEventListener("yogiplate-edit-invoice", onEdit);
+  }, []);
+
+  async function send(
+    kind: "quote" | "invoice",
+    event: { preventDefault(): void },
+    deliver = false
+  ) {
     event.preventDefault();
     if (kind === "invoice" && service === "delivery" && addressCheck.status !== "ok") {
       setNotice(
@@ -483,13 +579,13 @@ export function ManagerDesk({
       setNotice("Each custom item needs a name, quantity, and price greater than zero.");
       return;
     }
-    setBusy(kind);
+    setBusy(kind === "invoice" ? (deliver ? "send" : "save") : "quote");
     setNotice(null);
     try {
       const res = await fetch(`/api/admin/desk/${kind}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload(kind)),
+        body: JSON.stringify({ ...payload(kind), ...(kind === "invoice" ? { send: deliver } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -502,13 +598,26 @@ export function ManagerDesk({
             ? `Quotation ${data.quote_number} was emailed.`
             : `Quotation ${data.quote_number} was saved. Email was not sent (${data.email_reason || "mail"}).`
         );
-      } else {
+      } else if (!deliver) {
+        setDraftOrderId(data.order_id || null);
+        setDraftInvoiceNumber(data.invoice_number || null);
+        setNotice(
+          `Invoice ${data.invoice_number} is saved. You can keep editing it. Nothing has been emailed.`
+        );
+        void refreshUnsent();
+      } else if (data.email_sent) {
         clearDeskFormForNextInvoice();
         setNotice(
-          data.email_sent
-            ? `Invoice ${data.invoice_number} was emailed with a pay link. Form cleared for the next invoice — calendar event kept.`
-            : `Invoice ${data.invoice_number} was saved. Form cleared for the next invoice — calendar event kept. Email was not sent (${data.email_reason || "mail"}).`
+          `Invoice ${data.invoice_number} was emailed with a pay link. Form cleared for the next invoice — calendar event kept.`
         );
+        void refreshUnsent();
+      } else {
+        setDraftOrderId(data.order_id || draftOrderId);
+        setDraftInvoiceNumber(data.invoice_number || null);
+        setNotice(
+          `Invoice ${data.invoice_number} is saved, but the email did not go out (${data.email_reason || "mail"}). You can still edit it and send again.`
+        );
+        void refreshUnsent();
       }
     } finally {
       setBusy(null);
@@ -880,6 +989,33 @@ export function ManagerDesk({
 
         {tab === "quote" || tab === "invoice" ? (
           <form className="mt-5 max-w-3xl" onSubmit={(event) => void send(tab, event)}>
+            {tab === "invoice" ? (
+              <div className="mb-4 border border-line bg-warm/50 px-3 py-3 text-sm">
+                <p className="font-semibold text-foreground">
+                  {draftInvoiceNumber
+                    ? `Editing ${draftInvoiceNumber} — not emailed yet`
+                    : "Save now, or email it when it is ready"}
+                </p>
+                <p className="mt-1 text-muted">
+                  A saved invoice can be changed as many times as you need. The guest is emailed only when you send it.
+                </p>
+                {unsent.length ? (
+                  <ul className="mt-3 space-y-1">
+                    {unsent.map((row) => (
+                      <li key={row.order_id}>
+                        <button
+                          type="button"
+                          onClick={() => void openSavedInvoice(row.order_id)}
+                          className="text-left font-semibold text-accent-deep underline"
+                        >
+                          {row.invoice_number} · {row.customer_name} · {row.event_date} · {formatMoney(row.total)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Name" value={name} onChange={setName} />
               <Field label="Email" value={email} onChange={setEmail} type="email" />
@@ -1048,17 +1184,33 @@ export function ManagerDesk({
             ) : null}
 
             {notice ? <p className="mt-4 text-sm text-accent-deep">{notice}</p> : null}
-            <button
-              type="submit"
-              disabled={busy !== null}
-              className="mt-4 bg-accent-deep px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {busy === tab
-                ? "Sending…"
-                : tab === "quote"
-                  ? "Email quote"
-                  : "Send invoice"}
-            </button>
+            {tab === "invoice" ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={busy !== null}
+                  className="border border-accent-deep px-5 py-2.5 text-sm font-semibold text-accent-deep disabled:opacity-40"
+                >
+                  {busy === "save" ? "Saving…" : draftInvoiceNumber ? "Save changes" : "Save for later"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={(event) => void send("invoice", event, true)}
+                  className="bg-accent-deep px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  {busy === "send" ? "Sending…" : "Send invoice"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={busy !== null}
+                className="mt-4 bg-accent-deep px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {busy === "quote" ? "Sending…" : "Email quote"}
+              </button>
+            )}
           </form>
         ) : null}
       </section>

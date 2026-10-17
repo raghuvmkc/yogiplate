@@ -14,7 +14,10 @@ export function pinFromMonthDay(month: number, day: number) {
   return `${String(m).padStart(2, "0")}${String(d).padStart(2, "0")}`;
 }
 
+/** Wall-clock time in the kitchen zone (PST in winter, PDT in summer). */
 export function formatKitchenTime(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
   return new Intl.DateTimeFormat("en-US", {
     timeZone: KITCHEN_TZ,
     month: "short",
@@ -22,7 +25,8 @@ export function formatKitchenTime(iso: string) {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(iso));
+    timeZoneName: "short",
+  }).format(date);
 }
 
 export function formatShiftLength(startIso: string, endIso: string) {

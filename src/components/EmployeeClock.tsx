@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
 type Choice = { id: string; name: string };
-type PunchNotice = { action: "in" | "out"; message: string };
+type PunchNotice = { action: "in" | "out"; message: string; at: string };
 
 export function EmployeeClock() {
   const [digits, setDigits] = useState("");
@@ -40,6 +40,7 @@ export function EmployeeClock() {
         choose?: Choice[];
         message?: string;
         action?: "in" | "out";
+        at?: string;
       };
       if (!res.ok) throw new Error(data.error || "Could not clock in.");
       if (data.choose?.length) {
@@ -50,6 +51,7 @@ export function EmployeeClock() {
       setNotice({
         action: data.action === "out" ? "out" : "in",
         message: data.message || "Welcome.",
+        at: data.at || "",
       });
     } catch (err) {
       setDigits("");
@@ -110,6 +112,9 @@ export function EmployeeClock() {
           >
             {notice.message}
           </h1>
+          {notice.at ? (
+            <p className="mt-4 text-lg font-semibold">{notice.at}</p>
+          ) : null}
         </div>
       ) : (
         <>
