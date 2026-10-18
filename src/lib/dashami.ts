@@ -125,7 +125,7 @@ export async function startDashamiCheckout(input: {
       budget: "",
       setup_needs: "",
       special_requirements: "No onion, no garlic.",
-      package_tier: "Family lunch",
+      package_tier: "",
       confirmed: false,
     },
   });
