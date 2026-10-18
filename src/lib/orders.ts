@@ -145,18 +145,30 @@ export async function fulfillPaidOrder(input: {
   order_id?: string;
   order_number?: string;
   invoice_number?: string;
+  /** Advertised package price. Skips delivery and tax so the charge matches the campaign. */
+  locked_total?: number | null;
 }) {
   const db = await getDb();
   const coupon = input.coupon_code
     ? await findCoupon(input.coupon_code)
     : null;
-  const totals = calcOrderTotals({
-    items: input.items,
-    miles: input.delivery_miles,
-    coupon,
-    settings: db.settings,
-    setup: input.setup_service,
-  });
+  const locked = input.locked_total != null && input.locked_total > 0 ? input.locked_total : 0;
+  const totals = locked
+    ? {
+        subtotal: locked,
+        discount: 0,
+        delivery_fee: 0,
+        setup_fee: 0,
+        tax: 0,
+        total: locked,
+      }
+    : calcOrderTotals({
+        items: input.items,
+        miles: input.delivery_miles,
+        coupon,
+        settings: db.settings,
+        setup: input.setup_service,
+      });
 
   const now = new Date().toISOString();
   const orderId = input.order_id || uid("ord");

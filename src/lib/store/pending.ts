@@ -24,6 +24,8 @@ export interface PendingCheckout {
   order_id?: string;
   order_number?: string;
   invoice_number?: string;
+  /** When set, the paid order total stays at this amount (no delivery fee or tax added). */
+  locked_total?: number | null;
 }
 
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
