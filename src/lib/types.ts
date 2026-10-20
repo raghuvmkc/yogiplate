@@ -403,6 +403,9 @@ export interface BookingUberDelivery {
   fee_cents: number | null;
   pickup_eta: string | null;
   dropoff_eta: string | null;
+  pickup_ready_dt?: string | null;
+  pickup_local_date?: string | null;
+  pickup_local_time?: string | null;
   scheduled_at: string;
   cancelled_at?: string | null;
 }

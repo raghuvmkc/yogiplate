@@ -127,3 +127,53 @@ export function adminCivilIso(value: string | Date): string {
   const day = parts.find((p) => p.type === "day")?.value;
   return `${y}-${m}-${day}`;
 }
+
+/**
+ * Convert a Pacific kitchen wall date + HH:mm into a UTC ISO string.
+ * Used for Uber Direct pickup windows (admin always thinks in PST/PDT).
+ */
+export function pacificCivilToUtcIso(dateYmd: string, timeHm: string): string {
+  const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateYmd || "").trim());
+  const tm = /^(\d{1,2}):(\d{2})$/.exec(String(timeHm || "").trim());
+  if (!dm || !tm) {
+    throw new Error("Enter a Pacific pickup date (YYYY-MM-DD) and time (HH:mm).");
+  }
+  const y = Number(dm[1]);
+  const mo = Number(dm[2]);
+  const day = Number(dm[3]);
+  const h = Number(tm[1]);
+  const mi = Number(tm[2]);
+  if (h > 23 || mi > 59) {
+    throw new Error("Pickup time must be a valid HH:mm in Pacific time.");
+  }
+
+  let utc = Date.UTC(y, mo - 1, day, h, mi, 0);
+  for (let i = 0; i < 4; i++) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: ADMIN_TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      hourCycle: "h23",
+    }).formatToParts(new Date(utc));
+    const num = (type: Intl.DateTimeFormatPartTypes) =>
+      Number(parts.find((p) => p.type === type)?.value);
+    let hour = num("hour");
+    if (hour === 24) hour = 0;
+    const asUtc = Date.UTC(
+      num("year"),
+      num("month") - 1,
+      num("day"),
+      hour,
+      num("minute"),
+      num("second") || 0
+    );
+    const wanted = Date.UTC(y, mo - 1, day, h, mi, 0);
+    utc += wanted - asUtc;
+  }
+  return new Date(utc).toISOString();
+}

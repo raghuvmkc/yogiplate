@@ -20,6 +20,13 @@ export type UberAddressParts = {
   country?: string;
 };
 
+export type UberDeliveryWindow = {
+  pickup_ready_dt: string;
+  pickup_deadline_dt: string;
+  dropoff_ready_dt: string;
+  dropoff_deadline_dt: string;
+};
+
 export type UberDeliveryInfo = {
   courier: "uber";
   quote_id: string;
@@ -30,6 +37,12 @@ export type UberDeliveryInfo = {
   fee_cents: number | null;
   pickup_eta: string | null;
   dropoff_eta: string | null;
+  /** Admin-chosen kitchen pickup ready time (UTC ISO). */
+  pickup_ready_dt?: string | null;
+  /** Pacific civil date YYYY-MM-DD the admin set. */
+  pickup_local_date?: string | null;
+  /** Pacific HH:mm the admin set. */
+  pickup_local_time?: string | null;
   scheduled_at: string;
   cancelled_at?: string | null;
 };
@@ -193,15 +206,41 @@ async function uberFetch(path: string, init?: RequestInit) {
   return json;
 }
 
+/** Build Uber pickup/dropoff windows from a Pacific kitchen pickup-ready instant. */
+export function buildUberWindow(pickupReadyIso: string): UberDeliveryWindow {
+  const ready = new Date(pickupReadyIso).getTime();
+  if (!Number.isFinite(ready)) {
+    throw new Error("Invalid pickup ready time.");
+  }
+  const now = Date.now();
+  // Scheduled deliveries need enough lead time for Uber to assign a courier.
+  if (ready < now + 20 * 60 * 1000) {
+    throw new Error(
+      "Pickup time must be at least 20 minutes from now (Pacific). Pick a later time."
+    );
+  }
+  const addMin = (ms: number, minutes: number) =>
+    new Date(ms + minutes * 60 * 1000).toISOString();
+  // Windows-style schedule: ready → 45 min pickup window; dropoff through +2 hours.
+  return {
+    pickup_ready_dt: new Date(ready).toISOString(),
+    pickup_deadline_dt: addMin(ready, 45),
+    dropoff_ready_dt: addMin(ready, 15),
+    dropoff_deadline_dt: addMin(ready, 120),
+  };
+}
+
 export async function createUberQuote(
   pickup: UberAddressParts,
-  dropoff: UberAddressParts
+  dropoff: UberAddressParts,
+  window?: UberDeliveryWindow | null
 ) {
   return uberFetch(`/customers/${customerId()}/delivery_quotes`, {
     method: "POST",
     body: JSON.stringify({
       pickup_address: formatUberAddress(pickup),
       dropoff_address: formatUberAddress(dropoff),
+      ...(window || {}),
     }),
   });
 }
@@ -237,7 +276,12 @@ export function trackingFromUber(delivery: Record<string, unknown>): string {
 export function mapUberDelivery(
   delivery: Record<string, unknown>,
   quoteId: string,
-  feeCents: number | null
+  feeCents: number | null,
+  extras?: {
+    pickup_ready_dt?: string | null;
+    pickup_local_date?: string | null;
+    pickup_local_time?: string | null;
+  }
 ): UberDeliveryInfo {
   return {
     courier: "uber",
@@ -253,6 +297,9 @@ export function mapUberDelivery(
     dropoff_eta: String(
       delivery.dropoff_eta || delivery.dropoff_deadline || ""
     ) || null,
+    pickup_ready_dt: extras?.pickup_ready_dt || null,
+    pickup_local_date: extras?.pickup_local_date || null,
+    pickup_local_time: extras?.pickup_local_time || null,
     scheduled_at: new Date().toISOString(),
   };
 }

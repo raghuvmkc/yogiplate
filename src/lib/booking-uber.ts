@@ -1,7 +1,9 @@
+import { pacificCivilToUtcIso } from "@/lib/admin-time";
 import { getBookingDetail } from "@/lib/booking-detail";
 import { getDb, updateDb } from "@/lib/store/local-db";
 import { sendSms, smsConfigured, toE164 } from "@/lib/sms";
 import {
+  buildUberWindow,
   cancelUberDelivery,
   createUberDelivery,
   createUberQuote,
@@ -20,6 +22,13 @@ import {
   type UberDeliveryInfo,
 } from "@/lib/uber-direct";
 import type { CateringBooking, Order, Quote } from "@/lib/types";
+
+export type UberScheduleInput = {
+  /** Pacific civil date YYYY-MM-DD — defaults to event day when omitted. */
+  pickup_date: string;
+  /** Pacific HH:mm — required kitchen pickup ready time. */
+  pickup_time: string;
+};
 
 type DropoffSources = {
   booking: CateringBooking;
@@ -151,7 +160,7 @@ function feeFrom(q: Record<string, unknown>) {
       : null;
 }
 
-export async function scheduleUberForBooking(id: string) {
+export async function scheduleUberForBooking(id: string, input: UberScheduleInput) {
   if (!uberConfigured()) {
     throw new Error("Uber Direct is not configured on this site.");
   }
@@ -178,6 +187,14 @@ export async function scheduleUberForBooking(id: string) {
     );
   }
 
+  const pickupDate = String(input.pickup_date || booking.event_date || "").trim();
+  const pickupTime = String(input.pickup_time || "").trim();
+  if (!pickupTime) {
+    throw new Error("Set the kitchen pickup time in Pacific (HH:mm) before scheduling Uber.");
+  }
+  const pickupReadyIso = pacificCivilToUtcIso(pickupDate, pickupTime);
+  const window = buildUberWindow(pickupReadyIso);
+
   const phone = phoneFromEvent(sources);
   const dropoff = dropoffFromEvent(sources);
   const pickup = pickupAddressParts();
@@ -191,7 +208,7 @@ export async function scheduleUberForBooking(id: string) {
     }
   }
 
-  let quote = await createUberQuote(pickup, dropoff);
+  let quote = await createUberQuote(pickup, dropoff, window);
   let quoteId = String(quote.id || "");
   if (!quoteId) throw new Error("Uber did not return a quote id.");
   let feeCents = feeFrom(quote);
@@ -205,20 +222,25 @@ export async function scheduleUberForBooking(id: string) {
     dropoff_address: formatUberAddress(dropoff),
     dropoff_phone_number: phone,
     manifest_items: manifestForBooking(booking, lines),
+    ...window,
   });
 
   let delivery: Record<string, unknown>;
   try {
     delivery = await createUberDelivery(deliveryPayload(quoteId));
   } catch {
-    quote = await createUberQuote(pickup, dropoff);
+    quote = await createUberQuote(pickup, dropoff, window);
     quoteId = String(quote.id || "");
     if (!quoteId) throw new Error("Uber did not return a quote id.");
     feeCents = feeFrom(quote);
     delivery = await createUberDelivery(deliveryPayload(quoteId));
   }
 
-  const uber = mapUberDelivery(delivery, quoteId, feeCents);
+  const uber = mapUberDelivery(delivery, quoteId, feeCents, {
+    pickup_ready_dt: pickupReadyIso,
+    pickup_local_date: pickupDate,
+    pickup_local_time: pickupTime,
+  });
   if (!uber.delivery_id) throw new Error("Uber did not return a delivery id.");
 
   const next = await saveUber(id, uber);

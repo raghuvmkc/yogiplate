@@ -8,8 +8,10 @@ import type {
   MenuChoice,
 } from "@/lib/booking-detail";
 import {
+  ADMIN_TZ_LABEL,
   formatAdminCivilDate,
   formatAdminDate,
+  formatAdminDateTime,
   formatAdminEventTime,
 } from "@/lib/admin-time";
 import {
@@ -145,6 +147,9 @@ export function BookingDetailDrawer(props: {
   const [refundAmount, setRefundAmount] = useState("");
   const [refundNote, setRefundNote] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+  /** Pacific kitchen pickup day/time for Uber (date defaults to event day). */
+  const [uberPickupDate, setUberPickupDate] = useState("");
+  const [uberPickupTime, setUberPickupTime] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -174,6 +179,14 @@ export function BookingDetailDrawer(props: {
       }
       setDiscountReason(next.order?.discount_reason || "");
       setOrderStatus(next.order?.status || "pending");
+      setUberPickupDate(
+        next.booking.uber?.pickup_local_date || next.booking.event_date || ""
+      );
+      setUberPickupTime(
+        next.booking.uber?.pickup_local_time ||
+          (next.booking.event_time || "").slice(0, 5) ||
+          ""
+      );
       onChanged(next.booking);
     },
     [onChanged]
@@ -436,9 +449,17 @@ export function BookingDetailDrawer(props: {
   }
 
   async function scheduleUber() {
+    if (!uberPickupDate.trim()) {
+      setError(`Set the Uber pickup date in ${ADMIN_TZ_LABEL} time.`);
+      return;
+    }
+    if (!uberPickupTime.trim()) {
+      setError(`Set the kitchen pickup time in ${ADMIN_TZ_LABEL} (HH:mm).`);
+      return;
+    }
     if (
       !window.confirm(
-        "Schedule an Uber Direct courier for this delivery? The guest will get an SMS with the tracking link when available."
+        `Schedule Uber for kitchen pickup ${uberPickupDate} at ${uberPickupTime} ${ADMIN_TZ_LABEL}? The guest will get an SMS with the tracking link when available.`
       )
     ) {
       return;
@@ -450,7 +471,11 @@ export function BookingDetailDrawer(props: {
       const res = await fetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "uber_schedule" }),
+        body: JSON.stringify({
+          action: "uber_schedule",
+          pickup_date: uberPickupDate.trim(),
+          pickup_time: uberPickupTime.trim(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -651,8 +676,8 @@ export function BookingDetailDrawer(props: {
               <section className="mt-8 border border-line bg-white p-4">
                 <h4 className="font-display text-xl text-foreground">Uber delivery</h4>
                 <p className="mt-1 text-sm text-muted">
-                  Uses this event’s guest, phone, and delivery address automatically — no extra
-                  fields to fill in.
+                  Guest, phone, and dropoff come from this event. Set when the kitchen will be ready
+                  for pickup in {ADMIN_TZ_LABEL} time.
                 </p>
                 {(detail.order?.delivery_address || form.address) && (
                   <p className="mt-2 text-sm">
@@ -668,6 +693,33 @@ export function BookingDetailDrawer(props: {
                       .join(", ")}
                   </p>
                 )}
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm">
+                    <span className="font-semibold">Pickup day ({ADMIN_TZ_LABEL})</span>
+                    <input
+                      type="date"
+                      value={uberPickupDate}
+                      onChange={(e) => setUberPickupDate(e.target.value)}
+                      className="mt-1 w-full border border-line bg-white px-3 py-2"
+                    />
+                    <span className="mt-1 block text-xs text-muted">
+                      Defaults to the event day; change only if pickup is a different Pacific day.
+                    </span>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-semibold">Pickup time ({ADMIN_TZ_LABEL})</span>
+                    <input
+                      type="time"
+                      value={uberPickupTime}
+                      onChange={(e) => setUberPickupTime(e.target.value)}
+                      required
+                      className="mt-1 w-full border border-line bg-white px-3 py-2"
+                    />
+                    <span className="mt-1 block text-xs text-muted">
+                      Required. When food is ready at the kitchen for the courier.
+                    </span>
+                  </label>
+                </div>
                 {detail.booking.uber?.delivery_id ? (
                   <div className="mt-3 space-y-1 text-sm">
                     <p>
@@ -675,6 +727,18 @@ export function BookingDetailDrawer(props: {
                       {detail.booking.uber.status || "—"}
                       {detail.booking.uber.cancelled_at ? " (cancelled)" : ""}
                     </p>
+                    {detail.booking.uber.pickup_local_date ||
+                    detail.booking.uber.pickup_ready_dt ? (
+                      <p>
+                        <span className="font-semibold">Pickup:</span>{" "}
+                        {detail.booking.uber.pickup_local_date &&
+                        detail.booking.uber.pickup_local_time
+                          ? `${detail.booking.uber.pickup_local_date} ${formatAdminEventTime(
+                              detail.booking.uber.pickup_local_time
+                            )}`
+                          : formatAdminDateTime(detail.booking.uber.pickup_ready_dt)}
+                      </p>
+                    ) : null}
                     <p className="break-all">
                       <span className="font-semibold">Delivery ID:</span>{" "}
                       {detail.booking.uber.delivery_id}
