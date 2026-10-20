@@ -10,6 +10,11 @@ import {
   saveBookingDetail,
   type BookingDetailPatch,
 } from "@/lib/booking-detail";
+import {
+  cancelUberForBooking,
+  refreshUberForBooking,
+  scheduleUberForBooking,
+} from "@/lib/booking-uber";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,6 +111,21 @@ export async function POST(req: Request, ctx: Ctx) {
         }),
         noStore
       );
+    }
+    if (body.action === "uber_schedule") {
+      const result = await scheduleUberForBooking(id);
+      return NextResponse.json(
+        { ...result.detail, uber_sms: result.sms },
+        noStore
+      );
+    }
+    if (body.action === "uber_cancel") {
+      const result = await cancelUberForBooking(id);
+      return NextResponse.json(result.detail, noStore);
+    }
+    if (body.action === "uber_refresh") {
+      const result = await refreshUberForBooking(id);
+      return NextResponse.json(result.detail, noStore);
     }
     return failure(new Error("Unknown action"));
   } catch (err) {

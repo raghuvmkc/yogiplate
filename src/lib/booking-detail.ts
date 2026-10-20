@@ -32,6 +32,7 @@ import {
   updateDb,
   type LocalDatabase,
 } from "@/lib/store/local-db";
+import { uberConfigured } from "@/lib/uber-direct";
 import type {
   CateringBooking,
   DietTag,
@@ -69,6 +70,8 @@ export type BookingDetail = {
   menu: MenuChoice[];
   /** Only the owner admin may refund from the calendar. */
   can_refund: boolean;
+  /** Uber Direct credentials are present on this deploy. */
+  uber_configured: boolean;
 };
 
 export type EditableLine = {
@@ -97,6 +100,7 @@ export type BookingDetailPatch = {
       | "delivery_or_pickup"
       | "city"
       | "address"
+      | "zip"
       | "setup_needs"
       | "special_requirements"
       | "notes"
@@ -166,6 +170,7 @@ export async function getBookingDetail(id: string): Promise<BookingDetail | null
     setup_fee: db.settings.setup_fee ?? DEFAULT_SETUP_FEE,
     menu: menuChoices(db),
     can_refund: await canIssueRefunds(),
+    uber_configured: uberConfigured(),
   };
 }
 
@@ -375,6 +380,7 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
         if (patch.booking.guest_count != null) order.guest_count = Number(patch.booking.guest_count) || 0;
         if (patch.booking.address !== undefined) order.delivery_address = patch.booking.address || "";
         if (patch.booking.city !== undefined) order.delivery_city = patch.booking.city || "";
+        if (patch.booking.zip !== undefined) order.delivery_zip = patch.booking.zip || "";
       }
       const paid = paidOn(order);
       if (isPaidInFull(paid, order.total)) {

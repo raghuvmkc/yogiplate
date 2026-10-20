@@ -180,6 +180,7 @@ export async function upsertCateringBooking(
         draft.delivery_or_pickup || prev?.delivery_or_pickup || null,
       city: draft.city || prev?.city || null,
       address: draft.address || prev?.address || null,
+      zip: prev?.zip || null,
       setup_needs: draft.setup_needs || prev?.setup_needs || null,
       special_requirements:
         draft.special_requirements || prev?.special_requirements || null,
@@ -196,6 +197,7 @@ export async function upsertCateringBooking(
       payments,
       chat_session_id: input.chat_session_id ?? prev?.chat_session_id ?? null,
       admin_notes: prev?.admin_notes || null,
+      uber: prev?.uber || null,
       created_at: prev?.created_at || now,
       updated_at: now,
     };

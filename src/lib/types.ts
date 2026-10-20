@@ -392,6 +392,21 @@ export type CateringBookingStatus =
   | "confirmed"
   | "cancelled";
 
+/** Uber Direct delivery attached to a calendar catering event. */
+export interface BookingUberDelivery {
+  courier: "uber";
+  quote_id: string;
+  delivery_id: string;
+  support_reference: string;
+  status: string;
+  tracking_url: string;
+  fee_cents: number | null;
+  pickup_eta: string | null;
+  dropoff_eta: string | null;
+  scheduled_at: string;
+  cancelled_at?: string | null;
+}
+
 export interface CateringBooking {
   id: string;
   event_date: string; // YYYY-MM-DD
@@ -407,6 +422,8 @@ export interface CateringBooking {
   delivery_or_pickup?: string | null;
   city?: string | null;
   address?: string | null;
+  /** 5-digit ZIP for Uber / delivery quoting. */
+  zip?: string | null;
   setup_needs?: string | null;
   special_requirements?: string | null;
   notes?: string | null;
@@ -423,6 +440,8 @@ export interface CateringBooking {
   payments?: PaymentRecord[];
   chat_session_id?: string | null;
   admin_notes?: string | null;
+  /** Live Uber Direct delivery for this event (admin-scheduled). */
+  uber?: BookingUberDelivery | null;
   created_at: string;
   updated_at: string;
 }

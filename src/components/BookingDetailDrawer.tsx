@@ -234,7 +234,7 @@ export function BookingDetailDrawer(props: {
   const addressCheck = useAddressCheck({
     address: form?.address || "",
     city: form?.city || "",
-    zip: "",
+    zip: detail?.order?.delivery_zip || "",
     requireZip: false,
     subtotal: preview.subtotal,
     enabled: Boolean(form) && form?.delivery_or_pickup !== "pickup",
@@ -435,6 +435,53 @@ export function BookingDetailDrawer(props: {
     }
   }
 
+  async function scheduleUber() {
+    if (
+      !window.confirm(
+        "Schedule an Uber Direct courier for this delivery? The guest will get an SMS with the tracking link when available."
+      )
+    ) {
+      return;
+    }
+    setBusy("uber_schedule");
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "uber_schedule" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not schedule Uber.");
+        return;
+      }
+      apply(data as BookingDetail);
+      const sms = data.uber_sms as { ok?: boolean; error?: string } | undefined;
+      setNotice(
+        sms?.ok
+          ? "Uber scheduled. Guest SMS sent."
+          : `Uber scheduled.${sms?.error ? ` SMS: ${sms.error}` : " Guest SMS was not sent."}`
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function cancelUber() {
+    if (!window.confirm("Cancel the Uber courier for this event?")) return;
+    if (await send("POST", { action: "uber_cancel" }, "uber_cancel")) {
+      setNotice("Uber delivery cancelled.");
+    }
+  }
+
+  async function refreshUber() {
+    if (await send("POST", { action: "uber_refresh" }, "uber_refresh")) {
+      setNotice("Uber status refreshed.");
+    }
+  }
+
   const b = detail?.booking;
   const invoiceCancelled =
     detail?.booking.status === "cancelled" || detail?.order?.status === "cancelled";
@@ -599,6 +646,103 @@ export function BookingDetailDrawer(props: {
                 <Area label="Admin notes" value={form.admin_notes || ""} onChange={(v) => update({ admin_notes: v })} />
               </div>
             </section>
+
+            {form.delivery_or_pickup !== "pickup" ? (
+              <section className="mt-8 border border-line bg-white p-4">
+                <h4 className="font-display text-xl text-foreground">Uber delivery</h4>
+                <p className="mt-1 text-sm text-muted">
+                  Uses this event’s guest, phone, and delivery address automatically — no extra
+                  fields to fill in.
+                </p>
+                {(detail.order?.delivery_address || form.address) && (
+                  <p className="mt-2 text-sm">
+                    <span className="font-semibold">Dropoff:</span>{" "}
+                    {[
+                      detail.order?.delivery_address || form.address,
+                      detail.order?.delivery_city || form.city,
+                      detail.order
+                        ? `${detail.order.delivery_state || "CA"} ${detail.order.delivery_zip || ""}`.trim()
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                )}
+                {detail.booking.uber?.delivery_id ? (
+                  <div className="mt-3 space-y-1 text-sm">
+                    <p>
+                      <span className="font-semibold">Status:</span>{" "}
+                      {detail.booking.uber.status || "—"}
+                      {detail.booking.uber.cancelled_at ? " (cancelled)" : ""}
+                    </p>
+                    <p className="break-all">
+                      <span className="font-semibold">Delivery ID:</span>{" "}
+                      {detail.booking.uber.delivery_id}
+                    </p>
+                    {detail.booking.uber.fee_cents != null ? (
+                      <p>
+                        <span className="font-semibold">Uber fee:</span>{" "}
+                        {formatMoney(detail.booking.uber.fee_cents / 100)}
+                      </p>
+                    ) : null}
+                    {detail.booking.uber.tracking_url ? (
+                      <p>
+                        <a
+                          href={detail.booking.uber.tracking_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-accent-deep underline"
+                        >
+                          Open tracking
+                        </a>
+                      </p>
+                    ) : (
+                      <p className="text-muted">Tracking link appears once a driver is assigned.</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted">No Uber courier scheduled yet.</p>
+                )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {detail.uber_configured ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void scheduleUber()}
+                        className="bg-accent-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {busy === "uber_schedule" ? "Scheduling…" : "Schedule Uber"}
+                      </button>
+                      {detail.booking.uber?.delivery_id && !detail.booking.uber.cancelled_at ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={Boolean(busy)}
+                            onClick={() => void refreshUber()}
+                            className="border border-line px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                          >
+                            {busy === "uber_refresh" ? "Refreshing…" : "Refresh status"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(busy)}
+                            onClick={() => void cancelUber()}
+                            className="border border-red-700 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                          >
+                            {busy === "uber_cancel" ? "Cancelling…" : "Cancel Uber"}
+                          </button>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="text-sm text-amber-800">
+                      Uber Direct env vars are not set on this deploy, so scheduling is unavailable.
+                    </p>
+                  )}
+                </div>
+              </section>
+            ) : null}
 
             <section className="mt-8">
               <h4 className="font-display text-xl text-foreground">
