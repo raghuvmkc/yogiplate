@@ -19,9 +19,8 @@ import {
   toCents,
 } from "@/lib/pricing";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
+import { ensureFreshInvoicePayLink, openInvoicePayUrl, payInvoiceUrl } from "@/lib/invoice-pay";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
-import { createCateringPaymentLink } from "@/lib/stripe-checkout";
-import { siteUrl } from "@/lib/site";
 import { getDb, invoiceNumber, orderNumber, uid, updateDb } from "@/lib/store/local-db";
 import type { CartLine, DietTag, Invoice, Order, OrderItem } from "@/lib/types";
 
@@ -185,32 +184,15 @@ export async function createDeskInvoice(input: DeskBillInput) {
     payments: [],
   };
 
-  let payUrl: string | null = null;
+  // Stripe Checkout URLs expire in 24 hours — email a lasting Yogiplate pay link instead.
+  let payUrl: string | null = send && stripeConfigured() ? payInvoiceUrl(orderId) : null;
   if (priorOrder?.stripe_session_id && stripeConfigured()) {
     const stripe = getStripe();
     if (stripe) {
       await stripe.checkout.sessions.expire(priorOrder.stripe_session_id).catch(() => null);
     }
   }
-  if (send && stripeConfigured()) {
-    const session = await createCateringPaymentLink({
-      customer_email: order.customer_email,
-      amount: order.total,
-      product_name: `Yogiplate invoice ${invNum}`,
-      description: `Order ${ordNum}. ${items
-        .map((item) => `${item.name} × ${item.quantity}`)
-        .join(", ")}`,
-      success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: siteUrl(),
-      order_id: orderId,
-      order_number: ordNum,
-      invoice_number: invNum,
-      kind: "desk_invoice",
-    });
-    order.stripe_session_id = session.id;
-    payUrl = session.url;
-    if (!payUrl) throw new Error("Stripe did not return a pay link.");
-  }
+  order.stripe_session_id = null;
 
   const orderItems: OrderItem[] = items.map((item) => ({
     id: uid("oi"),
@@ -412,39 +394,9 @@ export async function getDeskInvoiceDraft(orderId: string) {
   };
 }
 
-/** Create a pay link for a saved invoice that has not been emailed yet. */
+/** Point a saved invoice at a lasting pay URL (Stripe session is created when the guest clicks). */
 export async function ensureInvoicePayLink(orderId: string) {
-  const db = await getDb();
-  const order = db.orders.find((row) => row.id === orderId);
-  const invoice = db.invoices.find((row) => row.order_id === orderId);
-  if (!order || !invoice || invoice.pay_url || order.status === "cancelled") return;
-  if (!stripeConfigured()) return;
-  const items = db.order_items.filter((row) => row.order_id === orderId);
-  const session = await createCateringPaymentLink({
-    customer_email: order.customer_email,
-    amount: order.total,
-    product_name: `Yogiplate invoice ${invoice.invoice_number}`,
-    description: `Order ${order.order_number}. ${items
-      .map((item) => `${item.name} × ${item.quantity}`)
-      .join(", ")}`,
-    success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: siteUrl(),
-    order_id: order.id,
-    order_number: order.order_number,
-    invoice_number: invoice.invoice_number,
-    kind: "desk_invoice",
-  });
-  if (!session.url) throw new Error("Stripe did not return a pay link.");
-  const html = buildInvoiceHtml(order, items, db.settings, invoice.invoice_number, session.url);
-  await updateDb((next) => {
-    const row = next.orders.find((item) => item.id === orderId);
-    const inv = next.invoices.find((item) => item.order_id === orderId);
-    if (row) row.stripe_session_id = session.id;
-    if (inv) {
-      inv.pay_url = session.url;
-      inv.html = html;
-    }
-  });
+  return ensureFreshInvoicePayLink(orderId);
 }
 
 export async function markDeskInvoicePaid(
@@ -471,12 +423,13 @@ export async function markDeskInvoicePaid(
         payments.length > 1 ? ` · ${payments.length} payments` : ""
       }`;
   if (invoice) {
+    const payUrl = openInvoicePayUrl(orderId, fullyPaid);
     const html = buildInvoiceHtml(
       { ...order, amount_paid: amountPaid, payments, status: fullyPaid ? "paid" : order.status },
       items,
       db.settings,
       invoice.invoice_number,
-      null,
+      payUrl,
       { paidLabel }
     );
     await updateDb((next) => {
@@ -497,7 +450,10 @@ export async function markDeskInvoicePaid(
         }
       }
       const inv = next.invoices.find((rowItem) => rowItem.id === invoice.id);
-      if (inv) inv.html = html;
+      if (inv) {
+        inv.pay_url = payUrl;
+        inv.html = html;
+      }
     });
   }
   if (order.event_date) {

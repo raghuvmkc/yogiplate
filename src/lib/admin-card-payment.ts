@@ -1,9 +1,10 @@
 import { appendPaymentRecord } from "@/lib/calendar-bookings";
+import { getBookingDetail } from "@/lib/booking-detail";
 import { buildInvoiceHtml } from "@/lib/invoice";
+import { openInvoicePayUrl } from "@/lib/invoice-pay";
 import { fromCents, isPaidInFull, toCents } from "@/lib/pricing";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { getDb, updateDb } from "@/lib/store/local-db";
-import { getBookingDetail } from "@/lib/booking-detail";
 
 function paidOn(order: { payments?: { amount: number }[]; amount_paid?: number; status: string; total: number }) {
   if (order.payments?.length) {
@@ -137,12 +138,14 @@ export async function confirmBookingCardPayment(bookingId: string, paymentIntent
       const invoice = next.invoices.find((item) => item.order_id === row.id);
       if (invoice) {
         const label = invoiceLabel(row);
+        const payUrl = openInvoicePayUrl(row.id, label === "Paid in full");
+        invoice.pay_url = payUrl;
         invoice.html = buildInvoiceHtml(
           row,
           next.order_items.filter((item) => item.order_id === row.id),
           next.settings,
           invoice.invoice_number,
-          label === "Paid in full" ? null : invoice.pay_url,
+          payUrl,
           { paidLabel: label }
         );
       }

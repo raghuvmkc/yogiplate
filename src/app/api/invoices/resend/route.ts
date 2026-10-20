@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { sendInvoiceEmail } from "@/lib/invoice";
+import { ensureFreshInvoicePayLink } from "@/lib/invoice-pay";
 import { getDb, updateDb } from "@/lib/store/local-db";
 
 export async function POST(req: Request) {
@@ -14,14 +15,23 @@ export async function POST(req: Request) {
   if (!order || !invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
+  if (order.status === "cancelled") {
+    return NextResponse.json({ error: "This invoice is cancelled." }, { status: 400 });
+  }
+
+  await ensureFreshInvoicePayLink(order.id);
+  const fresh = await getDb();
+  const nextInvoice = fresh.invoices.find((i) => i.order_id === order_id)!;
+  const nextOrder = fresh.orders.find((o) => o.id === order_id)!;
+
   const result = await sendInvoiceEmail({
-    to: order.customer_email,
-    subject: `Yogiplate Invoice ${invoice.invoice_number} — Order ${order.order_number}`,
-    html: invoice.html,
+    to: nextOrder.customer_email,
+    subject: `Yogiplate Invoice ${nextInvoice.invoice_number} — Order ${nextOrder.order_number}`,
+    html: nextInvoice.html,
   });
   if (result.sent) {
     await updateDb((d) => {
-      const inv = d.invoices.find((i) => i.id === invoice.id);
+      const inv = d.invoices.find((i) => i.id === nextInvoice.id);
       if (inv) inv.email_sent_at = new Date().toISOString();
     });
   }

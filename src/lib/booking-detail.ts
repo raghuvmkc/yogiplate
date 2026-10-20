@@ -1,11 +1,11 @@
 import { canIssueRefunds } from "@/lib/auth";
-import { ensureInvoicePayLink } from "@/lib/desk-invoice";
 import {
   appendPaymentRecord,
   appendRefundRecord,
   upsertCateringBooking,
 } from "@/lib/calendar-bookings";
 import { buildInvoiceHtml, emailInvoiceCancelled, sendInvoiceEmail } from "@/lib/invoice";
+import { ensureFreshInvoicePayLink, openInvoicePayUrl } from "@/lib/invoice-pay";
 import {
   isManualPaymentMethod,
   paymentMethodLabel,
@@ -22,10 +22,8 @@ import {
   percentCents,
   toCents,
 } from "@/lib/pricing";
-import { siteUrl } from "@/lib/site";
 import { sendGuestQuoteSmtp, smtpConfigured } from "@/lib/smtp";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
-import { createCateringPaymentLink } from "@/lib/stripe-checkout";
 import {
   getDb,
   invoiceNumber,
@@ -395,12 +393,14 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
 
       if (invoice) {
         const label = invoiceLabel(order);
+        const payUrl = openInvoicePayUrl(order.id, label === "Paid in full");
+        invoice.pay_url = payUrl;
         invoice.html = buildInvoiceHtml(
           order,
           items,
           db.settings,
           invoice.invoice_number,
-          label === "Paid in full" ? null : invoice.pay_url,
+          payUrl,
           { paidLabel: label }
         );
         row.invoice_number = invoice.invoice_number;
@@ -461,40 +461,9 @@ export async function saveBookingDetail(id: string, patch: BookingDetailPatch) {
   return getBookingDetail(id);
 }
 
-/** Issue a new Stripe link for the remaining balance after the total changes. */
+/** Keep the lasting Yogiplate pay URL in sync after the total changes. */
 async function refreshPayLink(orderId: string) {
-  if (!stripeConfigured()) return;
-  const db = await getDb();
-  const order = db.orders.find((row) => row.id === orderId);
-  const invoice = db.invoices.find((row) => row.order_id === orderId);
-  if (!order || !invoice || order.status === "cancelled") return;
-  const booking = (db.catering_bookings || []).find((row) => row.order_id === orderId);
-  if (booking?.status === "cancelled") return;
-  const balanceCents = toCents(order.total) - toCents(paidOn(order));
-  if (balanceCents < 50) return;
-  const items = db.order_items.filter((row) => row.order_id === orderId);
-  const session = await createCateringPaymentLink({
-    customer_email: order.customer_email,
-    amount: fromCents(balanceCents),
-    product_name: `Yogiplate invoice ${invoice.invoice_number}`,
-    description: `Order ${order.order_number}. Balance due.`,
-    success_url: `${siteUrl()}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: siteUrl(),
-    order_id: order.id,
-    order_number: order.order_number,
-    invoice_number: invoice.invoice_number,
-    kind: "desk_invoice",
-  });
-  await updateDb((next) => {
-    const inv = next.invoices.find((row) => row.id === invoice.id);
-    const ord = next.orders.find((row) => row.id === orderId);
-    if (!inv || !ord) return;
-    inv.pay_url = session.url;
-    const label = invoiceLabel(ord);
-    inv.html = buildInvoiceHtml(ord, items, next.settings, inv.invoice_number, session.url, {
-      paidLabel: label,
-    });
-  });
+  await ensureFreshInvoicePayLink(orderId);
 }
 
 /** Cash, check, Zelle, or any payment taken outside Stripe. */
@@ -551,12 +520,14 @@ export async function recordManualPayment(
       const invoice = next.invoices.find((item) => item.order_id === row.id);
       if (invoice) {
         const label = invoiceLabel(row);
+        const payUrl = openInvoicePayUrl(row.id, label === "Paid in full");
+        invoice.pay_url = payUrl;
         invoice.html = buildInvoiceHtml(
           row,
           next.order_items.filter((item) => item.order_id === row.id),
           next.settings,
           invoice.invoice_number,
-          label === "Paid in full" ? null : invoice.pay_url,
+          payUrl,
           { paidLabel: label }
         );
       }
@@ -585,10 +556,10 @@ export async function emailBookingInvoice(id: string) {
   if (detail.booking.status === "cancelled" || detail.order.status === "cancelled") {
     throw new Error("This invoice is cancelled. It cannot be emailed.");
   }
-  await ensureInvoicePayLink(detail.order.id);
+  await ensureFreshInvoicePayLink(detail.order.id);
   const db = await getDb();
   const invoice = db.invoices.find((row) => row.id === detail.invoice!.id)!;
-  const order = detail.order;
+  const order = db.orders.find((row) => row.id === detail.order!.id) || detail.order;
   const subject = `Yogiplate Invoice ${invoice.invoice_number} — Order ${order.order_number}`;
   let sent = false;
   let reason: string | undefined;
@@ -747,12 +718,14 @@ export async function recordBookingRefund(
     const invoice = db.invoices.find((row) => row.order_id === order.id);
     if (invoice) {
       const label = invoiceLabel(order);
+      const payUrl = openInvoicePayUrl(order.id, label === "Paid in full");
+      invoice.pay_url = payUrl;
       invoice.html = buildInvoiceHtml(
         order,
         db.order_items.filter((row) => row.order_id === order.id),
         db.settings,
         invoice.invoice_number,
-        label === "Paid in full" ? null : invoice.pay_url,
+        payUrl,
         { paidLabel: label || `Refunded ${formatMoney(fromCents(requestedCents))}` }
       );
     }

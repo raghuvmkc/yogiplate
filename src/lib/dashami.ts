@@ -53,7 +53,7 @@ export async function startDashamiCheckout(input: {
 }) {
   if (!dashamiOrdersOpen()) {
     throw new GuestInputError(
-      "Pre-orders for this lunch closed Monday, October 19 at 8:00 PM Pacific."
+      "Pre-orders for this lunch closed Tuesday, October 20 at 8:00 AM Pacific."
     );
   }
   const name = input.customer_name.trim();

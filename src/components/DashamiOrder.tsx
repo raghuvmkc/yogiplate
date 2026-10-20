@@ -268,13 +268,13 @@ export function DashamiOrder({ open }: { open: boolean }) {
                   {busy ? "Opening secure payment…" : `Pay ${formatMoney(DASHAMI_PRICE)}`}
                 </button>
                 <p className="text-center text-xs leading-relaxed text-[#5c4a38]">
-                  The menu is set for this lunch. Pre-orders close Monday, October 19 at 8:00 PM Pacific.
+                  The menu is set for this lunch. Pre-orders close Tuesday, October 20 at 8:00 AM Pacific.
                   Questions: (408) 335-4055.
                 </p>
               </div>
             ) : (
               <p className="mt-5 border border-[#e4d3b4] bg-[#fff8ef] px-4 py-4 text-sm leading-relaxed">
-                Pre-orders for this Vijaya Dashami lunch are closed. They ended Monday, October 19 at 8:00 PM Pacific.
+                Pre-orders for this Vijaya Dashami lunch are closed. They ended Tuesday, October 20 at 8:00 AM Pacific.
                 Call (408) 335-4055 if you still need help.
               </p>
             )}

@@ -1,5 +1,5 @@
-/** 8:00 PM Pacific on Monday, October 19, 2026 (PDT, UTC−7). */
-export const DASHAMI_DEADLINE_ISO = "2026-10-20T03:00:00.000Z";
+/** 8:00 AM Pacific on Tuesday, October 20, 2026 (PDT, UTC−7). */
+export const DASHAMI_DEADLINE_ISO = "2026-10-20T15:00:00.000Z";
 export const DASHAMI_EVENT_DATE = "2026-10-20";
 export const DASHAMI_EVENT_TIME = "12:00";
 export const DASHAMI_PRICE = 79;

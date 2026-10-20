@@ -18,7 +18,9 @@ export function Header() {
   const itemCount = useCartStore((s) =>
     s.items.reduce((n, i) => n + i.quantity, 0)
   );
-  if (pathname?.startsWith("/admin") || pathname === "/employee") return null;
+  if (pathname?.startsWith("/admin") || pathname === "/employee" || pathname?.startsWith("/pay")) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-40 overflow-visible border-b border-line/80 bg-white/95 backdrop-blur-md">
