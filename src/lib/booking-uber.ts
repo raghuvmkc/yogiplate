@@ -8,6 +8,7 @@ import {
   createUberDelivery,
   createUberQuote,
   extractZip,
+  formatDropoffSummary,
   formatUberAddress,
   getUberDelivery,
   mapUberDelivery,
@@ -28,6 +29,11 @@ export type UberScheduleInput = {
   pickup_date: string;
   /** Pacific HH:mm — required kitchen pickup ready time. */
   pickup_time: string;
+  /**
+   * Cancel the active Uber trip first, then create a new one for the current
+   * event address (needed after the admin changes dropoff).
+   */
+  replace?: boolean;
 };
 
 type DropoffSources = {
@@ -181,10 +187,31 @@ export async function scheduleUberForBooking(id: string, input: UberScheduleInpu
   }
 
   const existing = booking.uber;
-  if (existing?.delivery_id && !uberIsTerminal(existing.status) && !existing.cancelled_at) {
+  const hasActive =
+    Boolean(existing?.delivery_id) &&
+    !uberIsTerminal(existing?.status || "") &&
+    !existing?.cancelled_at;
+
+  if (hasActive && !input.replace) {
     throw new Error(
-      `Uber is already scheduled (${existing.status || "active"}). Cancel it before scheduling again.`
+      `Uber is already scheduled (${existing?.status || "active"}). Use Reschedule Uber after an address change, or Cancel Uber first.`
     );
+  }
+
+  if (hasActive && input.replace && existing?.delivery_id) {
+    try {
+      await cancelUberDelivery(existing.delivery_id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Could not cancel the previous Uber trip before rescheduling: ${message}`
+      );
+    }
+    await saveUber(id, {
+      ...existing,
+      status: "canceled",
+      cancelled_at: new Date().toISOString(),
+    });
   }
 
   const pickupDate = String(input.pickup_date || booking.event_date || "").trim();
@@ -197,6 +224,7 @@ export async function scheduleUberForBooking(id: string, input: UberScheduleInpu
 
   const phone = phoneFromEvent(sources);
   const dropoff = dropoffFromEvent(sources);
+  const dropoffSummary = formatDropoffSummary(dropoff);
   const pickup = pickupAddressParts();
   const lines = (detail.order_items || []).map((item) => ({
     name: item.name,
@@ -240,6 +268,7 @@ export async function scheduleUberForBooking(id: string, input: UberScheduleInpu
     pickup_ready_dt: pickupReadyIso,
     pickup_local_date: pickupDate,
     pickup_local_time: pickupTime,
+    dropoff_summary: dropoffSummary,
   });
   if (!uber.delivery_id) throw new Error("Uber did not return a delivery id.");
 
@@ -251,11 +280,12 @@ export async function scheduleUberForBooking(id: string, input: UberScheduleInpu
       ? `\nTrack: ${uber.tracking_url}`
       : "\nA tracking link will appear once a driver is assigned.";
     const label = booking.order_number || booking.invoice_number || detail.order?.order_number;
+    const verb = input.replace ? "updated" : "scheduled";
     const result = await sendSms(
       phone,
-      `Yogiplate: Uber delivery scheduled for your catering order${
+      `Yogiplate: Uber delivery ${verb} for your catering order${
         label ? ` (${label})` : ""
-      }.${track}`
+      }.${track}\nDropoff: ${dropoffSummary}`
     );
     sms = result.ok ? { ok: true } : { ok: false, error: result.error };
   }

@@ -448,7 +448,7 @@ export function BookingDetailDrawer(props: {
     }
   }
 
-  async function scheduleUber() {
+  async function scheduleUber(replace = false) {
     if (!uberPickupDate.trim()) {
       setError(`Set the Uber pickup date in ${ADMIN_TZ_LABEL} time.`);
       return;
@@ -457,14 +457,13 @@ export function BookingDetailDrawer(props: {
       setError(`Set the kitchen pickup time in ${ADMIN_TZ_LABEL} (HH:mm).`);
       return;
     }
-    if (
-      !window.confirm(
-        `Schedule Uber for kitchen pickup ${uberPickupDate} at ${uberPickupTime} ${ADMIN_TZ_LABEL}? The guest will get an SMS with the tracking link when available.`
-      )
-    ) {
+    const confirmMsg = replace
+      ? `Cancel the current Uber trip and schedule a new one to the event’s current delivery address?\n\nKitchen pickup: ${uberPickupDate} at ${uberPickupTime} ${ADMIN_TZ_LABEL}\n\nThe guest will get a new tracking SMS.`
+      : `Schedule Uber for kitchen pickup ${uberPickupDate} at ${uberPickupTime} ${ADMIN_TZ_LABEL}? The guest will get an SMS with the tracking link when available.`;
+    if (!window.confirm(confirmMsg)) {
       return;
     }
-    setBusy("uber_schedule");
+    setBusy(replace ? "uber_reschedule" : "uber_schedule");
     setError(null);
     setNotice(null);
     try {
@@ -475,6 +474,7 @@ export function BookingDetailDrawer(props: {
           action: "uber_schedule",
           pickup_date: uberPickupDate.trim(),
           pickup_time: uberPickupTime.trim(),
+          replace,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -484,10 +484,11 @@ export function BookingDetailDrawer(props: {
       }
       apply(data as BookingDetail);
       const sms = data.uber_sms as { ok?: boolean; error?: string } | undefined;
+      const done = replace ? "Uber rescheduled to the current address." : "Uber scheduled.";
       setNotice(
         sms?.ok
-          ? "Uber scheduled. Guest SMS sent."
-          : `Uber scheduled.${sms?.error ? ` SMS: ${sms.error}` : " Guest SMS was not sent."}`
+          ? `${done} Guest SMS sent.`
+          : `${done}${sms?.error ? ` SMS: ${sms.error}` : " Guest SMS was not sent."}`
       );
     } finally {
       setBusy(null);
@@ -676,12 +677,12 @@ export function BookingDetailDrawer(props: {
               <section className="mt-8 border border-line bg-white p-4">
                 <h4 className="font-display text-xl text-foreground">Uber delivery</h4>
                 <p className="mt-1 text-sm text-muted">
-                  Guest, phone, and dropoff come from this event. Set when the kitchen will be ready
-                  for pickup in {ADMIN_TZ_LABEL} time.
+                  Guest, phone, and dropoff come from this event. Changing the address on the event
+                  does not update an Uber trip already created — use Reschedule Uber for that.
                 </p>
                 {(detail.order?.delivery_address || form.address) && (
                   <p className="mt-2 text-sm">
-                    <span className="font-semibold">Dropoff:</span>{" "}
+                    <span className="font-semibold">Event dropoff now:</span>{" "}
                     {[
                       detail.order?.delivery_address || form.address,
                       detail.order?.delivery_city || form.city,
@@ -727,6 +728,20 @@ export function BookingDetailDrawer(props: {
                       {detail.booking.uber.status || "—"}
                       {detail.booking.uber.cancelled_at ? " (cancelled)" : ""}
                     </p>
+                    {detail.booking.uber.dropoff_summary ? (
+                      <p>
+                        <span className="font-semibold">Uber dropoff (on tracking):</span>{" "}
+                        {detail.booking.uber.dropoff_summary}
+                      </p>
+                    ) : null}
+                    {!detail.booking.uber.cancelled_at &&
+                    detail.booking.uber.dropoff_summary &&
+                    (detail.order?.delivery_address || form.address) ? (
+                      <p className="font-medium text-amber-800">
+                        If you changed the event address, the tracking link still uses the Uber
+                        dropoff above until you Reschedule Uber.
+                      </p>
+                    ) : null}
                     {detail.booking.uber.pickup_local_date ||
                     detail.booking.uber.pickup_ready_dt ? (
                       <p>
@@ -770,16 +785,34 @@ export function BookingDetailDrawer(props: {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {detail.uber_configured ? (
                     <>
-                      <button
-                        type="button"
-                        disabled={Boolean(busy)}
-                        onClick={() => void scheduleUber()}
-                        className="bg-accent-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                      >
-                        {busy === "uber_schedule" ? "Scheduling…" : "Schedule Uber"}
-                      </button>
+                      {!(
+                        detail.booking.uber?.delivery_id &&
+                        !detail.booking.uber.cancelled_at &&
+                        !["delivered", "canceled", "cancelled", "returned", "failed"].includes(
+                          (detail.booking.uber.status || "").toLowerCase()
+                        )
+                      ) ? (
+                        <button
+                          type="button"
+                          disabled={Boolean(busy)}
+                          onClick={() => void scheduleUber(false)}
+                          className="bg-accent-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                        >
+                          {busy === "uber_schedule" ? "Scheduling…" : "Schedule Uber"}
+                        </button>
+                      ) : null}
                       {detail.booking.uber?.delivery_id && !detail.booking.uber.cancelled_at ? (
                         <>
+                          <button
+                            type="button"
+                            disabled={Boolean(busy)}
+                            onClick={() => void scheduleUber(true)}
+                            className="bg-accent-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                          >
+                            {busy === "uber_reschedule"
+                              ? "Rescheduling…"
+                              : "Reschedule Uber (new address)"}
+                          </button>
                           <button
                             type="button"
                             disabled={Boolean(busy)}

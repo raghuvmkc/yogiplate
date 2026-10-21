@@ -67,6 +67,7 @@ export async function POST(req: Request, ctx: Ctx) {
     payment_intent_id?: string;
     pickup_date?: string;
     pickup_time?: string;
+    replace?: boolean;
   };
   try {
     if (body.action === "payment") {
@@ -118,6 +119,7 @@ export async function POST(req: Request, ctx: Ctx) {
       const result = await scheduleUberForBooking(id, {
         pickup_date: String(body.pickup_date || ""),
         pickup_time: String(body.pickup_time || ""),
+        replace: Boolean(body.replace),
       });
       return NextResponse.json(
         { ...result.detail, uber_sms: result.sms },

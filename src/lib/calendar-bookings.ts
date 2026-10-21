@@ -116,25 +116,47 @@ function isIsoDate(d: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d);
 }
 
+/**
+ * Decide whether an upsert updates an existing calendar row or creates a new one.
+ * Each distinct order_id / quote_id must keep its own event — never collapse two
+ * paid orders for the same guest on the same day into one calendar block.
+ */
 function matchKey(b: CateringBooking, input: BookingUpsertInput) {
   if (input.order_id && b.order_id === input.order_id) return true;
   if (input.quote_id && b.quote_id === input.quote_id) return true;
+
+  // Already tied to a different order or quote → keep separate.
+  if (input.order_id && b.order_id && b.order_id !== input.order_id) return false;
+  if (input.quote_id && b.quote_id && b.quote_id !== input.quote_id) return false;
+
+  if (b.status === "cancelled") return false;
+
+  // Same chat turn / session on the same day may promote inquiry → first order.
+  // A second order from the same session still gets its own row (blocked above).
   if (
     input.chat_session_id &&
     b.chat_session_id === input.chat_session_id &&
-    b.event_date === input.event_date
+    b.event_date === input.event_date &&
+    !b.order_id
   ) {
     return true;
   }
+
+  // Email + day only fills an open inquiry (no order yet). Never reuse a row that
+  // already has an order — that is what hid Moumita's second order on the calendar.
   const email = (input.customer_email || "").toLowerCase().trim();
   if (
     email &&
     (b.customer_email || "").toLowerCase() === email &&
     b.event_date === input.event_date &&
-    b.status !== "cancelled"
+    !b.order_id
   ) {
+    // Do not attach a bare order onto a different quote's inquiry.
+    if (b.quote_id && input.quote_id && b.quote_id !== input.quote_id) return false;
+    if (b.quote_id && !input.quote_id) return false;
     return true;
   }
+
   return false;
 }
 
@@ -246,13 +268,11 @@ function collected(order: Order) {
   return 0;
 }
 
-/** Paint quotes and invoices already on file onto the calendar. */
+/** Paint quotes, invoices, and any order missing a calendar row. */
 async function syncDocumentsOntoCalendar() {
   const db = await getDb();
   const quotes = db.quotes || [];
-  const covered = new Set(
-    quotes.map((quote) => quote.order_id).filter((id): id is string => Boolean(id))
-  );
+  const paintedFromQuotes = new Set<string>();
 
   for (const quote of quotes) {
     if (!isIsoDate(quote.event_date || "")) continue;
@@ -285,13 +305,18 @@ async function syncDocumentsOntoCalendar() {
       items_summary: quote.items.map((item) => `${item.quantity}× ${item.name}`).join("; "),
       food_subtotal: quote.food_subtotal,
     });
+    if (order?.id) paintedFromQuotes.add(order.id);
   }
 
   for (const invoice of db.invoices) {
     const order = db.orders.find((row) => row.id === invoice.order_id);
-    if (!order || !isIsoDate(order.event_date) || covered.has(order.id)) continue;
+    if (!order || !isIsoDate(order.event_date) || paintedFromQuotes.has(order.id)) {
+      continue;
+    }
+    const items = db.order_items.filter((row) => row.order_id === order.id);
     await paintDocument({
       event_date: order.event_date,
+      event_time: order.event_time,
       customer_name: order.customer_name,
       customer_email: order.customer_email,
       customer_phone: order.customer_phone,
@@ -299,9 +324,41 @@ async function syncDocumentsOntoCalendar() {
       invoice_number: invoice.invoice_number,
       amount_due: order.total,
       document: invoice.email_sent_at ? "invoice_sent" : "order_placed",
-      items_summary: null,
+      items_summary: items.length
+        ? items.map((item) => `${item.quantity}× ${item.name}`).join("; ")
+        : null,
       food_subtotal: order.subtotal,
     });
+  }
+
+  // Repair: every order with an event date must have its own calendar row.
+  // Reloads after the loops above so newly painted ids are included.
+  const latest = await getDb();
+  const bookedOrderIds = new Set(
+    (latest.catering_bookings || [])
+      .map((row) => row.order_id)
+      .filter((id): id is string => Boolean(id))
+  );
+  for (const order of latest.orders) {
+    if (!isIsoDate(order.event_date) || bookedOrderIds.has(order.id)) continue;
+    const invoice = latest.invoices.find((row) => row.order_id === order.id);
+    const items = latest.order_items.filter((row) => row.order_id === order.id);
+    await paintDocument({
+      event_date: order.event_date,
+      event_time: order.event_time,
+      customer_name: order.customer_name,
+      customer_email: order.customer_email,
+      customer_phone: order.customer_phone,
+      order,
+      invoice_number: invoice?.invoice_number,
+      amount_due: order.total,
+      document: invoice?.email_sent_at ? "invoice_sent" : "order_placed",
+      items_summary: items.length
+        ? items.map((item) => `${item.quantity}× ${item.name}`).join("; ")
+        : null,
+      food_subtotal: order.subtotal,
+    });
+    bookedOrderIds.add(order.id);
   }
 }
 

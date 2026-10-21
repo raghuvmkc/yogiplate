@@ -406,6 +406,7 @@ export interface BookingUberDelivery {
   pickup_ready_dt?: string | null;
   pickup_local_date?: string | null;
   pickup_local_time?: string | null;
+  dropoff_summary?: string | null;
   scheduled_at: string;
   cancelled_at?: string | null;
 }

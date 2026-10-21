@@ -43,6 +43,8 @@ export type UberDeliveryInfo = {
   pickup_local_date?: string | null;
   /** Pacific HH:mm the admin set. */
   pickup_local_time?: string | null;
+  /** Human dropoff string Uber was created with (for mismatch warnings). */
+  dropoff_summary?: string | null;
   scheduled_at: string;
   cancelled_at?: string | null;
 };
@@ -281,6 +283,7 @@ export function mapUberDelivery(
     pickup_ready_dt?: string | null;
     pickup_local_date?: string | null;
     pickup_local_time?: string | null;
+    dropoff_summary?: string | null;
   }
 ): UberDeliveryInfo {
   return {
@@ -300,8 +303,15 @@ export function mapUberDelivery(
     pickup_ready_dt: extras?.pickup_ready_dt || null,
     pickup_local_date: extras?.pickup_local_date || null,
     pickup_local_time: extras?.pickup_local_time || null,
+    dropoff_summary: extras?.dropoff_summary || null,
     scheduled_at: new Date().toISOString(),
   };
+}
+
+export function formatDropoffSummary(parts: UberAddressParts): string {
+  return [parts.street, parts.city, `${parts.state || "CA"} ${parts.zip}`.trim()]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function uberIsTerminal(status: string): boolean {
