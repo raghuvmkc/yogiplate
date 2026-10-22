@@ -1,6 +1,6 @@
 import type { SiteSettings } from "@/lib/types";
 import { geocodeDeliveryAddress } from "@/lib/geocode";
-import { calcDeliveryFee } from "@/lib/pricing";
+import { calcDeliveryFeeBreakdown } from "@/lib/pricing";
 
 /** Rough city centers, used only when the address lookup service is down. */
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -148,11 +148,18 @@ export async function quoteDelivery(input: {
   }
 
   miles = Math.round(miles * 10) / 10;
-  // Beyond the listed Bay Area radius is still allowed — fee uses the outermost tier.
+  const fee = calcDeliveryFeeBreakdown(miles, input.subtotal, settings);
+  // Beyond the listed Bay Area radius is still allowed — fee uses per-mile after the last flat tier.
   return {
     ...base,
     miles,
-    delivery_fee: calcDeliveryFee(miles, input.subtotal, settings),
+    delivery_fee: fee.delivery_fee,
+    delivery_fee_before_discount: fee.base_fee,
+    delivery_discount: fee.delivery_discount,
+    large_order_delivery_discount_applied: fee.large_order_discount_applied,
+    large_order_threshold: settings.large_order_threshold || 0,
+    large_order_delivery_discount_percent:
+      settings.large_order_delivery_discount_percent || 0,
     in_service: true,
     address_verified: geo.status === "ok",
     address_error: null as string | null,

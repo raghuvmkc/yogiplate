@@ -83,8 +83,11 @@ export async function createDeskInvoice(input: DeskBillInput) {
     };
   });
   for (const item of items) {
-    if (!item.name || !(item.price > 0)) {
-      throw new GuestInputError("Every invoice line needs a name and a price greater than zero.");
+    if (!item.name || !(item.quantity > 0)) {
+      throw new GuestInputError("Every invoice line needs a name and a quantity.");
+    }
+    if (item.price < 0) {
+      throw new GuestInputError("Invoice line prices cannot be negative. Use $0 for complimentary items.");
     }
   }
 

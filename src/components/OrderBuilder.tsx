@@ -506,8 +506,9 @@ export function OrderBuilder({
             <span className="font-semibold">{formatMoney(subtotal)}</span>
           </div>
           <p className="mt-2 text-xs text-muted">
-            Delivery from our San Jose kitchen: $49 under 8 mi, $79 for 8–15 mi,
-            $109 for 15–25 mi (+$15 on orders over $600). Pickup is free.
+            Delivery from our San Jose kitchen: $40 until 10 mi, $50 until 15 mi,
+            then $2 per mile. Food over $500 (before tax) gets 50% off delivery.
+            Pickup is free.
           </p>
           {items.length ? (
             <div className="mt-3">

@@ -13,24 +13,24 @@ export const MENU_SEED_VERSION = catalog.seedVersion;
 export const categories = catalog.categories as MenuCategory[];
 export const menuItems = catalog.items as MenuItem[];
 
-export const DELIVERY_POLICY_VERSION = 2;
+export const DELIVERY_POLICY_VERSION = 3;
 
 /** Store address and delivery pricing; re-applied to saved settings when the version changes. */
 export const deliveryPolicyDefaults = {
   kitchen_address: "326 Commercial St, San Jose, CA 95112",
   kitchen_lat: 37.3607951,
   kitchen_lng: -121.8992863,
-  base_delivery_fee: 49,
-  rate_per_mile: 0,
+  base_delivery_fee: 40,
+  rate_per_mile: 2,
   free_delivery_threshold: 0,
   service_radius_miles: 25,
   delivery_tiers: [
-    { max_miles: 8, fee: 49 },
-    { max_miles: 15, fee: 79 },
-    { max_miles: 25, fee: 109 },
+    { max_miles: 10, fee: 40 },
+    { max_miles: 15, fee: 50 },
   ],
-  large_order_threshold: 600,
-  large_order_extra: 15,
+  large_order_threshold: 500,
+  large_order_delivery_discount_percent: 50,
+  large_order_extra: 0,
   delivery_policy_version: DELIVERY_POLICY_VERSION,
 };
 

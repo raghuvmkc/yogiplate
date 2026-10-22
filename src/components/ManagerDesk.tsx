@@ -303,7 +303,7 @@ export function ManagerDesk({
                       inputMode="decimal"
                       value={
                         priceDrafts[line.line_id] ??
-                        (line.price ? String(line.price) : "")
+                        (Number.isFinite(Number(line.price)) ? String(line.price) : "")
                       }
                       onChange={(event) => {
                         const raw = event.target.value;
@@ -572,11 +572,13 @@ export function ManagerDesk({
       (line) =>
         line.menu_item_id === "custom" &&
         (!line.name.trim() ||
-          !(parseMoneyInput(line.price) > 0) ||
-          !(Number(line.quantity) > 0))
+          !(Number(line.quantity) > 0) ||
+          parseMoneyInput(line.price) < 0)
     );
     if (badCustom) {
-      setNotice("Each custom item needs a name, quantity, and price greater than zero.");
+      setNotice(
+        "Each custom item needs a name and quantity. Price may be $0 for complimentary items."
+      );
       return;
     }
     setBusy(kind === "invoice" ? (deliver ? "send" : "save") : "quote");
@@ -1139,7 +1141,13 @@ export function ManagerDesk({
                       </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt>Delivery</dt>
+                      <dt>
+                        Delivery
+                        {addressCheck.status === "ok" &&
+                        addressCheck.largeOrderDiscountApplied
+                          ? " (50% large-order discount)"
+                          : ""}
+                      </dt>
                       <dd>
                         {addressCheck.status === "ok"
                           ? formatMoney(addressCheck.fee)

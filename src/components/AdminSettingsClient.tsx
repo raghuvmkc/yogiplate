@@ -26,9 +26,8 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
   const tiers: DeliveryTier[] = settings.delivery_tiers?.length
     ? settings.delivery_tiers
     : [
-        { max_miles: 8, fee: 49 },
-        { max_miles: 15, fee: 79 },
-        { max_miles: 25, fee: 109 },
+        { max_miles: 10, fee: 40 },
+        { max_miles: 15, fee: 50 },
       ];
 
   function setTier(index: number, patch: Partial<DeliveryTier>) {
@@ -65,6 +64,10 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
         />
         <div className="sm:col-span-2">
           <p className="text-sm font-semibold">Delivery fee by driving distance</p>
+          <p className="mt-1 text-xs text-muted">
+            Flat fee until each mile limit. After the last limit, each extra mile uses the
+            per-mile rate below.
+          </p>
           <div className="mt-2 grid gap-3 sm:grid-cols-3">
             {tiers.map((tier, i) => (
               <div key={i} className="border border-line p-3 text-sm">
@@ -86,14 +89,19 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
           </div>
         </div>
         <Field
+          label="Per mile after last tier ($)"
+          value={String(settings.rate_per_mile ?? 0)}
+          onChange={(v) => num("rate_per_mile", v)}
+        />
+        <Field
           label="Large order above food subtotal ($)"
           value={String(settings.large_order_threshold ?? 0)}
           onChange={(v) => num("large_order_threshold", v)}
         />
         <Field
-          label="Extra delivery fee for large orders ($)"
-          value={String(settings.large_order_extra ?? 0)}
-          onChange={(v) => num("large_order_extra", v)}
+          label="Delivery discount % for large food orders"
+          value={String(settings.large_order_delivery_discount_percent ?? 0)}
+          onChange={(v) => num("large_order_delivery_discount_percent", v)}
         />
         <Field
           label="Full on-site setup fee ($)"

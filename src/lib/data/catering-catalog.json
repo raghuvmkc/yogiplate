@@ -1,5 +1,5 @@
 {
-  "seedVersion": "catering-v16-no-packages",
+  "seedVersion": "catering-v17-roti-2-50",
   "categories": [
     {
       "id": "cat-appetizers",
@@ -3024,8 +3024,8 @@
       "id": "item-whole-wheat-rotis-with-ghee",
       "category_id": "cat-breads-rotis",
       "name": "Whole wheat rotis with ghee",
-      "description": "Chef’s rotis — soft whole wheat brushed warm with pure ghee. Plain vegan roti on request at the same price.",
-      "price": 2,
+      "description": "Chef’s thin, large whole-wheat rotis brushed warm with pure ghee — guests really love them. Plain vegan roti on request at the same price.",
+      "price": 2.5,
       "unit": "piece",
       "diet_tags": [
         "pure_vegetarian",
@@ -3038,7 +3038,7 @@
         {
           "id": "piece",
           "label": "Per piece",
-          "price": 2,
+          "price": 2.5,
           "unit": "piece",
           "serves": 1
         }

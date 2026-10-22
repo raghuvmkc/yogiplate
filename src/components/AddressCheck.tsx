@@ -10,6 +10,9 @@ export type AddressCheckResult =
       status: "ok";
       miles: number;
       fee: number;
+      feeBeforeDiscount?: number;
+      deliveryDiscount?: number;
+      largeOrderDiscountApplied?: boolean;
       formatted: string | null;
       verified: boolean;
       taxRate: number;
@@ -68,6 +71,9 @@ export function useAddressCheck(input: {
               status: "ok",
               miles: data.miles,
               fee: data.delivery_fee,
+              feeBeforeDiscount: Number(data.delivery_fee_before_discount) || undefined,
+              deliveryDiscount: Number(data.delivery_discount) || undefined,
+              largeOrderDiscountApplied: Boolean(data.large_order_delivery_discount_applied),
               formatted: data.formatted_address,
               verified: Boolean(data.address_verified),
               taxRate: Number(data.tax_rate) || 0,
@@ -107,6 +113,17 @@ export function AddressCheckNote({ check }: { check: AddressCheckResult }) {
         {check.formatted ? `: ${check.formatted}` : ""}
         <br />
         {check.miles} mi from our San Jose kitchen · Delivery {formatMoney(check.fee)}
+        {check.largeOrderDiscountApplied && check.deliveryDiscount ? (
+          <>
+            <br />
+            <span className="font-semibold text-accent-deep">
+              Large-order delivery discount applied
+            </span>
+            {check.feeBeforeDiscount != null
+              ? ` — was ${formatMoney(check.feeBeforeDiscount)}, now ${formatMoney(check.fee)} (50% off food over $500 before tax).`
+              : "."}
+          </>
+        ) : null}
         {check.verified ? null : (
           <>
             <br />

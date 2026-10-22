@@ -329,10 +329,13 @@ export interface SiteSettings {
   free_delivery_threshold: number;
   tax_rate: number;
   service_radius_miles: number;
-  /** Flat delivery fee by driving distance; a tier applies while miles < max_miles. */
+  /** Flat delivery fee by driving distance; a tier applies while miles <= max_miles. */
   delivery_tiers?: DeliveryTier[];
-  /** Food subtotal above which `large_order_extra` is added to the delivery fee. */
+  /** Food subtotal (before tax) above which the large-order delivery discount applies. */
   large_order_threshold?: number;
+  /** Percent off the delivery fee when food subtotal is above `large_order_threshold`. */
+  large_order_delivery_discount_percent?: number;
+  /** @deprecated Prefer `large_order_delivery_discount_percent`. Kept for old settings rows. */
   large_order_extra?: number;
   /** Flat charge when the guest asks us to set up the buffet on site (default 200). */
   setup_fee?: number;

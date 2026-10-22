@@ -305,7 +305,11 @@ export function CheckoutForm({ setupFee }: { setupFee: number }) {
           </div>
           <div className="flex justify-between">
             <span>
-              Delivery{addressCheck.status === "ok" ? ` (${addressCheck.miles} mi)` : ""}
+              Delivery
+              {addressCheck.status === "ok" ? ` (${addressCheck.miles} mi)` : ""}
+              {addressCheck.status === "ok" && addressCheck.largeOrderDiscountApplied
+                ? " · 50% large-order discount"
+                : ""}
             </span>
             <span>{addressCheck.status === "ok" ? formatMoney(deliveryFee) : "—"}</span>
           </div>

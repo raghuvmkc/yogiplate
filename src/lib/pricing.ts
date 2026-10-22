@@ -65,29 +65,90 @@ export function discountFromPercent(subtotal: number, percent: number) {
   return fromCents(percentCents(toCents(subtotal), p));
 }
 
-/** Distance tier fee (under 8 mi, 8–15, 15+ by default), plus the large-order extra. */
+export type DeliveryFeeBreakdown = {
+  /** Distance fee before any large-order discount. */
+  base_fee: number;
+  /** Dollars taken off for a large food subtotal. */
+  delivery_discount: number;
+  /** Amount charged after discount. */
+  delivery_fee: number;
+  large_order_discount_applied: boolean;
+};
+
+/**
+ * Distance fee from kitchen:
+ * flat tiers (e.g. $40 through 10 mi, $50 through 15 mi), then +rate_per_mile
+ * for each mile beyond the last tier. Food subtotal above the large-order
+ * threshold can take a percent off that delivery fee (default 50% over $500).
+ */
+export function calcDeliveryFeeBreakdown(
+  miles: number,
+  subtotal: number,
+  settings: SiteSettings
+): DeliveryFeeBreakdown {
+  const distance = Math.max(0, Number(miles) || 0);
+  const tiers = [...(settings.delivery_tiers || [])].sort(
+    (a, b) => a.max_miles - b.max_miles
+  );
+  let baseCents = toCents(settings.base_delivery_fee);
+  if (tiers.length) {
+    const within = tiers.find((t) => distance <= t.max_miles);
+    if (within) {
+      baseCents = toCents(within.fee);
+    } else {
+      const last = tiers[tiers.length - 1]!;
+      const over = Math.max(0, distance - last.max_miles);
+      const billableExtra = over > 0 ? Math.ceil(over - 1e-9) : 0;
+      baseCents =
+        toCents(last.fee) + toCents(settings.rate_per_mile || 0) * billableExtra;
+    }
+  }
+
+  const threshold = Number(settings.large_order_threshold) || 0;
+  const discountPct = Math.min(
+    100,
+    Math.max(0, Number(settings.large_order_delivery_discount_percent) || 0)
+  );
+  let discountCents = 0;
+  if (threshold > 0 && discountPct > 0 && subtotal > threshold) {
+    discountCents = Math.round((baseCents * discountPct) / 100);
+  }
+  return {
+    base_fee: fromCents(baseCents),
+    delivery_discount: fromCents(discountCents),
+    delivery_fee: fromCents(baseCents - discountCents),
+    large_order_discount_applied: discountCents > 0,
+  };
+}
+
 export function calcDeliveryFee(
   miles: number,
   subtotal: number,
   settings: SiteSettings
 ) {
+  return calcDeliveryFeeBreakdown(miles, subtotal, settings).delivery_fee;
+}
+
+/** Short guest/admin blurb for the current delivery policy. */
+export function deliveryPricingBlurb(settings: SiteSettings) {
   const tiers = [...(settings.delivery_tiers || [])].sort(
     (a, b) => a.max_miles - b.max_miles
   );
-  let feeCents = toCents(settings.base_delivery_fee);
-  if (tiers.length) {
-    const tier =
-      tiers.find((t) => miles < t.max_miles) || tiers[tiers.length - 1];
-    feeCents = toCents(tier.fee);
-  }
-  if (
-    settings.large_order_threshold &&
-    settings.large_order_extra &&
-    subtotal > settings.large_order_threshold
-  ) {
-    feeCents += toCents(settings.large_order_extra);
-  }
-  return fromCents(feeCents);
+  const tierText = tiers.length
+    ? tiers.map((t) => `${formatMoney(t.fee)} until ${t.max_miles} mi`).join(", ")
+    : `${formatMoney(settings.base_delivery_fee)} base`;
+  const perMile = settings.rate_per_mile || 0;
+  const beyond =
+    perMile > 0 && tiers.length
+      ? `; then ${formatMoney(perMile)} per mile after ${tiers[tiers.length - 1]!.max_miles} mi`
+      : "";
+  const threshold = settings.large_order_threshold || 0;
+  const pct = settings.large_order_delivery_discount_percent || 0;
+  const large =
+    threshold > 0 && pct > 0
+      ? ` Food over ${formatMoney(threshold)} (before tax) gets ${pct}% off delivery.`
+      : "";
+  return `${tierText}${beyond}.${large} Pickup is free.`;
 }
 
 export function calcTax(amount: number, settings: SiteSettings) {
