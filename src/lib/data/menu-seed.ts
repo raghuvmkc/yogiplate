@@ -13,7 +13,7 @@ export const MENU_SEED_VERSION = catalog.seedVersion;
 export const categories = catalog.categories as MenuCategory[];
 export const menuItems = catalog.items as MenuItem[];
 
-export const DELIVERY_POLICY_VERSION = 3;
+export const DELIVERY_POLICY_VERSION = 4;
 
 /** Store address and delivery pricing; re-applied to saved settings when the version changes. */
 export const deliveryPolicyDefaults = {
@@ -31,13 +31,14 @@ export const deliveryPolicyDefaults = {
   large_order_threshold: 500,
   large_order_delivery_discount_percent: 50,
   large_order_extra: 0,
+  /** Flat sales tax applied to food + delivery + setup. */
+  tax_rate: 0.1,
   delivery_policy_version: DELIVERY_POLICY_VERSION,
 };
 
 export const defaultSettings = {
   ...deliveryPolicyDefaults,
   setup_fee: 200,
-  tax_rate: 0.0975,
   business_name: "Yogiplate Catering",
   business_email: "support@yogiplate.com",
   business_phone: "(510) 555-0199",

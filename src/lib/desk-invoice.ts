@@ -45,6 +45,11 @@ export type DeskBillInput = {
   discount_percent?: number;
   /** Shown on the invoice when a discount is applied. */
   discount_reason?: string;
+  /**
+   * Optional admin override for the delivery charge (dollars). When set, replaces
+   * the distance quote so complimentary or adjusted delivery can be invoiced.
+   */
+  delivery_fee?: number | null;
   /** Update this saved invoice instead of creating another one. */
   order_id?: string;
   /** When false, store the invoice and do not email the guest. */
@@ -96,6 +101,11 @@ export async function createDeskInvoice(input: DeskBillInput) {
   const foodSubtotal = cartSubtotal(items);
   let miles = 0;
   let deliveryFee = 0;
+  const hasFeeOverride =
+    input.delivery_fee != null && String(input.delivery_fee).trim() !== "";
+  const feeOverride = hasFeeOverride
+    ? Math.max(0, parseMoneyInput(input.delivery_fee))
+    : null;
   if (!pickup) {
     const quote = await quoteDelivery({
       address: input.address,
@@ -108,11 +118,10 @@ export async function createDeskInvoice(input: DeskBillInput) {
     const problem = deliveryProblem(quote);
     if (problem) throw new GuestInputError(problem);
     miles = quote.miles;
-    // Use the quoted delivery charge so the invoice matches address verification.
-    deliveryFee = quote.delivery_fee;
-    if (!(deliveryFee > 0)) {
+    deliveryFee = feeOverride != null ? feeOverride : quote.delivery_fee;
+    if (feeOverride == null && !(quote.delivery_fee > 0)) {
       throw new GuestInputError(
-        "Could not calculate a delivery charge for this address. Check the address or choose pickup."
+        "Could not calculate a delivery charge for this address. Enter a delivery fee, check the address, or choose pickup."
       );
     }
   }
@@ -393,6 +402,8 @@ export async function getDeskInvoiceDraft(orderId: string) {
     setup_service: (order.setup_fee || 0) > 0,
     discount_percent: order.discount_percent || 0,
     discount_reason: order.discount_reason || "",
+    delivery_fee: order.delivery_fee,
+    delivery_miles: order.delivery_miles,
     items,
   };
 }

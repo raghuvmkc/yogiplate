@@ -66,7 +66,8 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
           <p className="text-sm font-semibold">Delivery fee by driving distance</p>
           <p className="mt-1 text-xs text-muted">
             Flat fee until each mile limit. After the last limit, each extra mile uses the
-            per-mile rate below.
+            per-mile rate below. These defaults apply to guest checkout; on Desk invoices and
+            calendar events you can still override the delivery fee per order.
           </p>
           <div className="mt-2 grid gap-3 sm:grid-cols-3">
             {tiers.map((tier, i) => (
@@ -119,7 +120,7 @@ export function AdminSettingsClient({ initial }: { initial: SiteSettings }) {
           onChange={(v) => num("base_delivery_fee", v)}
         />
         <Field
-          label="Tax rate (e.g. 0.0975)"
+          label="Tax rate (e.g. 0.1 = 10%)"
           value={String(settings.tax_rate)}
           onChange={(v) => num("tax_rate", v)}
         />

@@ -102,6 +102,9 @@ export function ManagerDesk({
   const [notes, setNotes] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountReason, setDiscountReason] = useState("");
+  /** Desk invoice delivery fee; filled from the quote unless the admin edits it. */
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState("");
+  const [deliveryFeeManual, setDeliveryFeeManual] = useState(false);
   const [busy, setBusy] = useState<"quote" | "save" | "send" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [draftOrderId, setDraftOrderId] = useState<string | null>(null);
@@ -158,12 +161,29 @@ export function ManagerDesk({
     enabled: service === "delivery" && (tab === "invoice" || tab === "quote"),
   });
 
+  useEffect(() => {
+    if (service === "pickup") {
+      setDeliveryFeeInput("0");
+      setDeliveryFeeManual(false);
+      return;
+    }
+    if (!deliveryFeeManual && addressCheck.status === "ok") {
+      setDeliveryFeeInput(String(addressCheck.fee));
+    }
+  }, [service, addressCheck, deliveryFeeManual]);
+
   const invoicePreview = useMemo(() => {
     if (tab !== "invoice") return null;
-    const deliveryFee =
+    const quoted =
       service === "pickup" ? 0 : addressCheck.status === "ok" ? addressCheck.fee : 0;
+    const deliveryFee =
+      service === "pickup"
+        ? 0
+        : deliveryFeeInput.trim() !== ""
+          ? Math.max(0, parseMoneyInput(deliveryFeeInput))
+          : quoted;
     const setup = service === "delivery" && setupService ? setupFee : 0;
-    const taxRate = addressCheck.status === "ok" ? addressCheck.taxRate : 0.0975;
+    const taxRate = addressCheck.status === "ok" ? addressCheck.taxRate : 0.1;
     return chargeTotals({
       subtotal,
       discount: discountDollars,
@@ -171,7 +191,16 @@ export function ManagerDesk({
       setupFee: setup,
       taxRate,
     });
-  }, [tab, service, addressCheck, setupService, setupFee, subtotal, discountDollars]);
+  }, [
+    tab,
+    service,
+    addressCheck,
+    setupService,
+    setupFee,
+    subtotal,
+    discountDollars,
+    deliveryFeeInput,
+  ]);
 
   useEffect(() => {
     const call = incoming || active;
@@ -435,6 +464,10 @@ export function ManagerDesk({
         ? {
             discount_percent: discountPct,
             discount_reason: discountReason.trim(),
+            delivery_fee:
+              service === "delivery" && deliveryFeeInput.trim() !== ""
+                ? Math.max(0, parseMoneyInput(deliveryFeeInput))
+                : undefined,
             order_id: draftOrderId || undefined,
           }
         : {}),
@@ -460,6 +493,8 @@ export function ManagerDesk({
     setNotes("");
     setDiscountPercent("");
     setDiscountReason("");
+    setDeliveryFeeInput("");
+    setDeliveryFeeManual(false);
     setDraftOrderId(null);
     setDraftInvoiceNumber(null);
     setQuery("");
@@ -508,6 +543,16 @@ export function ManagerDesk({
       setNotes(data.notes || "");
       setDiscountPercent(data.discount_percent ? String(data.discount_percent) : "");
       setDiscountReason(data.discount_reason || "");
+      if (data.delivery_or_pickup === "pickup") {
+        setDeliveryFeeInput("0");
+        setDeliveryFeeManual(false);
+      } else if (data.delivery_fee != null) {
+        setDeliveryFeeInput(String(data.delivery_fee));
+        setDeliveryFeeManual(true);
+      } else {
+        setDeliveryFeeInput("");
+        setDeliveryFeeManual(false);
+      }
       setLines(
         (data.items || []).map(
           (line: {
@@ -1140,18 +1185,50 @@ export function ManagerDesk({
                         {addressCheck.status === "ok" ? `${addressCheck.miles} mi` : "—"}
                       </dd>
                     </div>
-                    <div className="flex justify-between">
-                      <dt>
-                        Delivery
-                        {addressCheck.status === "ok" &&
-                        addressCheck.largeOrderDiscountApplied
-                          ? " (50% large-order discount)"
-                          : ""}
-                      </dt>
-                      <dd>
-                        {addressCheck.status === "ok"
-                          ? formatMoney(addressCheck.fee)
-                          : "—"}
+                    <div className="flex items-end justify-between gap-3">
+                      <label className="flex-1 text-sm">
+                        <span className="font-medium">
+                          Delivery fee ($)
+                          {addressCheck.status === "ok" &&
+                          addressCheck.largeOrderDiscountApplied &&
+                          !deliveryFeeManual
+                            ? " · quoted with 50% large-order discount"
+                            : ""}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={deliveryFeeInput}
+                          onChange={(event) => {
+                            setDeliveryFeeManual(true);
+                            setDeliveryFeeInput(event.target.value);
+                          }}
+                          placeholder={
+                            addressCheck.status === "ok"
+                              ? String(addressCheck.fee)
+                              : "Enter fee"
+                          }
+                          className="mt-1 w-full border border-line bg-white px-2 py-1.5 text-sm"
+                        />
+                        {addressCheck.status === "ok" && deliveryFeeManual ? (
+                          <button
+                            type="button"
+                            className="mt-1 text-xs font-semibold text-accent-deep underline"
+                            onClick={() => {
+                              setDeliveryFeeManual(false);
+                              setDeliveryFeeInput(String(addressCheck.fee));
+                            }}
+                          >
+                            Use quoted {formatMoney(addressCheck.fee)}
+                          </button>
+                        ) : (
+                          <span className="mt-1 block text-xs text-muted">
+                            Auto-fills from distance; change anytime for this invoice.
+                          </span>
+                        )}
+                      </label>
+                      <dd className="pb-2 font-semibold">
+                        {formatMoney(invoicePreview.delivery_fee)}
                       </dd>
                     </div>
                   </>
