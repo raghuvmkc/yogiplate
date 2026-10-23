@@ -31,6 +31,8 @@ export type CallRow = {
   duration: string;
   started_at: string;
   missed?: boolean;
+  /** Guest name · YYMMDD when this number matches a calendar event. */
+  calendar_label?: string | null;
 };
 
 type DeviceLike = {
@@ -75,6 +77,8 @@ type AdminVoiceContextValue = {
   setDialNumber: (value: string | ((current: string) => string)) => void;
   incoming: DeskCall | null;
   active: DeskCall | null;
+  /** Calendar match for the live incoming/active PSTN caller, e.g. "Moumita · 251022". */
+  liveCallerLabel: string | null;
   muted: boolean;
   tones: string;
   calls: CallRow[];
@@ -110,9 +114,31 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
   const [dialNumber, setDialNumber] = useState("");
   const [incoming, setIncoming] = useState<DeskCall | null>(null);
   const [active, setActive] = useState<DeskCall | null>(null);
+  const [liveCallerLabel, setLiveCallerLabel] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [tones, setTones] = useState("");
   const [calls, setCalls] = useState<CallRow[]>([]);
+
+  const lookupCalendarCaller = useCallback(async (phone: string) => {
+    const raw = String(phone || "").trim();
+    if (!raw || raw.startsWith("client:")) {
+      setLiveCallerLabel(null);
+      return null;
+    }
+    try {
+      const res = await fetch(
+        `/api/admin/voice/caller?phone=${encodeURIComponent(raw)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => ({}));
+      const label = res.ok && data.label ? String(data.label) : null;
+      setLiveCallerLabel(label);
+      return label;
+    } catch {
+      setLiveCallerLabel(null);
+      return null;
+    }
+  }, []);
 
   const loadCalls = useCallback(async () => {
     const res = await fetch("/api/admin/voice/calls", { cache: "no-store" });
@@ -173,15 +199,23 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
       device.on("incoming", (call: DeskCall) => {
         const label = callerLabel(call);
         setIncoming(call);
+        setLiveCallerLabel(null);
         setStatus(label ? `Incoming ${label}` : "Incoming call");
+        void lookupCalendarCaller(callerPhone(call)).then((calendar) => {
+          if (calendar) {
+            setStatus(`Incoming ${calendar}`);
+          }
+        });
         call.on("cancel", () => {
           setIncoming((current) => (current === call ? null : current));
+          setLiveCallerLabel(null);
           setStatus("Ready for calls");
           void loadCalls();
         });
         call.on("disconnect", () => {
           setActive((current) => (current === call ? null : current));
           setIncoming((current) => (current === call ? null : current));
+          setLiveCallerLabel(null);
           setMuted(false);
           setTones("");
           setStatus("Ready for calls");
@@ -200,7 +234,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
       deviceRef.current?.destroy();
       deviceRef.current = null;
     };
-  }, [loadCalls]);
+  }, [loadCalls, lookupCalendarCaller]);
 
   useEffect(() => {
     document.body.dataset.adminBusy = active || incoming ? "1" : "";
@@ -216,6 +250,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
       call.on("accept", () => setStatus("On a call"));
       call.on("disconnect", () => {
         setActive((current) => (current === call ? null : current));
+        setLiveCallerLabel(null);
         setMuted(false);
         setTones("");
         setStatus("Ready for calls");
@@ -255,14 +290,21 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
   const answer = useCallback(() => {
     if (!incoming) return;
     incoming.accept();
-    const label = callerLabel(incoming);
+    const phone = callerPhone(incoming);
+    const raw = callerLabel(incoming);
+    const who = liveCallerLabel || raw;
     setIncoming(null);
-    watchCall(incoming, label ? `On a call with ${label}` : "On a call");
-  }, [incoming, watchCall]);
+    watchCall(
+      incoming,
+      who ? `On a call with ${who}` : "On a call"
+    );
+    if (!liveCallerLabel && phone) void lookupCalendarCaller(phone);
+  }, [incoming, liveCallerLabel, lookupCalendarCaller, watchCall]);
 
   const decline = useCallback(() => {
     incoming?.reject();
     setIncoming(null);
+    setLiveCallerLabel(null);
     setStatus("Ready for calls");
     void loadCalls();
   }, [incoming, loadCalls]);
@@ -270,6 +312,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
   const hangUp = useCallback(() => {
     active?.disconnect();
     incoming?.reject();
+    setLiveCallerLabel(null);
   }, [active, incoming]);
 
   const sendTone = useCallback(
@@ -297,6 +340,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
       setDialNumber,
       incoming,
       active,
+      liveCallerLabel,
       muted,
       tones,
       calls,
@@ -315,6 +359,7 @@ export function AdminVoiceProvider({ children }: { children: ReactNode }) {
       dialNumber,
       incoming,
       active,
+      liveCallerLabel,
       muted,
       tones,
       calls,

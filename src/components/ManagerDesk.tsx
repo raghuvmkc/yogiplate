@@ -71,6 +71,7 @@ export function ManagerDesk({
     setDialNumber,
     incoming,
     active,
+    liveCallerLabel,
     muted,
     tones,
     calls,
@@ -671,7 +672,10 @@ export function ManagerDesk({
     }
   }
 
-  const remote = callerLabel(incoming) || callerLabel(active);
+  const remotePhone = callerLabel(incoming) || callerLabel(active);
+  const remote = liveCallerLabel
+    ? `${liveCallerLabel}${remotePhone ? ` · ${remotePhone}` : ""}`
+    : remotePhone;
 
   return (
     <div className="mx-auto grid max-w-[1400px] lg:grid-cols-[22rem_1fr]">
@@ -794,6 +798,9 @@ export function ManagerDesk({
             const outbound = call.direction.startsWith("outbound");
             const missed = Boolean(call.missed) || call.status === "missed";
             const kind = missed ? "Missed" : outbound ? "Outgoing" : "Incoming";
+            const title = call.calendar_label
+              ? `${call.calendar_label} · ${who}`
+              : who;
             return (
               <li key={call.sid}>
                 <button
@@ -812,7 +819,9 @@ export function ManagerDesk({
                       />
                     ) : null}
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-foreground">{who}</span>
+                      <span className="block text-sm font-semibold text-foreground">
+                        {title}
+                      </span>
                       <span className={`text-xs ${missed ? "font-semibold text-[#8d3b32]" : "text-muted"}`}>
                         {kind}
                         {!missed && call.status ? ` · ${call.status}` : ""}
