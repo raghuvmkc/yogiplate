@@ -798,9 +798,6 @@ export function ManagerDesk({
             const outbound = call.direction.startsWith("outbound");
             const missed = Boolean(call.missed) || call.status === "missed";
             const kind = missed ? "Missed" : outbound ? "Outgoing" : "Incoming";
-            const title = call.calendar_label
-              ? `${call.calendar_label} · ${who}`
-              : who;
             return (
               <li key={call.sid}>
                 <button
@@ -820,8 +817,11 @@ export function ManagerDesk({
                     ) : null}
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-foreground">
-                        {title}
+                        {call.calendar_label || who}
                       </span>
+                      {call.calendar_label ? (
+                        <span className="block truncate text-xs text-muted">{who}</span>
+                      ) : null}
                       <span className={`text-xs ${missed ? "font-semibold text-[#8d3b32]" : "text-muted"}`}>
                         {kind}
                         {!missed && call.status ? ` · ${call.status}` : ""}

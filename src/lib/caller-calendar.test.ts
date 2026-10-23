@@ -12,6 +12,7 @@ import {
 assert.equal(phoneMatchKey("+14085551212"), "4085551212");
 assert.equal(phoneMatchKey("(408) 555-1212"), "4085551212");
 assert.equal(phoneMatchKey("14085551212"), "4085551212");
+assert.equal(phoneMatchKey("client:manager"), null);
 assert.equal(eventDateToYyMmDd("2026-10-22"), "261022");
 assert.equal(
   formatCalendarCallerLabel({
