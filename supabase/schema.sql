@@ -125,7 +125,7 @@ create table settings (
   base_delivery_fee numeric(10,2) not null default 15,
   rate_per_mile numeric(10,2) not null default 2.5,
   free_delivery_threshold numeric(10,2) not null default 250,
-  tax_rate numeric(8,4) not null default 0.0975,
+  tax_rate numeric(8,4) not null default 0.1,
   service_radius_miles numeric(8,1) not null default 50,
   business_name text not null default 'Yogiplate Catering',
   business_email text not null,

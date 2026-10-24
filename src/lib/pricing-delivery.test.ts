@@ -15,7 +15,7 @@ const settings = {
   ],
   large_order_threshold: 500,
   large_order_delivery_discount_percent: 50,
-  tax_rate: 0.0975,
+  tax_rate: 0.1,
 } as SiteSettings;
 
 assert.equal(calcDeliveryFeeBreakdown(5, 100, settings).delivery_fee, 40);

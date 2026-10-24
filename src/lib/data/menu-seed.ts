@@ -13,7 +13,7 @@ export const MENU_SEED_VERSION = catalog.seedVersion;
 export const categories = catalog.categories as MenuCategory[];
 export const menuItems = catalog.items as MenuItem[];
 
-export const DELIVERY_POLICY_VERSION = 4;
+export const DELIVERY_POLICY_VERSION = 5;
 
 /** Store address and delivery pricing; re-applied to saved settings when the version changes. */
 export const deliveryPolicyDefaults = {
